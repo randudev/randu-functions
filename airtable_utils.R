@@ -169,7 +169,7 @@ email_error <- function(status,funcion,origen,archivo){
 
   email <- envelope() %>%
     from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
-    to(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
+    to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
     subject(paste0("Error: ",uuid::UUIDgenerate())) %>%
     text(paste0("¡Tuvimos un error ", status,"! Con en la funcion: ",funcion, ", y origen: ",origen, ". Adjunto archivo")) %>%
     attachment(path = archivo) # Ruta al archivo a adjuntar
@@ -186,24 +186,22 @@ email_error <- function(status,funcion,origen,archivo){
   
 }
 
-guardar <- function(origen="", resp, req, con, funcion, tabla){
+guardar <- function(origen="", resp, req, con, func, tabla){
   tryCatch(expr={
     #airtable_updatesinglerecord_tibble1 <- readRDS("airtable_updatesinglerecord_tibble1.RDS")
     #airtable_updatesinglerecord_tibble1 <- add_row(airtable_updatesinglerecord_tibble1,time=Sys.time(),rspns=list(last_response() %>% resp_body_json()),
     #                                          url=last_response()$url,status=last_response()$status_code,header =list(last_request()$headers),
     #                                          request=list(last_request()$body$data),origenes=origen)
     logs <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(resp_body_json(resp)),
-                                                 url=resp()$url, status=resp$status_code,
-                                                 header =toJSON(req$headers),request=toJSON(req$body$data),
-                                                 origenes=origen)
+                  url=resp$url, status=resp$status_code, header =toJSON(req$headers),
+                  request=toJSON(req$body$data),funcion=func, origenes=origen)
     insertar_fila(con, tabla, logs)
   },
   error=function(er){
     print(er)
     tabla <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(resp_body_json(resp)),
-                                                  url=resp$url,status=resp$status_code,
-                                                  header =toJSON(req$headers),request=toJSON(req$body$data),
-                                                  funciones=funcion,origenes=origen)
+                     url=resp$url,status=resp$status_code,header =toJSON(req$headers),
+                    request=toJSON(req$body$data), funciones=func,origenes=origen)
     saveRDS(tabla,"api_logs.RDS",compress = FALSE)
     print("Ocurrio un error al en la conexion")
   })
