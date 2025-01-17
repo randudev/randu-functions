@@ -8,7 +8,7 @@ abrir_conexion_SQLite <- function(db_name) {
 
 insertar_fila <- function(con, tabla, datos) {
   
-  query <- paste0("INSERT INTO ", tabla, " (time, rspns, url,status,header,request,origenes) VALUES (?, ?, ?, ?, ?, ?, ?)")
+  query <- paste0("INSERT INTO ", tabla, " (time, rspns, url,status,header,request, funcion,origenes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
   valores <- unname(as.list(datos))
   dbExecute(con, query, params = valores)
 }
@@ -24,21 +24,23 @@ insertar_fila_errores <- function(con, datos) {
 desconectar <- function(con){
   dbDisconnect(con)
 }
-crear_tabla1 <- function(con) {
+crear_tabla <- function(con) {
   query <- "
-    CREATE TABLE IF NOT EXISTS airtable_getrecordslist (
+    CREATE TABLE IF NOT EXISTS api_logs (
       time TEXT,
       rspns TEXT,
       url TEXT,
       status INTEGER,
       header TEXT,
       request TEXT,
+      funcion TEXT,
       origenes TEXT
     );
   "
   
   dbExecute(con, query)
 }
+#------Esta no-------
 crear_tabla2 <- function(con) {
   query <- "
     CREATE TABLE IF NOT EXISTS airtable_getrecorddata_byid (
@@ -102,7 +104,7 @@ crear_tabla5 <- function(con) {
   
   dbExecute(con, query)
 }
-
+#----------
 close_all_connections <- function(env = .GlobalEnv) {
   objects <- ls(env)  # Listar todos los objetos en el entorno
   for (obj in objects) {
@@ -123,9 +125,7 @@ print_all_connections <- function(env = .GlobalEnv) {
     }
   }
 }
-#tibble(time=Sys.time(),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-#       status=last_response()$status_code,header =toJSON(last_request()$headers),request=toJSON(last_request()$body$data),
-##       funcion="airtable_getrecorddata_byid",origenes=origen)
-##ibble(time=Sys.time(),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-#      status=last_response()$status_code,header =toJSON(last_request()$headers),
-#      request=toJSON(last_request()$body$data),funcion="airtable_getrecordslist",origenes=origen)
+
+leer_tabla <- function(con, tabla){
+  df <- dbReadTable(con, tabla)
+}

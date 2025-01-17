@@ -5,6 +5,7 @@ if (!require("emayili")) {install.packages("emayili")}
 if (!require("tidyr")) {install.packages("tidyr")}
 library(tidyr)
 library(emayili)
+#Asi se debe de llamar el archivo "api_logs_documentation.sqlite"
 
 airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",origen="",con=NULL){
   recordslist <- vector(mode="list", 0)
@@ -31,23 +32,8 @@ airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",or
 
   #----tryCatch para el guardado de el response 
   if(!is.null(con)){
-  tryCatch(expr={
-    #airtable_getrecordslist_tibble1 <- readRDS("airtable_getrecordslist_tibble1.RDS")
-    airtable_getrecordslist_tibble <-  tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                                              status=last_response()$status_code,header =toJSON(last_request()$headers),request=toJSON(last_request()$body$data),
-                                              origenes=origen)
-    insertar_fila(con,"airtable_getrecordslist",airtable_getrecordslist_tibble)
-    #saveRDS(airtable_getrecordslist_tibble1,"airtable_getrecordslist_tibble1.RDS",compress = FALSE)
-  },
-  error=function(er){
-    print(er)
-    airtable_getrecordslist_tibble <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                                             status=last_response()$status_code,header =toJSON(last_request()$headers),request=toJSON(last_request()$body$data),
-                                             origenes=origen)
-    saveRDS(airtable_getrecordslist_tibble,"airtable_getrecordslist_tibble.RDS",compress = FALSE)
-    print("Ocurrio un error en la conexion")
-  }
-  )
+    guardar(origen, last_response(), last_request(), con, "airtable_getrecordslist", "api_logs")
+    
   }
   #--------Guardar el status--------
   if(last_response()$status_code %in% c(199:299)){
@@ -56,23 +42,8 @@ airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",or
   }else{
     #------trycatch para guardar el error------- 
     if(!is.null(con)){
-    tryCatch(expr={
-      erroresp <- readRDS("erroresp.RDS")
-      erroresp <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                         status=last_response()$status_code,header =toJSON(last_request()$headers),
-                         request=toJSON(last_request()$body$data),funcion="airtable_getrecordslist",origenes=origen)
-      insertar_fila_errores(con,erroresp)
-      email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/airtable_functions.sqlite")
-    },
-    error=function(er){
-      erroresp <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=list(last_response() %>% resp_body_json()),url=last_response()$url,
-                         status=last_response()$status_code,header =list(last_request()$headers),
-                         request=list(last_request()$body$data),funcion="airtable_getrecordslist",origenes=origen)
-      saveRDS(erroresp1,"erroresp1.RDS",compress = FALSE)
-      email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/erroresp.RDS")
-      print("Hubo un error de conexion")
+      email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/api_logs_documentation.sqlite")
     }
-    )}
     return(NULL)
   }
   atboffset <- resp_body_json(atbreq)$offset
@@ -86,29 +57,8 @@ airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",or
       req_perform()
     #------Revisar 
     if(!is.null(con)){
-    tryCatch(expr={
-      #airtable_getrecordslist_tibble1 <- readRDS("airtable_getrecordslist_tibble1.RDS")
-      #airtable_getrecordslist_tibble1 <- add_row(airtable_getrecordslist_tibble1,time=Sys.time(),rspns=list(last_response() %>% resp_body_json()),
-      #                                          url=last_response()$url,status=last_response()$status_code,header =list(last_request()$headers),
-      #                                          request=list(last_request()$body$data),origenes=origen)
-      #saveRDS(airtable_getrecordslist_tibble1,"airtable_getrecordslist_tibble1.RDS",compress = FALSE)
-      airtable_getrecordslist_tibble <-  tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                                                status=last_response()$status_code,header =toJSON(last_request()$headers),request=toJSON(last_request()$body$data),
-                                                origenes=origen)
-      insertar_fila(con,"airtable_getrecordslist",airtable_getrecordslist_tibble)
-    },
-    error=function(er){
-      #airtable_getrecordslist_tibble1 <- tibble(time=Sys.time(),rspns=list(last_response() %>% resp_body_json()),url=last_response()$url,
-      #                                         status=last_response()$status_code,header =list(last_request()$headers),
-      #                                         request=list(last_request()$body$data),origenes=origen)
-      #saveRDS(airtable_getrecordslist_tibble1,"airtable_getrecordslist_tibble1.RDS",compress = FALSE)
-      airtable_getrecordslist_tibble <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                                              status=last_response()$status_code,header =toJSON(last_request()$headers),request=toJSON(last_request()$body$data),
-                                              origenes=origen)
-      saveRDS(airtable_getrecordslist_tibble,"airtable_getrecordslist_tibble.RDS",compress = FALSE)
-      print("Ocurrio un error en la conexion")
+      guardar(origen, last_response(), last_request(), con, "airtable_getrecordslist", "api_logs")
     }
-    )}
     recordslist <- append(recordslist, resp_body_json(atbreq)$records)
     atboffset <- resp_body_json(atbreq)$offset
     Sys.sleep(1)
@@ -118,23 +68,9 @@ airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",or
     }else{
       #------trycatch para guardar el error------- 
       if(!is.null(con)){
-      tryCatch(expr={
-        erroresp <- readRDS("erroresp.RDS")
-        erroresp <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                           status=last_response()$status_code,header =toJSON(last_request()$headers),
-                           request=toJSON(last_request()$body$data),funcion="airtable_getrecordslist",origenes=origen)
-        insertar_fila_errores(con,erroresp)
-        email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/airtable_functions.sqlite")
-      },
-      error=function(er){
-        erroresp <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=list(last_response() %>% resp_body_json()),url=last_response()$url,
-                           status=last_response()$status_code,header =list(last_request()$headers),
-                           request=list(last_request()$body$data),funcion="airtable_getrecordslist",origenes=origen)
-        saveRDS(erroresp1,"erroresp1.RDS",compress = FALSE)
-        email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/erroresp.RDS")
-        print("Hubo un error de conexion")
+        email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/api_logs_documentation.sqlite")
+        
       }
-      )}
       if(length(recordslist)>0){
         return(recordslist)
       }
@@ -164,54 +100,14 @@ airtable_getrecorddata_byid <- function(recordid, tablename, base_id,origen="",c
   
   #-------tryCatch
   if(!is.null(con)){
-  tryCatch(
-    expr={
-      #airtable_getrecorddata_byid_tibble1 <- readRDS("airtable_getrecorddata_byid_tibble1.RDS")
-      #airtable_getrecorddata_byid_tibble1 <- add_row(airtable_getrecorddata_byid_tibble1,time=Sys.time(),
-      #                                               rspns=list(last_response() %>% resp_body_json()),
-      #                                               url=last_response()$url,status=last_response()$status_code,
-      #                                               header =list(last_request()$headers),request=list(last_request()$body$data),
-      #                                               origenes=origen)
-      #saveRDS(airtable_getrecorddata_byid_tibble1,"airtable_getrecorddata_byid_tibble1.RDS",compress = FALSE)
-      airtable_getrecorddata_byid_tibble <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                                                   status=last_response()$status_code, header =toJSON(last_request()$headers),
-                                                   request=toJSON(last_request()$body$data),origenes=origen)
-      insertar_fila(con,"airtable_getrecorddata_byid",airtable_getrecorddata_byid_tibble)
-  
-    },
-    error=function(er){
-      print(er)
-            airtable_getrecorddata_byid_tibble <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                                                         status=last_response()$status_code, header =toJSON(last_request()$headers),
-                                                         request=toJSON(last_request()$body$data),origenes=origen)
-            
-             saveRDS(airtable_getrecorddata_byid_tibble,"airtable_getrecorddata_byid_tibble.RDS",compress = FALSE)
-             print("Ocurrio un error en la conexion")
-  })
+    guardar(origen, last_response(), last_request(), con, "airtable_getrecorddata_byid", "api_logs")
   }
   if(last_response()$status_code %in% c(199:299)){
     #content(atbrequest)
     resp_body_json(atbrequest)
   }else{
     if(!is.null(con)){
-      tryCatch(expr={
-      #erroresp1 <- readRDS("erroresp1.RDS")
-      erroresp <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                          status=last_response()$status_code,header =toJSON(last_request()$headers),request=toJSON(last_request()$body$data),
-                          funcion="airtable_getrecorddata_byid",origenes=origen)
-      #saveRDS(erroresp1,"erroresp1.RDS",compress = FALSE)
-      insertar_fila_errores(con,erroresp )
-      email_error(last_response()$status_code,"airtable_getrecorddata_byid",origen,"~/airtable_functions.sqlite")
-    },
-      error=function(er){
-      erroresp <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=list(last_response() %>% resp_body_json()),url=last_response()$url,
-                         status=last_response()$status_code,header =list(last_request()$headers),request=list(last_request()$body$data),
-                         funcion="airtable_getrecorddata_byid",origenes=origen)
-      saveRDS(erroresp,"erroresp.RDS",compress = FALSE)
-      print("Hubo un error en la conexion")
-      email_error(last_response()$status_code,"airtable_getrecorddata_byid",origen,"~/erroresp.RDS")
-    }
-      )
+      email_error(last_response()$status_code,"airtable_updatesinglerecord",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   } 
@@ -227,49 +123,13 @@ airtable_createrecord <- function(fieldslist, tablename, base_id,origen="",con=N
     req_error(is_error = function(resp) FALSE) %>%
     req_perform())
   if(!is.null(con)){
-  tryCatch(expr={
-    #airtable_createrecord_tibble1 <- readRDS("airtable_createrecord_tibble1.RDS")
-    #airtable_createrecord_tibble1 <- add_row(airtable_createrecord_tibble,time=Sys.time(),rspns=list(last_response() %>% resp_body_json()),
-    #                                        url=last_response()$url,status=last_response()$status_code,header =list(last_request()$headers),
-    #                                        request=list(last_request()$body$data),origenes=origen)
-    #saveRDS(airtable_createrecord_tibble1,"airtable_createrecord_tibble1.RDS",compress = FALSE)
-    airtable_createrecord_tibble <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                                            status=last_response()$status_code, header =toJSON(last_request()$headers),
-                                            request=toJSON(last_request()$body$data),origenes=origen)
-    insertar_fila(con,"airtable_createrecord",airtable_createrecord_tibble)
-  },
-  error=function(er){
-    print(er)
-    airtable_createrecord_tibble <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                                           status=last_response()$status_code, header =toJSON(last_request()$headers),
-                                           request=toJSON(last_request()$body$data),origenes=origen)
-    saveRDS(airtable_createrecord_tibble,"airtable_createrecord_tibble.RDS",compress = FALSE)
-    print("Ocurrio un problema en la conexion")
-  }
-  )
+    guardar(origen, last_response(), last_request(), con, "airtable_createrecord", "api_logs")
   }
   if(last_response()$status_code %in% c(199:299)){
     resp_body_json(atbreq)
   }else{
     if(!is.null(con)){
-    tryCatch(expr={
-      #erroresp1 <- readRDS("erroresp1.RDS")
-      erroresp <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                          status=last_response()$status_code,header =toJSON(last_request()$headers),
-                          request=toJSON(last_request()$body$data),funcion="airtable_createrecord",origenes=origen)
-      insertar_fila_errores(con,erroresp)
-      #saveRDS(erroresp1,"erroresp1.RDS",compress = FALSE)
-      email_error(last_response()$status_code,"airtable_createrecord",origen,"~/airtable_functions.sqlite")
-    },
-    error=function(er){
-      erroresp <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                         status=last_response()$status_code,header =toJSON(last_request()$headers),
-                         request=toJSON(last_request()$body$data),funcion="airtable_createrecord",origenes=origen)
-      saveRDS(erroresp,"erroresp.RDS",compress = FALSE)
-      email_error(last_response()$status_code,"airtable_createrecord",origen,"~/erroresp.RDS")
-      print("Hubo un error en la conexion")
-    }
-    )
+      email_error(last_response()$status_code,"airtable_createrecord",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   } 
@@ -286,56 +146,14 @@ airtable_updatesinglerecord <- function(fieldslist, tablename, base_id, recordid
     req_perform()
   )
   if(!is.null(con)){
-    tryCatch(expr={
-    #airtable_updatesinglerecord_tibble1 <- readRDS("airtable_updatesinglerecord_tibble1.RDS")
-    #airtable_updatesinglerecord_tibble1 <- add_row(airtable_updatesinglerecord_tibble1,time=Sys.time(),rspns=list(last_response() %>% resp_body_json()),
-    #                                          url=last_response()$url,status=last_response()$status_code,header =list(last_request()$headers),
-    #                                          request=list(last_request()$body$data),origenes=origen)
-    airtable_updatesinglerecord_tibble <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),
-                                                 url=last_response()$url, status=last_response()$status_code,
-                                                 header =toJSON(last_request()$headers),request=toJSON(last_request()$body$data),
-                                                 origenes=origen)
-    insertar_fila(con,"airtable_updatesinglerecord",airtable_updatesinglerecord_tibble)
-    #saveRDS(airtable_updatesinglerecord_tibble1,"airtable_updatesinglerecord_tibble1.RDS",compress = FALSE)
-  },
-    error=function(er){
-    print(er)
-    airtable_updatesinglerecord_tibble1 <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),
-                                                  url=last_response()$url,status=last_response()$status_code,
-                                                  header =toJSON(last_request()$headers),request=toJSON(last_request()$body$data),
-                                                  origenes=origen)
-    saveRDS(airtable_updatesinglerecord_tibble1,"airtable_updatesinglerecord_tibble1.RDS",compress = FALSE)
-    print("Ocurrio un error al en la conexion")
-  }
-  )
+    guardar(origen, last_response(), last_request(), con, "airtable_updatesinglerecord", "api_logs")
   }
   if(last_response()$status_code %in% c(199:299)){
     resp_body_json(atbreq)
   }else{
     if(!is.null(con)){
-      tryCatch(expr={
-      ##erroresp1 <- readRDS("erroresp1.RDS")
-      #erroresp1 <- add_row(erroresp1,time=Sys.time(),rspns=list(last_response() %>% resp_body_json()),
-      #                    url=last_response()$url,status=last_response()$status_code,
-      #                    header =list(last_request()$headers),request=list(last_request()$body$data),
-      #                    funcion="airtable_updatesinglerecord",origenes=origen)
-      #saveRDS(erroresp,"erroresp1.RDS",compress = FALSE)
-      erroresp <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                         status=last_response()$status_code,header =toJSON(last_request()$headers),
-                         request=toJSON(last_request()$body$data),funcion="airtable_updatesinglerecord",origenes=origen)
-      insertar_fila_errores(con,erroresp)
-      email_error(last_response()$status_code,"airtable_updatesinglerecord",origen,"~/airtable_functions.sqlite")
-    },
-      error=function(er){
-      print(er)
-      erroresp1 <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(last_response() %>% resp_body_json()),url=last_response()$url,
-                         status=last_response()$status_code,header =toJSON(last_request()$headers),
-                         request=toJSON(last_request()$body$data),funcion="airtable_updatesinglerecord",origenes=origen)
-      saveRDS(erroresp1,"erroresp1.RDS",compress = FALSE)
-      email_error(last_response()$status_code,"airtable_updatesinglerecord",origen,"~/erroresp.RDS")
-      print("Hubo un problema en la conexion error")
-    }
-      )
+      #guardar(origen,last_response(),last_request(),con,"airtable_updatesinglerecord","api_logs")
+      email_error(last_response()$status_code,"airtable_updatesinglerecord",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   } 
@@ -367,3 +185,27 @@ email_error <- function(status,funcion,origen,archivo){
   smtp(email)
   
 }
+
+guardar <- function(origen="", resp, req, con, funcion, tabla){
+  tryCatch(expr={
+    #airtable_updatesinglerecord_tibble1 <- readRDS("airtable_updatesinglerecord_tibble1.RDS")
+    #airtable_updatesinglerecord_tibble1 <- add_row(airtable_updatesinglerecord_tibble1,time=Sys.time(),rspns=list(last_response() %>% resp_body_json()),
+    #                                          url=last_response()$url,status=last_response()$status_code,header =list(last_request()$headers),
+    #                                          request=list(last_request()$body$data),origenes=origen)
+    logs <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(resp_body_json(resp)),
+                                                 url=resp()$url, status=resp$status_code,
+                                                 header =toJSON(req$headers),request=toJSON(req$body$data),
+                                                 origenes=origen)
+    insertar_fila(con, tabla, logs)
+  },
+  error=function(er){
+    print(er)
+    tabla <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(resp_body_json(resp)),
+                                                  url=resp$url,status=resp$status_code,
+                                                  header =toJSON(req$headers),request=toJSON(req$body$data),
+                                                  funciones=funcion,origenes=origen)
+    saveRDS(tabla,"api_logs.RDS",compress = FALSE)
+    print("Ocurrio un error al en la conexion")
+  })
+}
+#api_logs_documentation
