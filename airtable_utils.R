@@ -59,12 +59,11 @@ airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",or
     if(!is.null(con)){
       guardar(origen, last_response(), last_request(), con, "airtable_getrecordslist", "api_logs")
     }
-    recordslist <- append(recordslist, resp_body_json(atbreq)$records)
+    
     atboffset <- resp_body_json(atbreq)$offset
     Sys.sleep(1)
     if(last_response()$status_code %in% c(199:299)){
-      
-      recordslist <- resp_body_json(atbreq)$records
+      recordslist <- append(recordslist, resp_body_json(atbreq)$records)
     }else{
       #------trycatch para guardar el error------- 
       if(!is.null(con)){
