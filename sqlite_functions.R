@@ -16,14 +16,12 @@ insertar_fila <- function(con, tabla, datos) {
 insertar_fila_errores <- function(con, datos) {
   # Crear una consulta SQL para insertar datos
   query <- paste0("INSERT INTO ", "errores", " (time, rspns, url, status, header, request, funcion, origenes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-  valores <- unname(as.list(datos))  # Esto elimina los nombres de las columnas
-  # Ejecutar la consulta, pasando los valores a insertar
+  valores <- unname(as.list(datos)) 
   dbExecute(con, query, params = valores)
 }
 insertar_orden_venta <- function(con,datos){
   query <- paste0("INSERT INTO ", "ordenes_venta", " (orden_venta) VALUES (?)")
-  valores <- unname(as.list(datos))  # Esto elimina los nombres de las columnas
-  # Ejecutar la consulta, pasando los valores a insertar
+  valores <- unname(as.list(datos))  
   dbExecute(con, query, params = valores)
 }
 
