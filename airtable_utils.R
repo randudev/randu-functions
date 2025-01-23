@@ -163,7 +163,7 @@ airtable_tibblewithfields <- function(recordlist){
 }
 
 #-----Enviar por correo los errores------
-email_error <- function(status,funcion,origen,archivo){
+email_error <- function(status,funcion,origen,archivo=""){
   
 
   email <- envelope() %>%
@@ -183,6 +183,27 @@ email_error <- function(status,funcion,origen,archivo){
   
   smtp(email)
   
+}
+email_error_general <- function(mensaje,archivo=NULL){
+  email <- envelope() %>%
+    from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
+    to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
+    subject(paste0("Error : ",uuid::UUIDgenerate())) %>%
+    text(paste0("¡Tuvimos un problema: ", mensaje)) 
+    
+    if(!is.null(archivo)){
+      email <- email %>% attachment(path = archivo) # Ruta al archivo a adjuntar
+    }
+    
+  smtp <- server(
+    host = "smtp.fastmail.com",
+    port = 465,
+    username = Sys.getenv("EMAIL_FAST_MAIL"),
+    password = Sys.getenv("EMAIL_KEY"),
+    use_ssl = TRUE
+  )
+  
+  smtp(email)
 }
 
 guardar <- function(origen="", resp, req, con, func, tabla){
