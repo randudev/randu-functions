@@ -1,6 +1,7 @@
 library(httr)
 library(httr2)
 library(dplyr)
+library(jsonlite)
 if (!require("emayili")) {install.packages("emayili")}
 if (!require("tidyr")) {install.packages("tidyr")}
 library(tidyr)
