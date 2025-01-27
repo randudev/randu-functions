@@ -21,9 +21,16 @@ insertar_fila_errores <- function(con, datos) {
   dbExecute(con, query, params = valores)
 }
 
+insertar_orden_venta <- function(con,datos){
+  query <- paste0("INSERT INTO ", "ordenes_venta", " (orden_venta) VALUES (?)")
+  valores <- unname(as.list(datos))  
+  dbExecute(con, query, params = valores)
+}
+
 desconectar <- function(con){
   dbDisconnect(con)
 }
+
 crear_tabla <- function(con) {
   query <- "
     CREATE TABLE IF NOT EXISTS api_logs (
@@ -40,70 +47,17 @@ crear_tabla <- function(con) {
   
   dbExecute(con, query)
 }
-#------Esta no-------
-crear_tabla2 <- function(con) {
+
+crear_tabla_orden <- function(con) {
   query <- "
-    CREATE TABLE IF NOT EXISTS airtable_getrecorddata_byid (
-      time TEXT,
-      rspns TEXT,
-      url TEXT,
-      status INTEGER,
-      header TEXT,
-      request TEXT,
-      origenes TEXT
-    );
-  "
-  
-  dbExecute(con, query)
-}
-crear_tabla3 <- function(con) {
-  query <- "
-    CREATE TABLE IF NOT EXISTS airtable_updatesinglerecord (
-      time TEXT,
-      rspns TEXT,
-      url TEXT,
-      status INTEGER,
-      header TEXT,
-      request TEXT,
-      origenes TEXT
+    CREATE TABLE IF NOT EXISTS ordenes_venta (
+      orden_venta TEXT PRIMARY KEY
     );
   "
   
   dbExecute(con, query)
 }
 
-crear_tabla4 <- function(con) {
-  query <- "
-    CREATE TABLE IF NOT EXISTS airtable_createrecord (
-      time TEXT,
-      rspns TEXT,
-      url TEXT,
-      status INTEGER,
-      header TEXT,
-      request TEXT,
-      origenes TEXT
-    );
-  "
-  
-  dbExecute(con, query)
-}
-
-crear_tabla5 <- function(con) {
-  query <- "
-    CREATE TABLE IF NOT EXISTS errores(
-      time TEXT,
-      rspns TEXT,
-      url TEXT,
-      status INTEGER,
-      header TEXT,
-      request TEXT,
-      funcion TEXT,
-      origenes TEXT
-    );
-  "
-  
-  dbExecute(con, query)
-}
 #----------
 close_all_connections <- function(env = .GlobalEnv) {
   objects <- ls(env)  # Listar todos los objetos en el entorno
