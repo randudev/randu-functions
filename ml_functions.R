@@ -59,7 +59,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token){
     'id_origen'=as.character(mlorder$id)
   )
   if(!is.null(mlorder$pack_id)){
-    fieldslist <- append(fieldslist,list('ml_packid'=as.character(mlorder$pack_id)))
+    fieldslist <- append(fieldslist,list('ml_pack_id'=as.character(mlorder$pack_id)))
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
 }
