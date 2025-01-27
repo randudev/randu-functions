@@ -51,7 +51,8 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1){
            paper_name <- "4 x 2"
          },
          'impresora_azul'={
-           printer_id <- "e2e15ccf-7674-475b-9a86-9f1e5b1eb495"
+           #printer_id <- "e2e15ccf-7674-475b-9a86-9f1e5b1eb495"
+           printer_id <- "f7abe3c0-0623-43e3-bda9-694d69df71dc"
            paper_id <- 257
            paper_name <- "4 x 2"
          },
@@ -59,7 +60,14 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1){
            printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"
            paper_id <- 257
            paper_name <- "4x8"
-         })
+         },
+         'impresora_brother'={
+           #printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"
+           printer_id <- "1ea10e2d-9264-4392-90be-2a8a09bb3f3d"
+           paper_id <- 257
+           paper_name <- "4x8"
+         }
+         )
   
   jsonbody <- paste0('{
     "fileurl": "',urltoprint,'",

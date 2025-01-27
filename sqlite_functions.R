@@ -20,12 +20,6 @@ insertar_fila_errores <- function(con, datos) {
   # Ejecutar la consulta, pasando los valores a insertar
   dbExecute(con, query, params = valores)
 }
-insertar_orden_venta <- function(con,datos){
-  query <- paste0("INSERT INTO ", "ordenes_venta", " (orden_venta) VALUES (?)")
-  valores <- unname(as.list(datos))  # Esto elimina los nombres de las columnas
-  # Ejecutar la consulta, pasando los valores a insertar
-  dbExecute(con, query, params = valores)
-}
 
 desconectar <- function(con){
   dbDisconnect(con)
@@ -78,10 +72,16 @@ crear_tabla3 <- function(con) {
   dbExecute(con, query)
 }
 
-crear_tabla_orden <- function(con) {
+crear_tabla4 <- function(con) {
   query <- "
-    CREATE TABLE IF NOT EXISTS ordenes_venta (
-      orden_venta TEXT PRIMARY KEY
+    CREATE TABLE IF NOT EXISTS airtable_createrecord (
+      time TEXT,
+      rspns TEXT,
+      url TEXT,
+      status INTEGER,
+      header TEXT,
+      request TEXT,
+      origenes TEXT
     );
   "
   
