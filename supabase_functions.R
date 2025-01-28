@@ -1,11 +1,12 @@
 library(httr2)
 library(jsonlite)
 library(dotenv)
+library(purrr)
 
 supabase_createrecord <- function(fieldslist, tablename, base_id="",origen="",con=NULL){
   tryCatch(
     expr = {
-      url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablaname,'?id=eq.',id)
+      url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablename)
       apikey <- Sys.getenv("SUPABASE_API_KEY")
       resp_sup <- request(url_supabase) %>%
         req_method("POST") %>%
@@ -25,8 +26,9 @@ supabase_createrecord <- function(fieldslist, tablename, base_id="",origen="",co
 
 supabase_update <- function(id,fieldslist, tablename, base_id){
   
-  url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablename,'?id=eq.',id)
-  
+  ids <- paste0("(", paste(id, collapse = ","),")")
+  url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablename,'?id=in.',ids)
+ 
   apikey <- Sys.getenv("SUPABASE_API_KEY")
   res<-request(url_supabase) %>% 
     req_method("PATCH") %>% 
@@ -92,19 +94,18 @@ supabase_getrecordslist <- function(tabla,base_id,filters="",fields="") {
   return(all_data)
 }
 
-dar_procesadas <- function(){
-  base_id <- Sys.getenv("SUPABASE_URL_ID")
-  
-  url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/","notificaciones",'?procesada=eq.',FALSE,"&body=in.order_v2")
-  
-  apikey <- Sys.getenv("SUPABASE_API_KEY")
-  res<-request(url_supabase) %>% 
-    req_method("PATCH") %>% 
-    req_headers("apikey"=apikey,
-                "Content-Type" = "application/json") %>%
-    req_headers('Prefer'= 'return=merge-duplicates') %>% 
-    req_body_json(list("procesada"=TRUE )) %>%
-    req_error(is_error = function(resp) FALSE) %>%
-    req_perform()  
-  
+#Esta funcion se usa para cuando quieres hacer cambio en mas de 2000 filas
+supabase_updates <- function(id,fieldslist, tablename, base_id){
+  if(length(id)>2000){
+   
+    n_parts <- ceiling(length(id)/2000) + 1
+    
+    sub_ids <- split(id, gl(n_parts, ceiling(length(id) / n_parts), length(id)))
+   
+   for(ids in sub_ids){
+     supabase_update(unlist(ids),fieldslist, tablename, base_id)
+   }
+  }else{
+    supabase_update(id,fieldslist, tablename, base_id)
+  }
 }
