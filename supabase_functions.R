@@ -3,11 +3,12 @@ library(jsonlite)
 library(dotenv)
 library(purrr)
 
-supabase_createrecord <- function(fieldslist, tablename, base_id="",origen="",con=NULL){
+supabase_createrecord <- function(fieldslist, tablename="", base_id=""){
   tryCatch(
     expr = {
-      url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablename)
-      apikey <- Sys.getenv("SUPABASE_API_KEY")
+      url_supabase <- Sys.getenv("URL_SUPABASE_DEV")
+      #url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablename)
+      apikey <- Sys.getenv("AUTH_SUPABASE_DEV")
       resp_sup <- request(url_supabase) %>%
         req_method("POST") %>%
         req_headers('apikey'=apikey) %>%
@@ -24,12 +25,12 @@ supabase_createrecord <- function(fieldslist, tablename, base_id="",origen="",co
   
 }
 
-supabase_update <- function(id,fieldslist, tablename, base_id){
+supabase_update <- function(id,fieldslist, tablename="", base_id=""){
   
   ids <- paste0("(", paste(id, collapse = ","),")")
-  url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablename,'?id=in.',ids)
+  url_supabase <- paste0(Sys.getenv("URL_SUPABASE_DEV"),'?id=in.',ids)
  
-  apikey <- Sys.getenv("SUPABASE_API_KEY")
+  apikey <- Sys.getenv("AUTH_SUPABASE_DEV")
   res<-request(url_supabase) %>% 
     req_method("PATCH") %>% 
     req_headers("apikey"=apikey,
@@ -45,9 +46,10 @@ supabase_update <- function(id,fieldslist, tablename, base_id){
   } 
 }
 
-supabase_getrecordslist <- function(tabla,base_id,filters="",fields="") {
-  apikey <- Sys.getenv("SUPABASE_API_KEY")
-  url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tabla)
+supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="") {
+  apikey <- Sys.getenv("AUTH_SUPABASE_DEV")
+  url_supabase <- Sys.getenv("URL_SUPABASE_DEV")
+  #url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tabla)
   all_data <- list()
   limit <- 500        
   offset <- 0         
@@ -95,7 +97,7 @@ supabase_getrecordslist <- function(tabla,base_id,filters="",fields="") {
 }
 
 #Esta funcion se usa para cuando quieres hacer cambio en mas de 2000 filas
-supabase_updates <- function(id,fieldslist, tablename, base_id){
+supabase_updates <- function(id,fieldslist, tablename="", base_id=""){
   if(length(id)>2000){
    
     n_parts <- ceiling(length(id)/2000) + 1
