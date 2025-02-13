@@ -238,3 +238,69 @@ register_lineitemsv2 <- function(shopifyorder){
   }
   vp_recordids
 }
+
+register_lineitemsv3 <- function(shopifyorder){
+  #Esta version esta adaptada para la api de shopify graphql
+  fieldslist1 <- list()
+  #lineitems <- shopifyorder$line_items
+  lineitems <- split(shopifyorder$line_items, seq(nrow(shopifyorder$line_items)))
+  vp_recordids <- vector(mode="list", length(lineitems))
+  for(i in 1:length(lineitems)){
+    cantidad <- lineitems[[i]]$quantity
+    nombre_producto <- lineitems[[i]]$name
+    variant_id <- lineitems[[i]]$variant_id
+    precio <- as.double(lineitems[[i]]$price)
+    sku <- lineitems[[i]]$sku
+    id_lineitem <- as.character(lineitems[[i]]$id)
+    li_properties <- lineitems[[i]]$properties
+    comentarios <- ""
+    if(length(li_properties)>0 ){
+      for(j in 1:length(li_properties)){
+        comentarios <- paste0(comentarios,li_properties[[j]]$name,": ",
+                              li_properties[[j]]$value," \n")
+      }
+    }
+    fieldslist <- list(
+      'cantidad'=cantidad,
+      'helper_product_name'=nombre_producto,
+      'precio_unitario'=precio,
+      'shopify_variant_id'=variant_id,
+      'pendiente_envio'=cantidad,
+      'id_lineitem'=id_lineitem,
+      'comentarios'=comentarios
+    )
+    
+    if(!is.null(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
+      product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                       formula=paste0("sku=",sku))
+      
+      recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+      fieldslist <- append(fieldslist, recordid_producto)
+    }
+    newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
+    if(!is.null(newvp_content)){
+      vp_recordids[[i]] <- newvp_content$id[[1]]
+    }else{
+      print(paste0("hubo un problema al registrar la el line_item
+                   (venta_producto #",i))
+    }
+    #fieldslist1[[i]] <- fieldslist
+  }
+  vp_recordids
+  #fieldslist1
+}
+
+register_shopifyorder_in_airtablev2 <- function(shopifyorder){
+  lineitems_recordid <- register_lineitemsv3(shopifyorder)
+  #client_recordid <- register_client(shopifyorder)
+  shippingaddress_resp <- register_address(shopifyorder)
+  shippingaddress_id <- shippingaddress_resp$id
+  fieldslist <- list(
+    'fecha'=shopifyorder$created_at,
+    'canal_venta'='shprndmx',
+    'ventas_producto'=lineitems_recordid,
+    'id_origen'=shopifyorder$name,
+    'direccion_envio'=list(shippingaddress_id)
+  )
+  newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
+}
