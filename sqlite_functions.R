@@ -48,6 +48,13 @@ crear_tabla <- function(con) {
   dbExecute(con, query)
 }
 
+insertar_factura <- function(con,datos){
+  query <- paste0("INSERT INTO ", "factura", " (uuid) VALUES (?)")
+  valores <- unname(as.list(datos))  
+  dbExecute(con, query, params = valores)
+}
+
+
 crear_tabla_orden <- function(con) {
   query <- "
     CREATE TABLE IF NOT EXISTS ordenes_venta (
@@ -55,6 +62,16 @@ crear_tabla_orden <- function(con) {
     );
   "
   
+  dbExecute(con, query)
+}
+
+
+crear_tabla_factura <- function(con) {
+  query <- "
+    CREATE TABLE IF NOT EXISTS factura (
+      uuid TEXT PRIMARY KEY
+    );
+  "
   dbExecute(con, query)
 }
 

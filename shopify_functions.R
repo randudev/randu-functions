@@ -255,9 +255,9 @@ register_lineitemsv3 <- function(shopifyorder){
     li_properties <- lineitems[[i]]$properties
     comentarios <- ""
     if(length(li_properties[[1]])>0 ){
-      for(j in 1:length(li_properties$name)){
-        comentarios <- paste0(comentarios,li_properties$name[[j]],": ",
-                              li_properties$value[[j]]," \n")
+      for(j in 1:length(li_properties[[1]]$name)){
+        comentarios <- paste0(comentarios,li_properties[[1]]$name[[j]],": ",
+                              li_properties[[1]]$value[[j]]," \n")
       }
     }
     fieldslist <- list(
