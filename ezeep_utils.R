@@ -43,7 +43,7 @@ ezeep_getactivetoken <- function(){
   validat
 }
 
-ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1){
+ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=NULL){
   switch(printername,
          'impresora_rosa'={
            printer_id <- "1f0763ce-3112-4c5d-929c-800354d6ca83"
@@ -85,13 +85,16 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1){
     },
     "printanddelete": true
 }')
-  
+  body <- fromJSON(jsonbody)
+  if(!is.null(rango)){
+    body$properties <- append(body$properties,list("pageRanges"=rango))
+  }
   request("https://printapi.ezeep.com/sfapi/Print/") %>% 
     req_method("POST") %>% 
     # req_headers('Content-type'='application/x-www-form-urlencoded') %>% 
     req_headers('Content-type'='application/json') %>% 
     req_headers('Authorization'=paste0('Bearer ',ezeep_at)) %>% 
-    req_body_json(fromJSON(jsonbody)) %>% 
+    req_body_json(body) %>% 
     req_perform() %>% 
     resp_body_json()
 }

@@ -259,7 +259,7 @@ register_lineitemsv3 <- function(shopifyorder){
         comentarios <- paste0(comentarios,li_properties[[1]]$name[[j]],": ",
                               li_properties[[1]]$value[[j]]," \n")
       }
-    }
+      }
     fieldslist <- list(
       'cantidad'=cantidad,
       'helper_product_name'=nombre_producto,
