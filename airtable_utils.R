@@ -163,6 +163,24 @@ airtable_tibblewithfields <- function(recordlist){
   lapply(recordlist, pluck, 'fields') %>% bind_rows()
 }
 
+airtable_subir_documento <- function(record,ruta_pdf,columna,base_id,tipo){
+  archivo_base64 <- base64enc::base64encode(ruta_pdf)
+  fields <- list(
+    contentType = paste0("application/",tipo),  # Tipo de contenido del archivo
+    file = archivo_base64,            # El archivo codificado en base64
+    filename = basename(ruta_pdf)  # Nombre del archivo
+  )
+  requrl <- paste0("https://content.airtable.com/v0/",base_id,"/",record,"/",columna,"/uploadAttachment")
+  response <- request(requrl) %>%
+    req_method("POST") %>% 
+    req_headers(
+      Authorization = paste0("Bearer ", Sys.getenv("AIRTABLE_API_KEY"))
+    ) %>%
+    req_body_json(fields) %>% 
+    req_perform()
+}
+
+
 #-----Enviar por correo los errores------
 email_error <- function(status,funcion,origen,archivo=""){
   
