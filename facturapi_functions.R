@@ -1,7 +1,7 @@
 library(httr2)
 library(jsonlite)
 
-facturapi_obtener_facturas <- function(api_key,fecha=NULL) {
+facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL) {
   # Inicializar la página de búsqueda
   page <- 1
   facturas_totales <- list()  # Lista para almacenar todas las facturas
