@@ -163,7 +163,7 @@ airtable_tibblewithfields <- function(recordlist){
   lapply(recordlist, pluck, 'fields') %>% bind_rows()
 }
 
-airtable_subir_documento <- function(record,ruta_pdf,columna,base_id,tipo){
+airtable_subir_pdf <- function(record,ruta_pdf,columna,base_id,tipo){
   archivo_base64 <- base64enc::base64encode(ruta_pdf)
   fields <- list(
     contentType = paste0("application/",tipo),  # Tipo de contenido del archivo
