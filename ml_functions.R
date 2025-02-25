@@ -62,6 +62,9 @@ register_mlorder_in_airtable <- function(mlorder, ml_token){
     fieldslist <- append(fieldslist,list('ml_pack_id'=as.character(mlorder$pack_id)))
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
+  if(!is.null(newov_content)){
+    register_shippingadd_ml_atb(mlorder, mltoken, newov_content$id)
+  }
 }
 
 #get_shipmentdetails
@@ -82,6 +85,37 @@ mlorder_checkfullfilment <- function(mlorder, ml_token){
     }
   }
   resp
+}
+
+
+register_shippingadd_ml_atb <- function(mlorder, mltoken, atb_recid_ovml){
+  shipmenturl <- paste0("https://api.mercadolibre.com/shipments/",
+                        mlorder$shipping$id)
+  
+  mlshipment <- request(shipmenturl) %>%
+    req_auth_bearer_token(mltoken) %>%
+    req_headers(accept= "application/json") %>%
+    req_headers("x-format-new"=TRUE) %>% 
+    req_headers('content-type' = 'application/x-www-form-urlencoded') %>%
+    req_perform() %>%
+    resp_body_json()
+  if(!is.null(mlshipment$logistic$type)){
+    if(mlshipment$logistic$type != "fulfillment"){
+      fieldslist <- list(
+        'nombre_destinatario'= mlshipment$destination$receiver_name,
+        'telefono_destino' = mlshipment$destination$receiver_phone,
+        'calle'= mlshipment$destination$shipping_address$address_line,
+        'numero_exterior'= mlshipment$destination$shipping_address$street_number,
+        'codigo_postal'= mlshipment$destination$shipping_address$zip_code,
+        'colonia'= mlshipment$destination$shipping_address$neighborhood$name,
+        'ciudad'= mlshipment$destination$shipping_address$city$name,
+        'estado'= mlshipment$destination$shipping_address$state$name,
+        'referencias'= mlshipment$destination$shipping_address$comment,
+        'ordenes_venta'=list(atb_recid_ovml)
+      )
+      airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
+    } 
+  }
 }
 
 register_lineitems_ml <- function(mlorder, ml_token){
