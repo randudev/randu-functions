@@ -80,7 +80,7 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
         "copies": ',copies,',
         "duplex": false,
         "duplexmode": 1,
-        "orientation": 2,
+        "orientation": 1,
         "paper": "',paper_name,'",
         "paperid": ',paper_id,',
         "resolution": "Auto"
