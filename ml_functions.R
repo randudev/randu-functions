@@ -99,22 +99,24 @@ register_shippingadd_ml_atb <- function(mlorder, mltoken, atb_recid_ovml){
     req_headers('content-type' = 'application/x-www-form-urlencoded') %>%
     req_perform() %>%
     resp_body_json()
+  fieldslist <- list(
+    'nombre_destinatario'= mlshipment$destination$receiver_name,
+    'telefono_destino' = mlshipment$destination$receiver_phone,
+    'calle'= mlshipment$destination$shipping_address$address_line,
+    'numero_exterior'= mlshipment$destination$shipping_address$street_number,
+    'codigo_postal'= mlshipment$destination$shipping_address$zip_code,
+    'colonia'= mlshipment$destination$shipping_address$neighborhood$name,
+    'ciudad'= mlshipment$destination$shipping_address$city$name,
+    'estado'= mlshipment$destination$shipping_address$state$name,
+    'referencias'= mlshipment$destination$shipping_address$comment,
+    'ordenes_venta'=list(atb_recid_ovml)
+  )
   if(!is.null(mlshipment$logistic$type)){
     if(mlshipment$logistic$type != "fulfillment"){
-      fieldslist <- list(
-        'nombre_destinatario'= mlshipment$destination$receiver_name,
-        'telefono_destino' = mlshipment$destination$receiver_phone,
-        'calle'= mlshipment$destination$shipping_address$address_line,
-        'numero_exterior'= mlshipment$destination$shipping_address$street_number,
-        'codigo_postal'= mlshipment$destination$shipping_address$zip_code,
-        'colonia'= mlshipment$destination$shipping_address$neighborhood$name,
-        'ciudad'= mlshipment$destination$shipping_address$city$name,
-        'estado'= mlshipment$destination$shipping_address$state$name,
-        'referencias'= mlshipment$destination$shipping_address$comment,
-        'ordenes_venta'=list(atb_recid_ovml)
-      )
       airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
     } 
+  }else{
+    airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
   }
 }
 
