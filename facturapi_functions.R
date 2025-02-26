@@ -1,7 +1,7 @@
 library(httr2)
 library(jsonlite)
 
-facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL) {
+facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL,filters=NULL) {
   # Inicializar la página de búsqueda
   page <- 1
   facturas_totales <- list()  # Lista para almacenar todas las facturas
@@ -13,20 +13,20 @@ facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL) {
     else{
       url <- paste0("https://www.facturapi.io/v2/invoices","?date[gte]=",fecha, "&page=", page)  # 'page_size' es el número de resultados por página
     }
-    
+    if(!is.null(filters)){
+      url <- paste0(url,"&",filters)
+    }
     
     response <- request(url) %>%
       req_method("GET") %>% 
       req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
       req_perform() 
     
-    # Convertir la respuesta JSON a un dataframe
     result <-response  %>% resp_body_json() 
     
-    # Verificar si hay facturas
     if (length(result$data) == 0) {
-      break  # Si no hay más facturas, salir del ciclo
-    }
+      break  
+      }
     
     # Agregar las facturas obtenidas a la lista
     facturas_totales <- append(facturas_totales, result$data)
@@ -37,6 +37,7 @@ facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL) {
   
   return( facturas_totales)  # Devolver la lista con todas las facturas
 }
+
 facturapi_descargar_factura <- function(id,auth_facturapi,formato="pdf"){
   res<-request(paste0("https://www.facturapi.io/v2/invoices/",id,"/",formato)) %>% 
     req_method("GET") %>% 
