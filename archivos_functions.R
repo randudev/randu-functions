@@ -12,8 +12,8 @@ procesar_gs1 <- function(id_archivo){
                                             paste0("sku=",data[i,]$Código.Interno),c("sku"))[[1]]
         #producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",data[i,]$Código.Interno),c("sku"))[[1]]
         fields <- list(
-          'gs1_code' =data[i,]$Consecutivo,
-          'codigo_consecutivo_gs1'=paste0("0",data[i,]$Consecutivo),
+          'gs1_code' =paste0(data[i,]$Consecutivo,data[i,]$Dígito.Verificador),
+          #'codigo_consecutivo_gs1'=paste0("0",data[i,]$Consecutivo),
           'codigo_completo_gs1'=data[i,]$Código.Completo
         )
         airtable_updatesinglerecord(fields,"productos",Sys.getenv("AIRTABLE_CES_BASE"),producto$id)

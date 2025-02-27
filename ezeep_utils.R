@@ -49,18 +49,21 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            printer_id <- "1f0763ce-3112-4c5d-929c-800354d6ca83"
            paper_id <- 257
            paper_name <- "4 x 2"
+           orientation <- 2
          },
          'impresora_azul'={
            #printer_id <- "e2e15ccf-7674-475b-9a86-9f1e5b1eb495"
            #printer_id <- "f7abe3c0-0623-43e3-bda9-694d69df71dc"
            printer_id <- "d8e483c8-fc68-4fc5-a8ab-dc6699704797"
            paper_id <- 257
-           paper_name <- "4 x 2"
+           paper_name <- "4x2"
+           orientation <- 2
          },
          'impresora_paqueteria'={
            printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"
            paper_id <- 257
            paper_name <- "4x8"
+           orientation <- 1
          },
          'impresora_brother'={
            #printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"
@@ -68,6 +71,7 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            printer_id <- "3e574e62-2e3c-4845-b6b8-f8da1582bf17"
            paper_id <- 257
            paper_name <- "4x8"
+           orientation <- 1
          }
          )
   
@@ -80,7 +84,7 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
         "copies": ',copies,',
         "duplex": false,
         "duplexmode": 1,
-        "orientation": 1,
+        "orientation": ',orientation,',
         "paper": "',paper_name,'",
         "paperid": ',paper_id,',
         "resolution": "Auto"
