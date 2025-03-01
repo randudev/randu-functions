@@ -63,7 +63,9 @@ register_mlorder_in_airtable <- function(mlorder, ml_token){
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
   if(!is.null(newov_content)){
-    register_shippingadd_ml_atb(mlorder, ml_token, newov_content$id)
+    if(!is.null(mlorder$shipping$id)){
+      register_shippingadd_ml_atb(mlorder, ml_token, newov_content$id)
+    }
   }
 }
 
