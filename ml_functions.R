@@ -47,7 +47,6 @@ get_mlorder_byid <- function(orderid, mltoken){
     resp_body_json()
 }
 
-
 register_mlorder_in_airtable <- function(mlorder, ml_token){
   lineitems_recordid <- register_lineitems_ml(mlorder, ml_token)
   #client_recordid <- register_client(shopifyorder)
@@ -140,12 +139,22 @@ register_lineitems_ml <- function(mlorder, ml_token){
       'vp_revisada'=TRUE,
       'comentarios'=comentarios)
   }else{
-    fieldslist <- list(
-      'cantidad'=cantidad,
-      'helper_product_name'=nombre_producto,
-      'precio_unitario'=precio,
-      'pendiente_envio'=cantidad,
-      'comentarios'=comentarios) 
+    if("splitted_order" %in% mlorder$tags){
+      fieldslist <- list(
+        'cantidad'=cantidad,
+        'helper_product_name'=nombre_producto,
+        'precio_unitario'=0,
+        'pendiente_envio'=0,
+        'vp_revisada'=TRUE,
+        'comentarios'=comentarios)
+    }else{
+      fieldslist <- list(
+        'cantidad'=cantidad,
+        'helper_product_name'=nombre_producto,
+        'precio_unitario'=precio,
+        'pendiente_envio'=cantidad,
+        'comentarios'=comentarios)  
+    }
   }
   
   if(!is.null(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
