@@ -113,11 +113,13 @@ register_shippingadd_ml_atb <- function(mlorder, mltoken, atb_recid_ovml){
     'ordenes_venta'=list(atb_recid_ovml)
   )
   if(!is.null(mlshipment$logistic$type)){
-    if(mlshipment$logistic$type != "fulfillment"){
+    if(mlshipment$logistic$type != "fulfillment" ){
       airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
     } 
   }else{
-    airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
+    if(!"splitted_order" %in% mlorder$tags){
+      airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
+    }
   }
 }
 
