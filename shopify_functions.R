@@ -269,13 +269,14 @@ register_lineitemsv3 <- function(shopifyorder){
       'id_lineitem'=id_lineitem,
       'comentarios'=comentarios
     )
-    
-    if(!is.null(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
-      product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+    if(!is.null(sku)){
+      if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
+        product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
                                                        formula=paste0("sku=",sku))
       
-      recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
-      fieldslist <- append(fieldslist, recordid_producto)
+        recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+        fieldslist <- append(fieldslist, recordid_producto)
+      }
     }
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
     if(!is.null(newvp_content)){
