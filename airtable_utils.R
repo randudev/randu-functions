@@ -2,10 +2,7 @@ library(httr)
 library(httr2)
 library(dplyr)
 library(jsonlite)
-if (!require("emayili")) {install.packages("emayili")}
-if (!require("tidyr")) {install.packages("tidyr")}
-library(tidyr)
-library(emayili)
+
 #Asi se debe de llamar el archivo "api_logs_documentation.sqlite"
 
 airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",origen="",con=NULL){
@@ -180,69 +177,3 @@ airtable_subir_pdf <- function(record,ruta_pdf,columna,base_id,tipo){
     req_perform()
 }
 
-
-#-----Enviar por correo los errores------
-email_error <- function(status,funcion,origen,archivo=""){
-  
-
-  email <- envelope() %>%
-    from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
-    to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
-    subject(paste0("Error: ",uuid::UUIDgenerate())) %>%
-    text(paste0("¡Tuvimos un error ", status,"! Con en la funcion: ",funcion, ", y origen: ",origen, ". Adjunto archivo")) %>%
-    attachment(path = archivo) # Ruta al archivo a adjuntar
-  
-  smtp <- server(
-    host = "smtp.fastmail.com",
-    port = 465,
-    username = Sys.getenv("EMAIL_FAST_MAIL"),
-    password = Sys.getenv("EMAIL_KEY"),
-    use_ssl = TRUE
-  )
-  
-  smtp(email)
-  
-}
-email_error_general <- function(mensaje,archivo=NULL){
-  email <- envelope() %>%
-    from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
-    to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
-    subject(paste0("Error : ",uuid::UUIDgenerate())) %>%
-    text(paste0("¡Tuvimos un problema: ", mensaje)) 
-    
-    if(!is.null(archivo)){
-      email <- email %>% attachment(path = archivo) # Ruta al archivo a adjuntar
-    }
-    
-  smtp <- server(
-    host = "smtp.fastmail.com",
-    port = 465,
-    username = Sys.getenv("EMAIL_FAST_MAIL"),
-    password = Sys.getenv("EMAIL_KEY"),
-    use_ssl = TRUE
-  )
-  
-  smtp(email)
-}
-
-guardar <- function(origen="", resp, req, con, func, tabla){
-  tryCatch(expr={
-    #airtable_updatesinglerecord_tibble1 <- readRDS("airtable_updatesinglerecord_tibble1.RDS")
-    #airtable_updatesinglerecord_tibble1 <- add_row(airtable_updatesinglerecord_tibble1,time=Sys.time(),rspns=list(last_response() %>% resp_body_json()),
-    #                                          url=last_response()$url,status=last_response()$status_code,header =list(last_request()$headers),
-    #                                          request=list(last_request()$body$data),origenes=origen)
-    logs <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(resp_body_json(resp)),
-                  url=resp$url, status=resp$status_code, header =toJSON(req$headers),
-                  request=toJSON(req$body$data),funcion=func, origenes=origen)
-    insertar_fila(con, tabla, logs)
-  },
-  error=function(er){
-    print(er)
-    tabla <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(resp_body_json(resp)),
-                     url=resp$url,status=resp$status_code,header =toJSON(req$headers),
-                    request=toJSON(req$body$data), funciones=func,origenes=origen)
-    saveRDS(tabla,"api_logs.RDS",compress = FALSE)
-    print("Ocurrio un error al en la conexion")
-  })
-}
-#api_logs_documentation
