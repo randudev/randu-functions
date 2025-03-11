@@ -88,8 +88,7 @@ mlorder_checkfullfilment <- function(mlorder, ml_token){
   resp
 }
 
-
-register_shippingadd_ml_atb <- function(mlorder, mltoken, atb_recid_ovml){
+get_dir_mlorder <- function(mlorder,mltoken){
   shipmenturl <- paste0("https://api.mercadolibre.com/shipments/",
                         mlorder$shipping$id)
   
@@ -100,6 +99,11 @@ register_shippingadd_ml_atb <- function(mlorder, mltoken, atb_recid_ovml){
     req_headers('content-type' = 'application/x-www-form-urlencoded') %>%
     req_perform() %>%
     resp_body_json()
+  return(mlshipment)
+}
+
+register_shippingadd_ml_atb <- function(mlorder, mltoken, atb_recid_ovml){
+  mlshipment <- get_dir_mlorder(mlorder,mltoken)
   fieldslist <- list(
     'nombre_destinatario'= mlshipment$destination$receiver_name,
     'telefono_destino' = mlshipment$destination$receiver_phone,
@@ -174,4 +178,17 @@ register_lineitems_ml <- function(mlorder, ml_token){
                    (venta_producto #"))
   }
   vp_recordidlist
+}
+
+guia_agencia_pdf <- function(ml_token,id_shipping,ruta=NULL){
+  url_envio <- paste0("https://api.mercadolibre.com/shipment_labels?shipment_ids=",id_envio,"&response_type=pdf")
+  response_envio <- request(url_envio) %>%
+    req_auth_bearer_token(ml_token) %>%
+    req_perform()
+  if(!is.null(ruta)){
+    writeBin(response_envio$body, ruta)
+    return(ruta)
+  }else{
+    return(resp_body_raw(response_envio))
+  }
 }
