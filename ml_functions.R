@@ -99,6 +99,7 @@ get_dir_mlorder <- function(mlorder,mltoken){
     req_headers('content-type' = 'application/x-www-form-urlencoded') %>%
     req_perform() %>%
     resp_body_json()
+  
   return(mlshipment)
 }
 
@@ -181,7 +182,7 @@ register_lineitems_ml <- function(mlorder, ml_token){
 }
 
 guia_agencia_pdf <- function(ml_token,id_shipping,ruta=NULL){
-  url_envio <- paste0("https://api.mercadolibre.com/shipment_labels?shipment_ids=",id_envio,"&response_type=pdf")
+  url_envio <- paste0("https://api.mercadolibre.com/shipment_labels?shipment_ids=",id_shipping,"&response_type=pdf")
   response_envio <- request(url_envio) %>%
     req_auth_bearer_token(ml_token) %>%
     req_perform()
