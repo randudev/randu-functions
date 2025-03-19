@@ -73,6 +73,7 @@ supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="") {
       req_headers("Authorization" = paste0("Bearer ", apikey)) %>% 
       req_headers("Range"= rango) %>% 
       req_headers("Content-Type" = "application/json") %>%
+      req_url_query(order = "id.asc") %>%
       req_error(is_error = function(resp) FALSE) %>%
       req_perform()
     

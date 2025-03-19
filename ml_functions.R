@@ -40,7 +40,7 @@ get_active_token <- function(){
 
 get_mlorder_byid <- function(orderid, mltoken){
   request(paste0("https://api.mercadolibre.com/orders/",orderid)) %>% 
-    req_auth_bearer_token(ml_token) %>% 
+    req_auth_bearer_token(mltoken) %>% 
     req_headers(accept= "application/json") %>% 
     req_headers('content-type' = 'application/x-www-form-urlencoded') %>% 
     req_perform() %>% 
