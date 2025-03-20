@@ -98,7 +98,6 @@ amz_register_lineitems <- function(amz_order){
       'cantidad'=cantidad,
       'helper_product_name'=nombre_producto,
       'precio_unitario'=precio,
-      'shopify_variant_id'=variant_id,
       'pendiente_envio'=cantidad,
       'id_lineitem'=id_lineitem,
       'comentarios'=comentarios
