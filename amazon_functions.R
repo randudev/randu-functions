@@ -66,9 +66,9 @@ get_amzorderaddress_byid <- function(orderid,amz_token){
 }
 
 register_amzorder_in_airtable <- function(amz_order){
-  lineitems_recordid <- register_lineitems_amz(amz_order)
+  lineitems_recordid <- amz_register_lineitems(amz_order)
   #client_recordid <- register_client(shopifyorder)
-  shippingaddress_recordid <- register_address(shopifyorder)
+  shippingaddress_recordid <- amz_register_address(amz_order)
   
   fieldslist <- list(
     'fecha'=amz_order$payload$PurchaseDate,
@@ -103,13 +103,15 @@ amz_register_lineitems <- function(amz_order){
       'id_lineitem'=id_lineitem,
       'comentarios'=comentarios
     )
-    
-    if(!is.null(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
-      product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
-                                                       formula=paste0("sku=",sku))
-      
-      recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
-      fieldslist <- append(fieldslist, recordid_producto)
+    if(!is.null(sku)){
+      if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
+        product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                         formula=paste0("sku=",sku))
+        if(length(product_recordid_list)!=0){
+          recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+          fieldslist <- append(fieldslist, recordid_producto) 
+        }
+      }
     }
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
     if(!is.null(newvp_content)){
