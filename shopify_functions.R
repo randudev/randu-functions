@@ -416,8 +416,22 @@ mandar_numero_rastreo <- function(numeros_rastreo,paqueteria,fulfill_id,access_t
 }
 
 enviar_nota <- function(order_id,numeros_rastreo,paqueteria,access_token){
+  if(paqueteria[[2]]=="PQX"){
+    notes <- paste("Paqueteria:",paqueteria[[1]],"\nMulti-guia:\n", paste(numeros_rastreo, collapse = "\n"))
+  }else{
+    notes <- paste("Paqueteria:",paqueteria[[1]],"\nNúmeros de rastreo adicionales:\n", paste(numeros_rastreo, collapse = "\n"))
+  }
   shopify_url <- "https://randumexico.myshopify.com/admin/api/2025-01/graphql.json"
-  notes <- paste("Paqueteria:",paqueteria,"\nNúmeros de rastreo adicionales:\n", paste(numeros_rastreo, collapse = "\n"))
+  query_get_notes <- paste0('
+      query {
+      order(id: "', order_id, '") {
+         note
+      }
+      }')
+  
+  nota <- shopify_api_resquest(shopify_url,access_token,query_get_notes)
+  nota <- nota$data$order$note
+  notes <- paste0(nota,"\n",notes)
   
   notes_mutation <- paste0('
     mutation {
@@ -431,13 +445,22 @@ enviar_nota <- function(order_id,numeros_rastreo,paqueteria,access_token){
       }
     }
     ')
-  
-  # Realizar la solicitud para actualizar las notas
-  response_notes <- request(shopify_url) %>%
-    req_headers('X-Shopify-Access-Token' =access_token,
-                "Content-Type" = "application/json") %>%
-    req_body_json(list(query = notes_mutation)) %>%
+
+  response_notes <- shopify_api_resquest(shopify_url,access_token,notes_mutation)
+  return(response_notes)
+}
+
+shopify_api_resquest <- function(shop_url,shopi_token, graphql_query,variables=NULL){
+  response <- request(shop_url) %>%
+    req_method("POST") %>%
+    req_headers(
+      "X-Shopify-Access-Token" = shopi_token,
+      "Content-Type" = "application/json"
+    ) %>%
+    #req_body_json(list(query = graphql_query)) %>%
+    req_body_json(list(query = graphql_query, variables = variables)) %>%
+    req_error(is_error = function(resp) FALSE) %>%
     req_perform() %>% 
     resp_body_json()
-  return(response_notes)
+  return(response)
 }
