@@ -248,7 +248,11 @@ register_lineitemsv3 <- function(shopifyorder){
   for(i in 1:length(lineitems)){
     cantidad <- lineitems[[i]]$quantity
     nombre_producto <- lineitems[[i]]$name
-    variant_id <- lineitems[[i]]$variant_id
+    if(!is.null(variant_id)){
+      if(!is.na(variant_id)){
+        variant_id <- lineitems[[i]]$variant_id
+      }
+    }
     precio <- as.double(lineitems[[i]]$price)
     sku <- lineitems[[i]]$sku
     id_lineitem <- as.character(lineitems[[i]]$id)
@@ -276,7 +280,11 @@ register_lineitemsv3 <- function(shopifyorder){
       
         recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
         fieldslist <- append(fieldslist, recordid_producto)
+      }else{
+        sku <- "10700"
       }
+    }else{
+      sku <- "10700"
     }
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
     if(!is.null(newvp_content)){
