@@ -299,12 +299,15 @@ register_lineitemsv3 <- function(shopifyorder){
     if(!is.null(newvp_content)){
       vp_recordids[[i]] <- newvp_content$id[[1]]
     }else{
-      print(paste0("hubo un problema al registrar la el line_item
-                   (venta_producto #",i))
+      mensaje <- paste0("Hubo un problema al registrar la el line_item venta_producto #",i," de la orden ",shopifyorder$name,
+                        "\nSe subio la orden pero no completa falto:",nombre_producto)
+      print(mensaje)
+      email_error_general(mensaje)
     }
     #fieldslist1[[i]] <- fieldslist
   }
-  vp_recordids
+  vp_recordids <- Filter(Negate(is.null), vp_recordids)
+  return(vp_recordids)
   #fieldslist1
 }
 

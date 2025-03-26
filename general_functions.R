@@ -57,6 +57,7 @@ email_error <- function(status,funcion,origen,archivo=""){
   smtp(email)
   
 }
+
 email_error_general <- function(mensaje,archivo=NULL){
   email <- envelope() %>%
     from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
@@ -94,5 +95,156 @@ guardar <- function(origen="", resp, req, con, func, tabla){
     saveRDS(tabla,"api_logs.RDS",compress = FALSE)
     print("Ocurrio un error al en la conexion")
   })
+}
+
+registrar_producto <- function(producto,venta_producto){
+  orden_venta <- airtable_getrecorddata_byid(venta_producto$fields$ordenes_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+  fields <- list()
+  #print(str_detect(tolower(producto$fields$id_productos),"juego"))
+  if(!str_detect(tolower(producto$fields$id_productos),"juego") & !str_detect(tolower(producto$fields$id_productos),"10700")){
+    if(length(producto$fields$partes_producto) != 0){
+      for(parte in producto$fields$partes_producto){
+        print(parte)
+        aux_parte <- airtable_getrecorddata_byid(parte,"partes_producto",Sys.getenv("AIRTABLE_CES_BASE")) 
+        #aux_parte <- airtable_getrecorddata_byid(parte,"partes_producto",Sys.getenv("AIRTABLE_RIR_BASE"))
+        if(!is.null(aux_parte$fields$parte)){
+          
+          parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+          #parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_RIR_BASE"))
+          if(parte_producto$fields$cantidad_disponible<venta_producto$fields$cantidad){
+            if(!is.null(parte_producto$fields$item_produccion)){
+              fields[[length(fields) + 1]] <- list(
+                "comentarios"= "Creada mediante R",
+                "producto_solicitado"=parte_producto$fields$id_productos,
+                "cantidad"=venta_producto$fields$cantidad,
+                "producto"=list(parte_producto$id),
+                "venta_producto"=list(venta_producto$id),
+                "tipo_empaque"="estándar",
+                "origen"="pedido"
+              )
+              if(orden_venta$fields$canal_venta=="mercadolibrernd"){
+                #ml_token <- get_active_token()
+                ml_order <- get_mlorder_byid(orden_venta$fields$id_origen)
+                item_id <- ml_order$order_items[[1]]$item$id
+                if(es_producto_de_agencia(item_id,ml_token)){
+                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 2"))
+                } else{
+                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
+                }
+                
+              }
+              if(orden_venta$fields$canal_venta=="shprndmx"){
+                fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="1 - Media"))
+              }
+              if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
+                fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
+              }
+              #airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+              
+            }
+            else{
+              print("No se registro la solicitud de produccion porque una parte de stock no esta disponible")
+              break
+            }
+          }else{
+            
+            fields[[length(fields) + 1]] <- list(
+              'tipo'='reserva',
+              "producto"=list(parte_producto$id),
+              "ventas_producto"=list(venta_producto$id),
+              "comentarios"="Creado mediante R",
+              "cantidad"=venta_producto$fields$cantidad
+            )
+            
+          }
+          
+        }
+      }
+      if(length(fields) == length(producto$fields$partes_producto)){
+        for(field in fields){
+          #print(!is.null(field$producto_solicitado))
+          #print(field)
+          if(is.null(field$producto_solicitado)){
+            aux <- airtable_createrecord(field,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
+          }else{
+            aux <- airtable_createrecord(field,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+          }
+          if(is.null(aux)){
+            break
+          }
+          print(paste0("Se registro exitosamente el proceso necesario para el producto"))
+        }
+        if(!is.null(aux)){
+          
+          #airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
+        }else{
+          print(last_response() %>% resp_body_json())
+          print(paste0("Revisar la venta producto: ",venta_producto$fields$id_ventas_producto))
+          print(101)
+          return(1)
+          
+        }
+      }
+      else{print("No se registro")
+        print(venta_producto$fields$id_ventas_producto)}
+    }else{
+      if(venta_producto$fields$cantidad>producto$fields$cantidad_disponible){
+        if(!is.null(producto$fields$item_produccion)){
+          fields <- list(
+            "comentarios"= "Creada mediante R",
+            "producto_solicitado"=producto$fields$id_productos,
+            "cantidad"=venta_producto$fields$cantidad,
+            "producto"=list(producto$id),
+            "venta_producto"=list(venta_producto$id),
+            "tipo_empaque"="estándar",
+            "origen"="pedido"
+          )
+          if(orden_venta$fields$canal_venta=="mercadolibrernd"){
+            #ml_token <- get_active_token()
+            ml_order <- get_mlorder_byid(orden_venta$fields$id_origen)
+            item_id <- ml_order$order_items[[1]]$item$id
+            if(es_producto_de_agencia(item_id,ml_token)){
+              fields <- append(fields,list('prioridad'="8 - Antes de las 2"))
+            } else{
+              fields <- append(fields,list('prioridad'="2 - Media Alta"))
+            }
+          }
+          if(orden_venta$fields$canal_venta=="shprndmx"){
+            fields <- append(fields,list('prioridad'="1 - Media"))
+          }
+          if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
+            fields <- append(fields,list('prioridad'="7 - Extrema"))
+          }
+          aux <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+          if(!is.null(aux)){
+            airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
+          }
+          
+        }
+        else{
+          print(paste0("No hay stock de producto: ",producto$fields$id_productos))
+        }
+      }else{
+        
+        fields <- list(
+          'tipo'='reserva',
+          "producto"=list(producto$id),
+          "ventas_producto"=list(venta_producto$id),
+          "comentarios"="Creado mediante R",
+          "cantidad"=venta_producto$fields$cantidad
+        )
+        aux <- airtable_createrecord(fields,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
+        print(paste0("Se registro exitosamente el proceso necesario para el producto"))
+        if(!is.null(aux)){
+          #airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
+        }else{
+          print(paste0("Revisar la venta producto: ",venta_producto$fields$id_ventas_producto))
+          print(154)
+          return(1)
+        }
+      }
+    } 
+  }
+  return(0)
 }
 
