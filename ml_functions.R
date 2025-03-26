@@ -3,8 +3,12 @@ library(httr2)
 
 #source("~/airtable_utils.R")
 
-get_active_token <- function(){
-  tkdata <- airtable_getrecorddata_byid("rec7opQaYsHnpRhgb", "tokens", Sys.getenv('AIRTABLE_DEV_BASE'))
+get_active_token <- function(recordid=""){
+  if(recordid==""){
+    recordid <- "rec7opQaYsHnpRhgb" 
+  }
+  
+  tkdata <- airtable_getrecorddata_byid(recordid, "tokens", Sys.getenv('AIRTABLE_DEV_BASE'))
   tkdata <- tkdata$fields
   token_expires <- lubridate::as_datetime(tkdata$token_expires)
   refresh_token <- tkdata$refresh_token
@@ -47,7 +51,7 @@ get_mlorder_byid <- function(orderid, mltoken){
     resp_body_json()
 }
 
-register_mlorder_in_airtable <- function(mlorder, ml_token){
+register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
   lineitems_recordid <- register_lineitems_ml(mlorder, ml_token)
   #client_recordid <- register_client(shopifyorder)
   #shippingaddress_recordid <- register_address(shopifyorder)
@@ -57,6 +61,9 @@ register_mlorder_in_airtable <- function(mlorder, ml_token){
     'ventas_producto'=lineitems_recordid,
     'id_origen'=as.character(mlorder$id)
   )
+  if(!is.null(canal)){
+    fieldslist$canal_venta <- 'mercadolibreasm'
+  }
   if(!is.null(mlorder$pack_id)){
     fieldslist <- append(fieldslist,list('ml_pack_id'=as.character(mlorder$pack_id)))
   }
