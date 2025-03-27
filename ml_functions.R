@@ -230,3 +230,22 @@ register_client_ml <- function(ml_order,ml_token,direccion,id_orden){
   }
   
 }
+
+ml_primer_mensaje <- function(ml_order,ml_token,mensaje){
+  resp_mensaje <- request(paste0("https://api.mercadolibre.com/messages/action_guide/packs/",ml_order$id,"/option")) %>%
+    req_method("POST") %>%
+    req_headers('Authorization'=paste0("Bearer ",ml_token)) %>% 
+    req_headers('Content-type'='application/json') %>%
+    req_body_json(list('option_id'='OTHER','text'=mensaje)) %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform()
+}
+
+responder_mensaje <- function(ml_order,ml_token,mensaje){
+  res_sup <- request(paste0("https://api.mercadolibre.com/messages/packs/",ml_order$id,"/sellers/",Sys.getenv("ML_SELLER_ID"),"?tag=post_sale")) %>%
+    req_method("POST") %>%
+    req_headers('Authorization'=paste0("Bearer ",ml_token)) %>% 
+    req_headers('Content-type'='application/json') %>%
+    req_body_json(list('from'= list('user_id'=Sys.getenv("ML_SELLER_ID")),'to'=list('user_id'=ml_order$buyer$id),'text'=mensaje)) %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform()}

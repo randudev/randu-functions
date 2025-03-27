@@ -45,22 +45,28 @@ facturapi_descargar_factura <- function(id,auth_facturapi,formato="pdf"){
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() 
 }
+
 facturapi_crear_recibo <- function(orden,auth_factura){
   orden <-ml_order
   nombre<-orden$order_items[[1]]$item$title
   clave_producto<- orden$order_items[[1]]$item$id
-  precio<-orden$order_items[[1]]$unit_price
-  skul<-orden$order_items[[1]]$item$seller_sku
-  producto_key<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
-                                        paste0("sku=",orden$order_items[[1]]$item$seller_sku))[[1]]$fields$clave_sat
+  precio<- orden$order_items[[1]]$unit_price
+  sku<-orden$order_items[[1]]$item$seller_sku
+  producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
+                                        paste0("sku=",sku))
+  if(!is.null(producto)){
+    producto_key <- producto[[1]]$fields$clave_sat 
+  }else{
+    producto_key <- NULL
+  }
   if(!is.null(producto_key)){
     recibo <- paste0('{"payment_form": "31",
                           "items": [{
                           "quantity":',ml_order$order_items[[1]]$quantity ,',
                           "product": {"description": "',nombre,'",
-                                      "product_key": "',producto, ' ",
+                                      "product_key": "',producto_key, ' ",
                                       "price": ',precio,',
-                                      "sku": "',skul,'"}}]}')}
+                                      "sku": "',sku,'"}}]}')}
   else{
     recibo <- paste0('{"payment_form": "31",
                           "items": [{
@@ -68,16 +74,16 @@ facturapi_crear_recibo <- function(orden,auth_factura){
                           "product": {"description": "',nombre,'",
                                       "product_key": "',56101703, ' ",
                                       "price": ',precio,',
-                                      "sku": "',skul,'"}}]}')}
-  info<-list('description'=nombre,
-             'product_key'=60131324,
-             'price'=precio,
-             'sku'=skul)
-  items<-list('quantity'=1,
-              'product'=info)
-  body<-list(
-    'payment_form' = "03",
-    'items' = data.frame(items))
+                                      "sku": "',sku,'"}}]}')}
+  # info<-list('description'=nombre,
+  #            'product_key'=60131324,
+  #            'price'=precio,
+  #            'sku'=skul)
+  # items<-list('quantity'=1,
+  #             'product'=info)
+  # body<-list(
+  #   'payment_form' = "03",
+  #   'items' = data.frame(items))
   res1<-request("https://www.facturapi.io/v2/receipts") %>% 
     req_method("POST") %>% 
     req_headers('Authorization'=paste0("Bearer ",auth_facturapi))  %>% 
