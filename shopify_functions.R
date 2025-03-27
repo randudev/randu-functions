@@ -313,9 +313,10 @@ register_lineitemsv3 <- function(shopifyorder){
 
 register_shopifyorder_in_airtablev2 <- function(shopifyorder){
   lineitems_recordid <- register_lineitemsv3(shopifyorder)
-  #client_recordid <- register_client(shopifyorder)
+  
   shippingaddress_resp <- register_address(shopifyorder)
   shippingaddress_id <- shippingaddress_resp$id
+  client_recordid <- register_client_shopify(shopifyorder,shippingaddress_resp$id)
   fieldslist <- list(
     'fecha'=shopifyorder$created_at,
     'canal_venta'='shprndmx',
@@ -323,7 +324,36 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
     'id_origen'=shopifyorder$name,
     'direccion_envio'=list(shippingaddress_id)
   )
+  if(!is.null(client_recordid)){
+    fieldslist <- append(fieldslist,list("cliente"=list(client_recordid$id)))
+  }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
+}
+
+register_client_shopify <- function(shopifyorder,direccion_id){
+  cliente <- airtable_getrecordslist("clientes",Sys.getenv("AIRTABLE_CES_BASE"),paste0("AND({nombre}='",shopifyorder$shipping_address$first_name,"',{apellido_paterno}='",shopifyorder$shipping_address$last_name,"')"))
+  if(length(cliente)==0){
+    fields <- list(
+      "telefono_principal"=shopifyorder$shipping_address$phone,
+      "nombre"=shopifyorder$shipping_address$first_name,
+      "apellido_paterno"=shopifyorder$shipping_address$last_name,
+      "email_principal"=shopifyorder$email,
+      "direcciones"=list(direccion_id),
+      "direccion_principal"=list(direccion_id)
+    )
+    cliente <- airtable_createrecord(fields,"clientes",Sys.getenv("AIRTABLE_CES_BASE"))
+    return(cliente)
+  }else{
+    fields <- list(
+      "telefono_principal"=shopifyorder$shipping_address$phone,
+      "email_principal"=shopifyorder$email,
+      "direcciones"=unique(append(cliente[[1]]$fields$direcciones,direccion_id)),
+      "direccion_principal"=list(direccion_id)
+    )
+    cliente <- airtable_updatesinglerecord(fields,"clientes",Sys.getenv("AIRTABLE_CES_BASE"),cliente[[1]]$id)
+    return(cliente)
+  }
+  
 }
 
 consulta_por_nombre <- function(order_name,access_token) {

@@ -115,7 +115,6 @@ registrar_producto <- function(producto,venta_producto){
             if(!is.null(parte_producto$fields$item_produccion)){
               fields[[length(fields) + 1]] <- list(
                 "comentarios"= "Creada mediante R",
-                "producto_solicitado"=parte_producto$fields$id_productos,
                 "cantidad"=venta_producto$fields$cantidad,
                 "producto"=list(parte_producto$id),
                 "venta_producto"=list(venta_producto$id),
@@ -123,10 +122,10 @@ registrar_producto <- function(producto,venta_producto){
                 "origen"="pedido"
               )
               if(orden_venta$fields$canal_venta=="mercadolibrernd"){
-                #ml_token <- get_active_token()
-                ml_order <- get_mlorder_byid(orden_venta$fields$id_origen)
-                item_id <- ml_order$order_items[[1]]$item$id
-                if(es_producto_de_agencia(item_id,ml_token)){
+                ml_token <- get_active_token()
+                ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
+                ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+                if(ml_shipping$logistic$mode == "me2"){
                   fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 2"))
                 } else{
                   fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
@@ -176,7 +175,7 @@ registrar_producto <- function(producto,venta_producto){
         }
         if(!is.null(aux)){
           
-          #airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
+          airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
         }else{
           print(last_response() %>% resp_body_json())
           print(paste0("Revisar la venta producto: ",venta_producto$fields$id_ventas_producto))
@@ -192,7 +191,6 @@ registrar_producto <- function(producto,venta_producto){
         if(!is.null(producto$fields$item_produccion)){
           fields <- list(
             "comentarios"= "Creada mediante R",
-            "producto_solicitado"=producto$fields$id_productos,
             "cantidad"=venta_producto$fields$cantidad,
             "producto"=list(producto$id),
             "venta_producto"=list(venta_producto$id),
@@ -200,10 +198,10 @@ registrar_producto <- function(producto,venta_producto){
             "origen"="pedido"
           )
           if(orden_venta$fields$canal_venta=="mercadolibrernd"){
-            #ml_token <- get_active_token()
-            ml_order <- get_mlorder_byid(orden_venta$fields$id_origen)
-            item_id <- ml_order$order_items[[1]]$item$id
-            if(es_producto_de_agencia(item_id,ml_token)){
+            ml_token <- get_active_token()
+            ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
+            ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+            if(ml_shipping$logistic$mode == "me2"){
               fields <- append(fields,list('prioridad'="8 - Antes de las 2"))
             } else{
               fields <- append(fields,list('prioridad'="2 - Media Alta"))
@@ -236,7 +234,7 @@ registrar_producto <- function(producto,venta_producto){
         aux <- airtable_createrecord(fields,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
         print(paste0("Se registro exitosamente el proceso necesario para el producto"))
         if(!is.null(aux)){
-          #airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
+          airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
         }else{
           print(paste0("Revisar la venta producto: ",venta_producto$fields$id_ventas_producto))
           print(154)
