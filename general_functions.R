@@ -114,6 +114,7 @@ registrar_producto <- function(producto,venta_producto){
           if(parte_producto$fields$cantidad_disponible<venta_producto$fields$cantidad){
             if(!is.null(parte_producto$fields$item_produccion)){
               fields[[length(fields) + 1]] <- list(
+                "tabla"="solicitudes",
                 "comentarios"= "Creada mediante R",
                 "cantidad"=venta_producto$fields$cantidad,
                 "producto"=list(parte_producto$id),
@@ -148,6 +149,7 @@ registrar_producto <- function(producto,venta_producto){
           }else{
             
             fields[[length(fields) + 1]] <- list(
+              "tabla"="transacciones",
               'tipo'='reserva',
               "producto"=list(parte_producto$id),
               "ventas_producto"=list(venta_producto$id),
@@ -163,9 +165,11 @@ registrar_producto <- function(producto,venta_producto){
         for(field in fields){
           #print(!is.null(field$producto_solicitado))
           #print(field)
-          if(is.null(field$producto_solicitado)){
+          if(field$tabla == "transacciones"){
+            field$tabla <- NULL
             aux <- airtable_createrecord(field,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
           }else{
+            field$tabla <- NULL
             aux <- airtable_createrecord(field,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
           }
           if(is.null(aux)){
