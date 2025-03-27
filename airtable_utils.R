@@ -80,12 +80,8 @@ airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",or
 }
 
 airtable_getrecorddata_byid <- function(recordid, tablename, base_id,origen="",con=NULL){
-  Sys.getenv("AIRTABLE_API_KEY")
   getrecordlink <- URLencode(paste0("https://api.airtable.com/v0/",base_id,"/",
                                     tablename,"/",recordid))
-  #atbrequest <- GET(getrecordlink, 
-   #                 add_headers(Authorization = paste0("Bearer ",Sys.getenv("AIRTABLE_API_KEY")),
-    #                            "Content-Type" = "application/json"))
   try(
     atbrequest <- request(getrecordlink) %>% 
       req_method("GET") %>% 
@@ -104,7 +100,7 @@ airtable_getrecorddata_byid <- function(recordid, tablename, base_id,origen="",c
     resp_body_json(atbrequest)
   }else{
     if(!is.null(con)){
-      email_error(last_response()$status_code,"airtable_updatesinglerecord",origen,"~/api_logs_documentation.sqlite")
+      email_error(last_response()$status_code,"airtable_getrecorddata_byid",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   } 
@@ -151,6 +147,33 @@ airtable_updatesinglerecord <- function(fieldslist, tablename, base_id, recordid
     if(!is.null(con)){
       #guardar(origen,last_response(),last_request(),con,"airtable_updatesinglerecord","api_logs")
       email_error(last_response()$status_code,"airtable_updatesinglerecord",origen,"~/api_logs_documentation.sqlite")
+    }
+    return(NULL)
+  } 
+}
+
+airtable_record_delete <- function(recordid, tablename, base_id,origen="",con=NULL){
+  getrecordlink <- URLencode(paste0("https://api.airtable.com/v0/",base_id,"/",
+                                    tablename,"/",recordid))
+  try(
+    atbrequest <- request(getrecordlink) %>% 
+      req_method("DELETE") %>% 
+      req_headers('Authorization' = paste0("Bearer ",Sys.getenv("AIRTABLE_API_KEY"))) %>% 
+      req_headers("Content-Type" = "application/json") %>% 
+      req_error(is_error = function(resp) FALSE) %>%
+      req_perform()
+  )
+  
+  #-------tryCatch
+  if(!is.null(con)){
+    guardar(origen, last_response(), last_request(), con, "airtable_record_delete", "api_logs")
+  }
+  if(last_response()$status_code %in% c(199:299)){
+    #content(atbrequest)
+    resp_body_json(atbrequest)
+  }else{
+    if(!is.null(con)){
+      email_error(last_response()$status_code,"airtable_record_delete",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   } 
