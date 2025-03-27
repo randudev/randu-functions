@@ -70,7 +70,8 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
   if(!is.null(newov_content)){
     if(!is.null(mlorder$shipping$id)){
-      register_shippingadd_ml_atb(mlorder, ml_token, newov_content$id)
+      dir_id <- register_shippingadd_ml_atb(mlorder, ml_token, newov_content$id)
+      register_client_ml(mlorder,ml_token,dir_id,newov_content$id)
     }
   }
 }
@@ -126,11 +127,13 @@ register_shippingadd_ml_atb <- function(mlorder, mltoken, atb_recid_ovml){
   )
   if(!is.null(mlshipment$logistic$type)){
     if(mlshipment$logistic$type != "fulfillment" ){
-      airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
+      recordid <- airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
+      return(recordid)
     } 
   }else{
     if(!"splitted_order" %in% mlorder$tags){
-      airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
+      recordid <- airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
+      return(recordid)
     }
   }
 }
@@ -188,7 +191,7 @@ register_lineitems_ml <- function(mlorder, ml_token){
   vp_recordidlist
 }
 
-guia_agencia_pdf <- function(ml_token,id_shipping,ruta=NULL){
+guia_agencia_pdf <- function(ml_token,id_shipping,ruta=NULL,id_orden){
   url_envio <- paste0("https://api.mercadolibre.com/shipment_labels?shipment_ids=",id_shipping,"&response_type=pdf")
   response_envio <- request(url_envio) %>%
     req_auth_bearer_token(ml_token) %>%
@@ -199,4 +202,31 @@ guia_agencia_pdf <- function(ml_token,id_shipping,ruta=NULL){
   }else{
     return(resp_body_raw(response_envio))
   }
+}
+
+register_client_ml <- function(ml_order,ml_token,direccion,id_orden){
+  client_id <- ml_order$buyer$id
+  cliente <- airtable_getrecordslist("clientes",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_mercadolibre='",client_id,"'"))
+  if(length(cliente)==0){
+    fields <- list(
+      'telefono_principal' = direccion$fields$telefono_destino,
+      'nombre'=direccion$fields$nombre_destinatario,
+      'apellido_paterno'=direccion$fields$apellido_destinatario,
+      'ordenes_venta'=list(id_orden),
+      'nickname_ml'=ml_order$buyer$nickname,
+      'id_mercadolibre'=ml_order$buyer$id,
+      'direccion_principal'=list(direccion$id),
+      'direcciones'=list(direccion$id)
+    )
+    airtable_createrecord(fields,"clientes",Sys.getenv("AIRTABLE_CES_BASE"))
+  }else{
+    fields <- list(
+      'ordenes_venta'=append(cliente[[1]]$fields$ordenes_venta,id_orden),
+      'direcciones'=append(cliente[[1]]$fields$direcciones,direccion$id),
+      'direccion_principal'=list(direccion$id)
+    )
+    airtable_updatesinglerecord(fields,"clientes",Sys.getenv("AIRTABLE_CES_BASE"),cliente[[1]]$id)
+    return(cliente[[1]]$id)
+  }
+  
 }
