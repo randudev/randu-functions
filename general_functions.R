@@ -80,6 +80,28 @@ email_error_general <- function(mensaje,archivo=NULL){
   smtp(email)
 }
 
+enviar_email <- function(mensaje,correo,archivo=NULL){
+  email <- envelope() %>%
+    from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
+    to(correo) %>%
+    subject(paste0("Mensaje : ",uuid::UUIDgenerate())) %>%
+    text(paste0(mensaje)) 
+  
+  if(!is.null(archivo)){
+    email <- email %>% attachment(path = archivo) # Ruta al archivo a adjuntar
+  }
+  
+  smtp <- server(
+    host = "smtp.fastmail.com",
+    port = 465,
+    username = Sys.getenv("EMAIL_FAST_MAIL"),
+    password = Sys.getenv("EMAIL_KEY"),
+    use_ssl = TRUE
+  )
+  
+  smtp(email)
+}
+
 guardar <- function(origen="", resp, req, con, func, tabla){
   tryCatch(expr={
     logs <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(resp_body_json(resp)),
@@ -156,7 +178,15 @@ registrar_producto <- function(producto,venta_producto){
               "comentarios"="Creado mediante R",
               "cantidad"=venta_producto$fields$cantidad
             )
-            
+            if(is.null(parte_producto$fields$item_produccion)){
+              cantidad_restante <- parte_producto$fields$cantidad_disponible - venta_producto$fields$cantidad
+              if(cantidad_restante<=6){
+                mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
+                                  cantidad_restante, "unidades\nRevisa")
+                enviar_email(mensaje,"mauricio@randu.mx")
+                enviar_email(mensaje,"yatzel@randu.mx")
+              }
+            }
           }
           
         }
@@ -235,6 +265,15 @@ registrar_producto <- function(producto,venta_producto){
           "comentarios"="Creado mediante R",
           "cantidad"=venta_producto$fields$cantidad
         )
+        if(is.null(producto$fields$item_produccion)){
+          cantidad_restante <- producto$fields$cantidad_disponible - venta_producto$fields$cantidad
+          if(cantidad_restante<=6){
+            mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, "solo cuenta con ", 
+                              cantidad_restante, " unidades\nRevisa")
+            enviar_email(mensaje,"mauricio@randu.mx")
+            enviar_email(mensaje,"yatzel@randu.mx")
+          }
+        }
         aux <- airtable_createrecord(fields,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
         print(paste0("Se registro exitosamente el proceso necesario para el producto"))
         if(!is.null(aux)){
