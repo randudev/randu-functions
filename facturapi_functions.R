@@ -47,7 +47,6 @@ facturapi_descargar_factura <- function(id,auth_facturapi,formato="pdf"){
 }
 
 facturapi_crear_recibo <- function(orden,auth_facturapi){
-  orden <-ml_order
   nombre<-orden$order_items[[1]]$item$title
   clave_producto<- orden$order_items[[1]]$item$id
   precio<- orden$order_items[[1]]$unit_price
