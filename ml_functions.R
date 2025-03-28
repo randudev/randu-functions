@@ -74,6 +74,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
       register_client_ml(mlorder,ml_token,dir_id,newov_content$id)
     }
   }
+  return(newov_content)
 }
 
 #get_shipmentdetails
@@ -214,7 +215,8 @@ register_client_ml <- function(ml_order,ml_token,direccion,id_orden){
       'apellido_paterno'=direccion$fields$apellido_destinatario,
       'ordenes_venta'=list(id_orden),
       'nickname_ml'=ml_order$buyer$nickname,
-      'id_mercadolibre'=ml_order$buyer$id,
+      'fuente_contacto'="ML",
+      'id_mercadolibre'=paste0(ml_order$buyer$id),
       'direccion_principal'=list(direccion$id),
       'direcciones'=list(direccion$id)
     )
@@ -242,10 +244,10 @@ ml_primer_mensaje <- function(ml_order,ml_token,mensaje){
 }
 
 responder_mensaje <- function(ml_order,ml_token,mensaje){
-  res_sup <- request(paste0("https://api.mercadolibre.com/messages/packs/",ml_order$pack_id,"/sellers/",Sys.getenv("ML_SELLER_ID"),"?tag=post_sale")) %>%
+  res_sup <- request(paste0("https://api.mercadolibre.com/messages/packs/",ml_order$packid,"/sellers/",Sys.getenv("ML_SELLER_ID"),"?tag=post_sale")) %>%
     req_method("POST") %>%
     req_headers('Authorization'=paste0("Bearer ",ml_token)) %>% 
     req_headers('Content-type'='application/json') %>%
-    req_body_json(list('from'= list('user_id'=Sys.getenv("ML_SELLER_ID")),'to'=list('user_id'=ml_order$buyer$id),'text'=mensaje)) %>%
+    req_body_json(list('from'= list('user_id'=ml_order$seller$id),'to'=list('user_id'=ml_order$buyer$id),'text'=mensaje)) %>%
     req_error(is_error = function(resp) FALSE) %>%
     req_perform()}

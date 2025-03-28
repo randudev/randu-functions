@@ -51,8 +51,11 @@ facturapi_crear_recibo <- function(orden,auth_facturapi){
   clave_producto<- orden$order_items[[1]]$item$id
   precio<- orden$order_items[[1]]$unit_price
   sku<-orden$order_items[[1]]$item$seller_sku
+  orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                         paste0("id_origen='",orden$id,"'"))
   producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
                                         paste0("sku=",sku))
+  
   if(!is.null(producto)){
     producto_key <- producto[[1]]$fields$clave_sat 
   }else{
@@ -65,7 +68,9 @@ facturapi_crear_recibo <- function(orden,auth_facturapi){
                           "product": {"description": "',nombre,'",
                                       "product_key": "',producto_key, ' ",
                                       "price": ',precio,',
-                                      "sku": "',sku,'"}}]}')}
+                                      "sku": "',sku,'"}}]
+    }')
+    }
   else{
     recibo <- paste0('{"payment_form": "31",
                           "items": [{
@@ -83,12 +88,17 @@ facturapi_crear_recibo <- function(orden,auth_facturapi){
   # body<-list(
   #   'payment_form' = "03",
   #   'items' = data.frame(items))
+  recibo_lista <- fromJSON(recibo)
+  if(length(orden_venta)!=0){
+    id_ov <- list("external_id"=orden_venta[[1]]$fields$id_ordenes_venta)
+    recibo_lista <- append(recibo_lista,id_ov)
+  }
   res1<-request("https://www.facturapi.io/v2/receipts") %>% 
     req_method("POST") %>% 
     req_headers('Authorization'=paste0("Bearer ",auth_facturapi))  %>% 
     #res1 %>% req_auth_bearer_token(paste0("Bearer",auth_facturapi)) %>%
     req_headers('Content-type'='application/json') %>%
-    req_body_json(fromJSON(recibo)) %>%
+    req_body_json(recibo_lista) %>%
     req_perform() %>%
     resp_body_json()
 }
