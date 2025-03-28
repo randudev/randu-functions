@@ -36,7 +36,7 @@ get_active_token <- function(recordid=""){
                                                   'refresh_token'=newrefreshtoken,
                                                   'token_expires'=newexpire), 
                                 tablename = "tokens", base_id = Sys.getenv('AIRTABLE_DEV_BASE'),
-                                recordid = "rec7opQaYsHnpRhgb")
+                                recordid = recordid)
     validat <- newaccess_token
   }
   validat
@@ -232,17 +232,17 @@ register_client_ml <- function(ml_order,ml_token,direccion,id_orden){
 }
 
 ml_primer_mensaje <- function(ml_order,ml_token,mensaje){
-  resp_mensaje <- request(paste0("https://api.mercadolibre.com/messages/action_guide/packs/",ml_order$id,"/option")) %>%
+  resp_mensaje <- request(paste0("https://api.mercadolibre.com/messages/action_guide/packs/",ml_order$pack_id,"/option")) %>%
     req_method("POST") %>%
     req_headers('Authorization'=paste0("Bearer ",ml_token)) %>% 
     req_headers('Content-type'='application/json') %>%
-    req_body_json(list('option_id'='OTHER','text'=mensaje)) %>%
+    req_body_json(list('option_id'='SEND_INVOICE_LINK','text'=mensaje)) %>%
     req_error(is_error = function(resp) FALSE) %>%
     req_perform()
 }
 
 responder_mensaje <- function(ml_order,ml_token,mensaje){
-  res_sup <- request(paste0("https://api.mercadolibre.com/messages/packs/",ml_order$id,"/sellers/",Sys.getenv("ML_SELLER_ID"),"?tag=post_sale")) %>%
+  res_sup <- request(paste0("https://api.mercadolibre.com/messages/packs/",ml_order$pack_id,"/sellers/",Sys.getenv("ML_SELLER_ID"),"?tag=post_sale")) %>%
     req_method("POST") %>%
     req_headers('Authorization'=paste0("Bearer ",ml_token)) %>% 
     req_headers('Content-type'='application/json') %>%
