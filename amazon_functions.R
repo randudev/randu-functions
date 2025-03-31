@@ -80,6 +80,7 @@ register_amzorder_in_airtable <- function(amz_order){
     fieldslist <- append(fieldslist,list("direccion_envio"=list(shippingaddress_recordid)))
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", "appofqh5EnlVGAtn2")
+  return(newov_content)
 }
 
 amz_register_lineitems <- function(amz_order){

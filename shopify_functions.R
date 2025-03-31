@@ -328,6 +328,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
     fieldslist <- append(fieldslist,list("cliente"=list(client_recordid$id)))
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
+  return(newov_content)
 }
 
 register_client_shopify <- function(shopifyorder,direccion_id){
