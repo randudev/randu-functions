@@ -50,7 +50,7 @@ facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal){
   items <- datos_recibo(canal,orden)
   
   items_json <- sapply(items, function(producto) {
-    generar_json(producto$cantidad, producto$nombre, producto$product_key, producto$precio, producto$sku)
+    generar_json(producto$cantidad, producto$nombre, producto$producto_key, producto$precio, producto$sku)
   })
   recibo <- paste0('{"payment_form": "31", "items": [', paste(items_json, collapse = ","), ']}')
   recibo_lista <- fromJSON(recibo)
