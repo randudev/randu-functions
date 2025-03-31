@@ -47,12 +47,15 @@ facturapi_descargar_factura <- function(id,auth_facturapi,formato="pdf"){
 }
 
 facturapi_crear_recibo <- function(orden,auth_facturapi){
+  orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                         paste0("id_origen='",orden$id,"'"))
+  
   nombre<-orden$order_items[[1]]$item$title
   clave_producto<- orden$order_items[[1]]$item$id
   precio<- orden$order_items[[1]]$unit_price
   sku<-orden$order_items[[1]]$item$seller_sku
-  orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
-                                         paste0("id_origen='",orden$id,"'"))
+  cantidad <- orden$order_items[[1]]$quantity 
+ 
   producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
                                         paste0("sku=",sku))
   
@@ -64,7 +67,7 @@ facturapi_crear_recibo <- function(orden,auth_facturapi){
   if(!is.null(producto_key)){
     recibo <- paste0('{"payment_form": "31",
                           "items": [{
-                          "quantity":',ml_order$order_items[[1]]$quantity ,',
+                          "quantity":',cantidad,',
                           "product": {"description": "',nombre,'",
                                       "product_key": "',producto_key, ' ",
                                       "price": ',precio,',
@@ -74,7 +77,7 @@ facturapi_crear_recibo <- function(orden,auth_facturapi){
   else{
     recibo <- paste0('{"payment_form": "31",
                           "items": [{
-                          "quantity":',ml_order$order_items[[1]]$quantity ,',
+                          "quantity":',cantidad ,',
                           "product": {"description": "',nombre,'",
                                       "product_key": "',56101703, ' ",
                                       "price": ',precio,',
@@ -101,4 +104,22 @@ facturapi_crear_recibo <- function(orden,auth_facturapi){
     req_body_json(recibo_lista) %>%
     req_perform() %>%
     resp_body_json()
+}
+datos_recibo <- function(canal,orden){
+  if(canal=="ml"){
+    for(i)
+    orden_ <- list()
+    nombre<-orden$order_items[[1]]$item$title
+    clave_producto<- orden$order_items[[1]]$item$id
+    precio<- orden$order_items[[1]]$unit_price
+    sku<-orden$order_items[[1]]$item$seller_sku
+    cantidad <- orden$order_items[[1]]$quantity 
+    
+  }
+  if(canal=="amz"){
+    
+  }
+  if(canal == "shp"){
+    
+  }
 }

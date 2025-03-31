@@ -123,7 +123,7 @@ registrar_producto <- function(producto,venta_producto){
   orden_venta <- airtable_getrecorddata_byid(venta_producto$fields$ordenes_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
   fields <- list()
   #print(str_detect(tolower(producto$fields$id_productos),"juego"))
-  if(!str_detect(tolower(producto$fields$id_productos),"juego") & !str_detect(tolower(producto$fields$id_productos),"10700")){
+  if(!str_detect(tolower(producto$fields$id_productos),"juego") & !str_detect(tolower(producto$fields$id_productos),"10700") & !str_detect(tolower(producto$fields$id_productos),"10011")){
     if(length(producto$fields$partes_producto) != 0){
       for(parte in producto$fields$partes_producto){
         print(parte)

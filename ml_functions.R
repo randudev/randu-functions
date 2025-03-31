@@ -234,7 +234,12 @@ register_client_ml <- function(ml_order,ml_token,direccion,id_orden){
 }
 
 ml_primer_mensaje <- function(ml_order,ml_token,mensaje){
-  resp_mensaje <- request(paste0("https://api.mercadolibre.com/messages/action_guide/packs/",ml_order$pack_id,"/option")) %>%
+  if(!is.null(ml_order$pack_id)){
+    id <- ml_order$pack_id
+  }else{
+    id <- ml_order$id
+  }
+  resp_mensaje <- request(paste0("https://api.mercadolibre.com/messages/action_guide/packs/",id,"/option")) %>%
     req_method("POST") %>%
     req_headers('Authorization'=paste0("Bearer ",ml_token)) %>% 
     req_headers('Content-type'='application/json') %>%
