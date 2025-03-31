@@ -92,7 +92,6 @@ datos_recibo <- function(canal,orden,id_orden){
     }
     if(canal == "shp"){
       for(i in 1:length(orden$line_items$id)){
-        print(i)
         items_orden[[length(items_orden) + 1]] <- list(
           "nombre" = orden$line_items$name[[i]],
           "precio"= orden$line_items$price[[i]],
@@ -100,13 +99,12 @@ datos_recibo <- function(canal,orden,id_orden){
           "cantidad" = orden$line_items$quantity[[i]]
         )  
       }
-      
     }
   for(i in 1:length(items_orden)){
-    if(!is.null(sku)){
-      if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
+    if(!is.null(items_orden[[i]]$sku)){
+      if(!is.na(items_orden[[i]]$sku) && str_detect(items_orden[[i]]$sku,"^\\d\\d\\d\\d\\d$") ){
         producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
-                                          paste0("sku=",sku))
+                                          paste0("sku=",items_orden[[i]]$sku))
         if(length(producto)!=0){
           if(!is.null(producto)){
             producto_key <- producto[[1]]$fields$clave_sat 
@@ -119,7 +117,6 @@ datos_recibo <- function(canal,orden,id_orden){
       }else{
         producto_key <- NULL
       }
-      
     }else{
       producto_key <- NULL
     }
