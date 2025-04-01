@@ -45,6 +45,15 @@ facturapi_descargar_factura <- function(id,auth_facturapi,formato="pdf"){
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() 
 }
+facturapi_enviar_recibo <- function(id,auth_facturapi,email){
+  res<-request(paste0("https://www.facturapi.io/v2/receipts/",id,"/","email")) %>% 
+    req_method("POST") %>% 
+    req_headers('Authorization'=paste0("Bearer ",auth_facturapi),
+                'Content-Type'='application/json') %>%
+    req_body_json(list("email"=email)) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() 
+}
 
 facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal){
   items <- datos_recibo(canal,orden)

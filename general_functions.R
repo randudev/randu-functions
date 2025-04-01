@@ -137,7 +137,7 @@ registrar_producto <- function(producto,venta_producto){
             if(!is.null(parte_producto$fields$item_produccion)){
               fields[[length(fields) + 1]] <- list(
                 "tabla"="solicitudes",
-                "comentarios"= "Creada mediante R",
+                "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R"),
                 "cantidad"=venta_producto$fields$cantidad,
                 "producto"=list(parte_producto$id),
                 "venta_producto"=list(venta_producto$id),
@@ -175,7 +175,7 @@ registrar_producto <- function(producto,venta_producto){
               'tipo'='reserva',
               "producto"=list(parte_producto$id),
               "ventas_producto"=list(venta_producto$id),
-              "comentarios"="Creado mediante R",
+              "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R"),
               "cantidad"=venta_producto$fields$cantidad
             )
             if(is.null(parte_producto$fields$item_produccion)){
@@ -224,7 +224,7 @@ registrar_producto <- function(producto,venta_producto){
       if(venta_producto$fields$cantidad>producto$fields$cantidad_disponible){
         if(!is.null(producto$fields$item_produccion)){
           fields <- list(
-            "comentarios"= "Creada mediante R",
+            "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R"),
             "cantidad"=venta_producto$fields$cantidad,
             "producto"=list(producto$id),
             "venta_producto"=list(venta_producto$id),
@@ -262,7 +262,7 @@ registrar_producto <- function(producto,venta_producto){
           'tipo'='reserva',
           "producto"=list(producto$id),
           "ventas_producto"=list(venta_producto$id),
-          "comentarios"="Creado mediante R",
+          "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R"),
           "cantidad"=venta_producto$fields$cantidad
         )
         if(is.null(producto$fields$item_produccion)){
