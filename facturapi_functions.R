@@ -131,6 +131,9 @@ datos_recibo <- function(canal,orden,id_orden){
 }
 
 generar_json <- function(cantidad, descripcion, product_key, precio, sku) {
+  if(is.null(sku)){
+    sku <- 10700
+  }
   return(paste0('{
                   "quantity": ', cantidad, ',
                   "product": {
