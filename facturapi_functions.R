@@ -155,3 +155,47 @@ generar_json <- function(cantidad, descripcion, product_key, precio, sku) {
                   }
                 }'))
 }
+
+facturapi_obtener_recibos <- function(auth_facturapi,fecha=NULL,filters=NULL){
+  # Inicializar la página de búsqueda
+  page <- 1
+  recibos_totales <- list()  # Lista para almacenar todas las facturas
+  
+  while(TRUE) {
+    if(is.null(fecha)){
+      url <- paste0("https://www.facturapi.io/v2/receipts", "?page=", page)  # 'page_size' es el número de resultados por página
+    }
+    else{
+      url <- paste0("https://www.facturapi.io/v2/receipts","?date[gte]=",fecha, "&page=", page)  # 'page_size' es el número de resultados por página
+    }
+    if(!is.null(filters)){
+      url <- paste0(url,"&",filters)
+    }
+    
+    response <- request(url) %>%
+      req_method("GET") %>% 
+      req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
+      req_perform() 
+    
+    result <-response  %>% resp_body_json() 
+    
+    if (length(result$data) == 0) {
+      break  
+    }
+    
+    # Agregar las facturas obtenidas a la lista
+    recibos_totales <- append(recibos_totales, result$data)
+    
+    # Incrementar la página para obtener la siguiente
+    page <- page + 1
+  }
+  return( recibos_totales)  # Devolver la lista con todas las facturas
+}
+
+facturapi_descargar_recibos <- function(id,auth_facturapi){
+  res<-request(paste0("https://www.facturapi.io/v2/receipts/",id,"/pdf")) %>% 
+    req_method("GET") %>% 
+    req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() 
+}
