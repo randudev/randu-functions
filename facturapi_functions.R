@@ -54,9 +54,11 @@ facturapi_enviar_recibo <- function(id,auth_facturapi,email){
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() 
 }
-
-facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal){
-  items <- datos_recibo(canal,orden)
+facturapi_cancelar_recibo <- function(id,auth_facturapi){
+  print("hola")  
+}
+facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta){
+  items <- datos_recibo(canal_venta,orden,id_orden)
   
   items_json <- sapply(items, function(producto) {
     generar_json(producto$cantidad, producto$nombre, producto$producto_key, producto$precio, producto$sku)
@@ -75,10 +77,10 @@ facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal){
     resp_body_json()
 }
 
-datos_recibo <- function(canal,orden,id_orden){
+datos_recibo <- function(canal_venta,orden,id_orden){
   items_orden <- list()
   
-    if(canal=="ml"){
+    if(canal_venta=="ml"){
       for(i in 1:length(orden$order_item)){
         items_orden[[length(items_orden) + 1]] <- list(
         "nombre" = orden$order_items[[1]]$item$title,
@@ -89,7 +91,7 @@ datos_recibo <- function(canal,orden,id_orden){
         
       }
     }
-    if(canal=="amz"){
+    if(canal_venta=="amz"){
       for(item in orden$payload$OrderItems){
         items_orden[[length(items_orden) + 1]] <- list(
           "nombre" = item$Title,
@@ -99,7 +101,7 @@ datos_recibo <- function(canal,orden,id_orden){
         )  
       }
     }
-    if(canal == "shp"){
+    if(canal_venta == "shp"){
       for(i in 1:length(orden$line_items$id)){
         items_orden[[length(items_orden) + 1]] <- list(
           "nombre" = orden$line_items$name[[i]],

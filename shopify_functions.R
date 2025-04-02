@@ -367,12 +367,13 @@ consulta_por_nombre <- function(order_name,access_token) {
         node {
           id
           name
+          cancelledAt
           fulfillmentOrders(first: 10) {
             edges {
               node {
                 id
                 status
-                lineItems(first: 5) {
+                lineItems(first: 10) {
                   edges {
                     node {
                       id

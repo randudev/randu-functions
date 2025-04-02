@@ -123,7 +123,7 @@ registrar_producto <- function(producto,venta_producto){
   orden_venta <- airtable_getrecorddata_byid(venta_producto$fields$ordenes_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
   fields <- list()
   #print(str_detect(tolower(producto$fields$id_productos),"juego"))
-  if(!str_detect(tolower(producto$fields$id_productos),"juego") & !str_detect(tolower(producto$fields$id_productos),"10700") & !str_detect(tolower(producto$fields$id_productos),"10011")& !str_detect(tolower(producto$fields$id_productos),"premium negro")){
+  if(!str_detect(tolower(producto$fields$id_productos),"juego") & !str_detect(tolower(producto$fields$id_productos),"10700") & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"premium negro") & !str_detect(tolower(producto$fields$id_productos),"premium ajustable negro")){
     if(length(producto$fields$partes_producto) != 0){
       for(parte in producto$fields$partes_producto){
         #print(parte)
@@ -147,13 +147,16 @@ registrar_producto <- function(producto,venta_producto){
               if(orden_venta$fields$canal_venta=="mercadolibrernd"){
                 ml_token <- get_active_token()
                 ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
-                ml_shipping <- get_dir_mlorder(ml_order,ml_token)
-                if(ml_shipping$logistic$mode == "me2"){
-                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 2"))
-                } else{
+                if(!is.null(ml_order$shipping$id)){
+                  ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+                  if(ml_shipping$logistic$mode == "me2"){
+                    fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 2"))
+                  } else{
+                    fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
+                  }
+                }else{
                   fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
                 }
-                
               }
               if(orden_venta$fields$canal_venta=="shprndmx"){
                 fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="1 - Media"))
@@ -234,10 +237,14 @@ registrar_producto <- function(producto,venta_producto){
           if(orden_venta$fields$canal_venta=="mercadolibrernd"){
             ml_token <- get_active_token()
             ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
-            ml_shipping <- get_dir_mlorder(ml_order,ml_token)
-            if(ml_shipping$logistic$mode == "me2"){
-              fields <- append(fields,list('prioridad'="8 - Antes de las 2"))
-            } else{
+            if(!is.null(ml_order$shipping$id)){
+              ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+              if(ml_shipping$logistic$mode == "me2"){
+                fields <- append(fields,list('prioridad'="8 - Antes de las 2"))
+              } else{
+                fields <- append(fields,list('prioridad'="2 - Media Alta"))
+              }
+            }else{
               fields <- append(fields,list('prioridad'="2 - Media Alta"))
             }
           }
