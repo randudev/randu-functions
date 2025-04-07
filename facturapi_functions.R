@@ -271,7 +271,7 @@ registrar_recibo <- function(recibo,orden_venta=NULL){
     'fecha_creacion'=recibo$created_at,
     'link_facturacion'=recibo$self_invoice_url,
     'helper_producto'=helper,
-    'folio'=paste0(recibo$folio_number)
+    'folio'=paste0(recibo$folio_number),
     'status_factura'='pendiente de facturar'
   )
   if(recibo$status=="open"){
