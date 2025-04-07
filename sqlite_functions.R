@@ -54,6 +54,11 @@ insertar_factura <- function(con,datos){
   dbExecute(con, query, params = valores)
 }
 
+insertar_recibo <- function(con,datos){
+  query <- paste0("INSERT INTO ", "recibo", " (id) VALUES (?)")
+  valores <- unname(as.list(datos))  
+  dbExecute(con, query, params = valores)
+}
 
 crear_tabla_orden <- function(con) {
   query <- "
@@ -75,6 +80,14 @@ crear_tabla_factura <- function(con) {
   dbExecute(con, query)
 }
 
+crear_tabla_recibo <- function(con) {
+  query <- "
+    CREATE TABLE IF NOT EXISTS recibo (
+      id TEXT PRIMARY KEY
+    );
+  "
+  dbExecute(con, query)
+}
 #----------
 close_all_connections <- function(env = .GlobalEnv) {
   objects <- ls(env)  # Listar todos los objetos en el entorno

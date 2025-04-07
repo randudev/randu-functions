@@ -38,6 +38,24 @@ facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL,filters=NULL) {
   return( facturas_totales)  # Devolver la lista con todas las facturas
 }
 
+facturapi_id_factura <- function(auth_facturapi,id){
+  url <-  paste0("https://www.facturapi.io/v2/invoices/",id)
+  response <- request(url) %>%
+    req_method("GET") %>% 
+    req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
+    req_perform() %>% 
+    resp_body_json()
+}
+
+facturapi_id_factura <- function(auth_facturapi,id){
+  url <-  paste0("https://www.facturapi.io/v2/receipts/",id)
+  response <- request(url) %>%
+    req_method("GET") %>% 
+    req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
+    req_perform() %>% 
+    resp_body_json()
+}
+
 facturapi_descargar_factura <- function(id,auth_facturapi,formato="pdf"){
   res<-request(paste0("https://www.facturapi.io/v2/invoices/",id,"/",formato)) %>% 
     req_method("GET") %>% 
@@ -45,6 +63,7 @@ facturapi_descargar_factura <- function(id,auth_facturapi,formato="pdf"){
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() 
 }
+
 facturapi_enviar_recibo <- function(id,auth_facturapi,email){
   res<-request(paste0("https://www.facturapi.io/v2/receipts/",id,"/","email")) %>% 
     req_method("POST") %>% 
@@ -54,9 +73,16 @@ facturapi_enviar_recibo <- function(id,auth_facturapi,email){
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() 
 }
+
 facturapi_cancelar_recibo <- function(id,auth_facturapi){
-  print("hola")  
+  url <- paste0("https://www.facturapi.io/v2/receipts/",id)
+  res<-request(url) %>% 
+    req_method("DELETE") %>% 
+    req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() 
 }
+
 facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta){
   items <- datos_recibo(canal_venta,orden,id_orden)
   
@@ -92,11 +118,13 @@ datos_recibo <- function(canal_venta,orden,id_orden){
       }
     }
     if(canal_venta=="amz"){
+      
       for(item in orden$payload$OrderItems){
+        sku <- str_extract(item$SellerSKU,"\\d+")
         items_orden[[length(items_orden) + 1]] <- list(
           "nombre" = item$Title,
           "precio"= item$ItemPrice$Amount,
-          "sku"=item$SellerSKU,
+          "sku"=sku,
           "cantidad" = item$QuantityOrdered
         )  
       }
@@ -198,4 +226,77 @@ facturapi_descargar_recibos <- function(id,auth_facturapi){
     req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() 
+}
+
+facturapi_crear_factura_recibo <- function(auth_facturapi){
+  res<-request(paste0("https://www.facturapi.io/v2/receipts/global-invoice")) %>% 
+    req_method("POST") %>% 
+    req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
+    req_body_json(list(
+      "from"= "2025-04-02T01:00:00.000Z",
+      "to"=   "2025-04-02T23:00:00.000Z",
+      "receipts"= list(
+        recibo$id
+      ),
+      "periodicity"= "month"
+      
+    )) %>% 
+    req_error(is_error = function(res) FALSE) %>%
+    req_perform() 
+}
+
+registrar_recibo <- function(recibo,orden_venta=NULL){
+  if (!dir.exists("~/recibos")) {
+    dir.create("~/recibos", recursive = TRUE)
+  }
+  helper <- ""
+  productos <- list()
+  for(j in 1:length(recibo$items)){
+    helper <- paste0(helper,recibo$items[[j]]$product$description,"\n")
+    if(!is.null(recibo$items[[j]]$product$sku)){
+      sku <- str_extract(recibo$items[[j]]$product$sku,"\\d+")
+      if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
+        producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
+                                          paste0("sku=",sku))
+        if(length(producto)!=0){
+          productos <- append(productos,producto[[1]]$id) 
+        }
+      }
+    }
+  }
+  
+  fieldslist <- list(
+    'id_recibo'=recibo$id,
+    'monto'=recibo$total,
+    'fecha_creacion'=recibo$created_at,
+    'link_facturacion'=recibo$self_invoice_url,
+    'helper_producto'=helper,
+    'folio'=paste0(recibo$folio_number)
+  )
+  if(recibo$status=="open"){
+    fieldslist <- append(fieldslist,list("status_recibo"="abierto"))
+  }else{
+    fieldslist <- append(fieldslist,list("status_recibo"="cerrado"))
+  }
+  if(length(productos)!=0){
+    fieldslist <- append(fieldslist,list("producto"=productos))
+  }
+  if(length(orden_venta)!=0){
+    fieldslist <- append(fieldslist,list("orden_venta"=list(orden_venta$id)))
+  }
+  resp <- airtable_createrecord(fieldslist,"recibos",Sys.getenv("AIRTABLE_CES_BASE"))
+  while(TRUE){
+    pdf <- facturapi_descargar_recibos(recibo$id,Sys.getenv("FACTURAPI_KEY"))
+    if(pdf$status_code %in% c(199:299)){
+      writeBin(pdf$body, paste0("~/recibos/",recibo$id,".pdf"))
+      airtable_subir_pdf(resp$id,paste0("~/recibos/",recibo$id,".pdf"),"pdf_recibo",Sys.getenv("AIRTABLE_CES_BASE"),"pdf")
+      break
+    }
+    if(i>=10){
+      i <- 0
+      break
+    }
+    Sys.sleep(1)
+    i <- i + 1
+  }
 }

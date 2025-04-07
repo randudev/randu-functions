@@ -58,23 +58,50 @@ email_error <- function(status,funcion,origen,archivo=""){
   
 }
 
-email_error_general <- function(mensaje,archivo=NULL){
-  email <- envelope() %>%
-    from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
-    to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
-    subject(paste0("Error : ",uuid::UUIDgenerate())) %>%
-    text(paste0("¡Tuvimos un problema: ", mensaje)) 
-  
-  if(!is.null(archivo)){
-    email <- email %>% attachment(path = archivo) # Ruta al archivo a adjuntar
+email_error_general <- function(mensaje,archivo=NULL, max_retries=3, delay=5){
+  if(nchar(mensaje)>100){
+    mensaje <- long
   }
-  
-  smtp <- server(
-    host = "smtp.fastmail.com",
-    port = 465,
-    username = Sys.getenv("EMAIL_FAST_MAIL"),
-    password = Sys.getenv("EMAIL_KEY"),
-    use_ssl = TRUE
+  tryCatch(
+    expr = {
+      
+      email <- envelope() %>%
+        from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
+        to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
+        subject(paste0("Error : ",uuid::UUIDgenerate())) %>%
+        text(paste0("¡Tuvimos un problema: ", mensaje)) 
+      
+      if(!is.null(archivo)){
+        email <- email %>% attachment(path = archivo) # Ruta al archivo a adjuntar
+      }
+      
+      smtp <- server(
+        host = "smtp.fastmail.com",
+        port = 465,
+        username = Sys.getenv("EMAIL_FAST_MAIL"),
+        password = Sys.getenv("EMAIL_KEY"),
+        use_ssl = TRUE,
+        timeout = 25 
+      )
+      for (i in 1:max_retries) {
+        tryCatch({
+          # Enviar el correo
+          smtp(email)
+          message("Correo enviado exitosamente.")
+          break  # Si se envió correctamente, salir del bucle
+        }, error = function(e) {
+          print(paste0("Intento de reenvío", i, "fallido. Error:", conditionMessage(e)))
+          if (i < max_retries) {
+            Sys.sleep(delay)  # Espera antes de intentar nuevamente
+          } else {
+            print("Reintentos agotados. No se pudo enviar el correo.")
+          }
+        })
+      }
+    },error=function(e){
+      error_mensaje <- paste0(e)
+      print(error_mensaje)
+    }
   )
   
   smtp(email)
@@ -96,7 +123,8 @@ enviar_email <- function(mensaje,correo,archivo=NULL){
     port = 465,
     username = Sys.getenv("EMAIL_FAST_MAIL"),
     password = Sys.getenv("EMAIL_KEY"),
-    use_ssl = TRUE
+    use_ssl = TRUE,
+    timeout = 30 
   )
   
   smtp(email)
@@ -123,7 +151,7 @@ registrar_producto <- function(producto,venta_producto){
   orden_venta <- airtable_getrecorddata_byid(venta_producto$fields$ordenes_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
   fields <- list()
   #print(str_detect(tolower(producto$fields$id_productos),"juego"))
-  if(!str_detect(tolower(producto$fields$id_productos),"juego") & !str_detect(tolower(producto$fields$id_productos),"10700") & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"premium negro") & !str_detect(tolower(producto$fields$id_productos),"premium ajustable negro")){
+  if(!str_detect(tolower(producto$fields$id_productos),"10700") & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"premium negro") & !str_detect(tolower(producto$fields$id_productos),"premium ajustable negro")){
     if(length(producto$fields$partes_producto) != 0){
       for(parte in producto$fields$partes_producto){
         #print(parte)
@@ -187,7 +215,7 @@ registrar_producto <- function(producto,venta_producto){
                 mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
                                   cantidad_restante, "unidades\nRevisa")
                 enviar_email(mensaje,"mauricio@randu.mx")
-                enviar_email(mensaje,"yatzel@randu.mx")
+                #enviar_email(mensaje,"yatzel@randu.mx")
               }
             }
           }
@@ -278,7 +306,7 @@ registrar_producto <- function(producto,venta_producto){
             mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, "solo cuenta con ", 
                               cantidad_restante, " unidades\nRevisa")
             enviar_email(mensaje,"mauricio@randu.mx")
-            enviar_email(mensaje,"yatzel@randu.mx")
+            #enviar_email(mensaje,"yatzel@randu.mx")
           }
         }
         aux <- airtable_createrecord(fields,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
