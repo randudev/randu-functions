@@ -47,7 +47,7 @@ facturapi_id_factura <- function(auth_facturapi,id){
     resp_body_json()
 }
 
-facturapi_id_factura <- function(auth_facturapi,id){
+facturapi_id_recibo <- function(auth_facturapi,id){
   url <-  paste0("https://www.facturapi.io/v2/receipts/",id)
   response <- request(url) %>%
     req_method("GET") %>% 
@@ -272,6 +272,7 @@ registrar_recibo <- function(recibo,orden_venta=NULL){
     'link_facturacion'=recibo$self_invoice_url,
     'helper_producto'=helper,
     'folio'=paste0(recibo$folio_number)
+    'status_factura'='pendiente de facturar'
   )
   if(recibo$status=="open"){
     fieldslist <- append(fieldslist,list("status_recibo"="abierto"))
