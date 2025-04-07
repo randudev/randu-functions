@@ -60,7 +60,7 @@ email_error <- function(status,funcion,origen,archivo=""){
 
 email_error_general <- function(mensaje,archivo=NULL, max_retries=3, delay=5){
   if(nchar(mensaje)>100){
-    mensaje <- long
+    mensaje <- substr(mensaje,1,100)
   }
   tryCatch(
     expr = {
