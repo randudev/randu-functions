@@ -87,7 +87,7 @@ facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta){
   items <- datos_recibo(canal_venta,orden,id_orden)
   
   items_json <- sapply(items, function(producto) {
-    generar_json(producto$cantidad, producto$nombre, producto$producto_key, producto$precio, producto$sku)
+    generar_json(producto$cantidad, producto$nombre, producto$producto_key, producto$precio, producto$sku,producto$descuento)
   })
   recibo <- paste0('{"payment_form": "31", "items": [', paste(items_json, collapse = ","), ']}')
   recibo_lista <- fromJSON(recibo)
@@ -96,7 +96,6 @@ facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta){
   res1<-request("https://www.facturapi.io/v2/receipts") %>% 
     req_method("POST") %>% 
     req_headers('Authorization'=paste0("Bearer ",auth_facturapi))  %>% 
-    #res1 %>% req_auth_bearer_token(paste0("Bearer",auth_facturapi)) %>%
     req_headers('Content-type'='application/json') %>%
     req_body_json(recibo_lista) %>%
     req_perform() %>%
@@ -118,14 +117,20 @@ datos_recibo <- function(canal_venta,orden,id_orden){
       }
     }
     if(canal_venta=="amz"){
-      
       for(item in orden$payload$OrderItems){
+        descuento <- NULL
+        if(!is.null(item$PromotionDiscount$Amount)){
+          if(as.numeric(item$PromotionDiscount$Amount)!=0){
+            descuento <- item$PromotionDiscount$Amount
+          }
+        }
         sku <- str_extract(item$SellerSKU,"\\d+")
         items_orden[[length(items_orden) + 1]] <- list(
           "nombre" = item$Title,
           "precio"= item$ItemPrice$Amount,
           "sku"=sku,
-          "cantidad" = item$QuantityOrdered
+          "cantidad" = item$QuantityOrdered,
+          "descuento"=descuento
         )  
       }
     }
@@ -135,7 +140,8 @@ datos_recibo <- function(canal_venta,orden,id_orden){
           "nombre" = orden$line_items$name[[i]],
           "precio"= orden$line_items$price[[i]],
           "sku"=orden$line_items$sku[[i]],
-          "cantidad" = orden$line_items$quantity[[i]]
+          "cantidad" = orden$line_items$quantity[[i]],
+          "descuento" = orden$line_items$discount_allocations[[i]]$amount
         )  
       }
     }
@@ -169,11 +175,16 @@ datos_recibo <- function(canal_venta,orden,id_orden){
   return(items_orden)
 }
 
-generar_json <- function(cantidad, descripcion, product_key, precio, sku) {
+generar_json <- function(cantidad, descripcion, product_key, precio, sku,descuento=NULL) {
   if(is.null(sku)){
     sku <- 10700
+  }else{
+    if(is.na(sku)){
+      sku <- 10700
+    }
   }
-  return(paste0('{
+  if(is.null(descuento)){
+    json <- paste0('{
                   "quantity": ', cantidad, ',
                   "product": {
                     "description": "', descripcion, '",
@@ -181,7 +192,20 @@ generar_json <- function(cantidad, descripcion, product_key, precio, sku) {
                     "price": ', precio, ',
                     "sku": "', sku, '"
                   }
-                }'))
+                }')
+  }else{
+    json <- paste0('{
+                  "quantity": ', cantidad, ',
+                  "product": {
+                    "description": "', descripcion, '",
+                    "product_key": "', product_key, '",
+                    "price": ', precio, ',
+                    "sku": "', sku, '"
+                  },
+                  "discount": ',descuento,'
+                }')
+  }
+  return(json)
 }
 
 facturapi_obtener_recibos <- function(auth_facturapi,fecha=NULL,filters=NULL){

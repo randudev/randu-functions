@@ -322,7 +322,8 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
     'canal_venta'='shprndmx',
     'ventas_producto'=lineitems_recordid,
     'id_origen'=shopifyorder$name,
-    'direccion_envio'=list(shippingaddress_id)
+    'direccion_envio'=list(shippingaddress_id),
+    'descuento_total_mxn'=as.numeric(shopifyorder$total_discounts)
   )
   if(!is.null(client_recordid)){
     fieldslist <- append(fieldslist,list("cliente"=list(client_recordid$id)))
