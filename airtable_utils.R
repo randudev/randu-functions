@@ -204,7 +204,7 @@ airtable_estructura <- function(base_id){
   url <- paste0("https://api.airtable.com/v0/meta/bases/",base_id,"/tables")
   res <- request(url) %>% 
     req_method("GET") %>% 
-    req_headers('Authorization' = paste0("Bearer ",Sys.getenv("AIRTABLE_API_KEY1"))) %>% 
+    req_headers('Authorization' = paste0("Bearer ",Sys.getenv("AIRTABLE_API_KEY"))) %>% 
     req_headers("Content-Type" = "application/json") %>% 
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() %>% 
