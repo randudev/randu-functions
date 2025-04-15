@@ -206,7 +206,7 @@ registrar_producto <- function(producto,venta_producto){
               "producto"=list(parte_producto$id),
               "ventas_producto"=list(venta_producto$id),
               "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R"),
-              "cantidad"=venta_producto$fields$cantidad
+              "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad
             )
             if(is.null(parte_producto$fields$item_produccion)){
               cantidad_restante <- parte_producto$fields$cantidad_disponible - venta_producto$fields$cantidad
