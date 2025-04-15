@@ -38,7 +38,6 @@ generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid){
 #-----Enviar por correo los errores------
 email_error <- function(status,funcion,origen,archivo=""){
   
-  
   email <- envelope() %>%
     from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
     to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
@@ -150,7 +149,6 @@ guardar <- function(origen="", resp, req, con, func, tabla){
 registrar_producto <- function(producto,venta_producto){
   orden_venta <- airtable_getrecorddata_byid(venta_producto$fields$ordenes_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
   fields <- list()
-  #print(str_detect(tolower(producto$fields$id_productos),"juego"))
   if(!str_detect(tolower(producto$fields$id_productos),"10700") & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"premium negro") & !str_detect(tolower(producto$fields$id_productos),"premium ajustable negro") & !str_detect(tolower(producto$fields$id_productos),"personalizado")){
     if(length(producto$fields$partes_producto) != 0){
       for(parte in producto$fields$partes_producto){
@@ -166,7 +164,7 @@ registrar_producto <- function(producto,venta_producto){
               fields[[length(fields) + 1]] <- list(
                 "tabla"="solicitudes",
                 "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R"),
-                "cantidad"=venta_producto$fields$cantidad,
+                "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
                 "producto"=list(parte_producto$id),
                 "venta_producto"=list(venta_producto$id),
                 "tipo_empaque"="estándar",
@@ -197,6 +195,7 @@ registrar_producto <- function(producto,venta_producto){
             }
             else{
               print("No se registro la solicitud de produccion porque una parte de stock no esta disponible")
+              print(venta_producto$fields$id_ventas_producto)
               break
             }
           }else{
@@ -224,8 +223,6 @@ registrar_producto <- function(producto,venta_producto){
       }
       if(length(fields) == length(producto$fields$partes_producto)){
         for(field in fields){
-          #print(!is.null(field$producto_solicitado))
-          #print(field)
           if(field$tabla == "transacciones"){
             field$tabla <- NULL
             aux <- airtable_createrecord(field,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
@@ -237,6 +234,7 @@ registrar_producto <- function(producto,venta_producto){
             break
           }
           print(paste0("Se registro exitosamente el proceso necesario para el producto"))
+          print(venta_producto$fields$id_ventas_producto)
         }
         if(!is.null(aux)){
           
@@ -290,6 +288,7 @@ registrar_producto <- function(producto,venta_producto){
         }
         else{
           print(paste0("No hay stock de producto: ",producto$fields$id_productos))
+          print(venta_producto$fields$id_ventas_producto)
         }
       }else{
         
