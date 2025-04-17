@@ -170,6 +170,9 @@ registrar_producto <- function(producto,venta_producto){
                 "tipo_empaque"="estándar",
                 "origen"="pedido"
               )
+              if(parte_producto$fields$categoria == "Empaque"){
+                fields[[length(fields)]]$origen <- "empaque CNC"
+              }
               if(orden_venta$fields$canal_venta=="mercadolibrernd"){
                 ml_token <- get_active_token()
                 ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
@@ -198,8 +201,8 @@ registrar_producto <- function(producto,venta_producto){
               print(venta_producto$fields$id_ventas_producto)
               break
             }
-          }else{
-            
+          }
+          else{
             fields[[length(fields) + 1]] <- list(
               "tabla"="transacciones",
               'tipo'='reserva',
