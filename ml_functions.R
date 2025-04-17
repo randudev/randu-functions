@@ -249,7 +249,12 @@ ml_primer_mensaje <- function(ml_order,ml_token,mensaje){
 }
 
 responder_mensaje <- function(ml_order,ml_token,mensaje){
-  res_sup <- request(paste0("https://api.mercadolibre.com/messages/packs/",ml_order$packid,"/sellers/",Sys.getenv("ML_SELLER_ID"),"?tag=post_sale")) %>%
+  if(!is.null(ml_order$pack_id)){
+    id <- ml_order$pack_id
+  }else{
+    id <- ml_order$id
+  }
+  res_sup <- request(paste0("https://api.mercadolibre.com/messages/packs/",id,"/sellers/",ml_order$seller$id,"?tag=post_sale")) %>%
     req_method("POST") %>%
     req_headers('Authorization'=paste0("Bearer ",ml_token)) %>% 
     req_headers('Content-type'='application/json') %>%
