@@ -142,7 +142,7 @@ datos_recibo <- function(canal_venta,orden,id_orden){
     }
     if(canal_venta == "shp"){
       iteracion <- 
-      if(as.numeric(orden1$shipping_lines$price[[1]])!=0){
+      if(as.numeric(orden$shipping_lines$price[[1]])!=0){
         
       }
       for(i in 1:length(orden$line_items$id)){
