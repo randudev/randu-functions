@@ -119,15 +119,21 @@ datos_recibo <- function(canal_venta,orden,id_orden){
     if(canal_venta=="amz"){
       for(item in orden$payload$OrderItems){
         descuento <- NULL
+        precio <- as.numeric(item$ItemPrice$Amount)
         if(!is.null(item$PromotionDiscount$Amount)){
           if(as.numeric(item$PromotionDiscount$Amount)!=0){
             descuento <- item$PromotionDiscount$Amount
           }
         }
         sku <- str_extract(item$SellerSKU,"\\d+")
+        if(!is.null(item$ItemTax$Amount)){
+          if(!is.na(item$ItemTax$Amount)){
+            precio <- precio + as.numeric(item$ItemTax$Amount)
+          }
+        }
         items_orden[[length(items_orden) + 1]] <- list(
           "nombre" = item$Title,
-          "precio"= item$ItemPrice$Amount,
+          "precio" = precio,
           "sku"=sku,
           "cantidad" = item$QuantityOrdered,
           "descuento"=descuento
@@ -135,30 +141,49 @@ datos_recibo <- function(canal_venta,orden,id_orden){
       }
     }
     if(canal_venta == "shp"){
+      iteracion <- 
+      if(as.numeric(orden1$shipping_lines$price[[1]])!=0){
+        
+      }
       for(i in 1:length(orden$line_items$id)){
+        descuento <- orden$line_items$discount_allocations[[i]]$amount
         items_orden[[length(items_orden) + 1]] <- list(
           "nombre" = orden$line_items$name[[i]],
-          "precio"= orden$line_items$price[[i]],
+          "precio"= as.numeric(orden$line_items$price[[i]]) - as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento)),
           "sku"=orden$line_items$sku[[i]],
           "cantidad" = orden$line_items$quantity[[i]],
-          "descuento" = orden$line_items$discount_allocations[[i]]$amount
+          "descuento" = NULL
         )  
+        if(i == length(orden$line_items$id) && as.numeric(orden$shipping_lines$price[[1]])!=0){
+          items_orden[[length(items_orden) + 1]] <- list(
+            "nombre" = orden$shipping_lines$title[[1]],
+            "precio"= sum(as.numeric(orden$shipping_lines$price),na.rm=TRUE),
+            "sku"=1000,
+            "cantidad" = 1,
+            "descuento" = NULL
+          )  
+        }
       }
     }
   for(i in 1:length(items_orden)){
     if(!is.null(items_orden[[i]]$sku)){
       if(!is.na(items_orden[[i]]$sku) && str_detect(items_orden[[i]]$sku,"^\\d\\d\\d\\d\\d$") ){
-        producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
-                                          paste0("sku=",items_orden[[i]]$sku))
-        if(length(producto)!=0){
-          if(!is.null(producto)){
-            producto_key <- producto[[1]]$fields$clave_sat 
+        if(sku!=1000){
+          producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
+                                            paste0("sku=",items_orden[[i]]$sku))
+          if(length(producto)!=0){
+            if(!is.null(producto)){
+              producto_key <- producto[[1]]$fields$clave_sat 
+            }else{
+              producto_key <- NULL
+            }
           }else{
             producto_key <- NULL
           }
         }else{
-          producto_key <- NULL
+          producto_key <- 78101800
         }
+        
       }else{
         producto_key <- NULL
       }
@@ -183,8 +208,9 @@ generar_json <- function(cantidad, descripcion, product_key, precio, sku,descuen
       sku <- 10700
     }
   }
-  if(is.null(descuento)){
-    json <- paste0('{
+  if(sku !=1000){
+    if(is.null(descuento)){
+      json <- paste0('{
                   "quantity": ', cantidad, ',
                   "product": {
                     "description": "', descripcion, '",
@@ -193,8 +219,8 @@ generar_json <- function(cantidad, descripcion, product_key, precio, sku,descuen
                     "sku": "', sku, '"
                   }
                 }')
-  }else{
-    json <- paste0('{
+    }else{
+      json <- paste0('{
                   "quantity": ', cantidad, ',
                   "product": {
                     "description": "', descripcion, '",
@@ -204,7 +230,18 @@ generar_json <- function(cantidad, descripcion, product_key, precio, sku,descuen
                   },
                   "discount": ',descuento,'
                 }')
+    }
+  }else{
+    json <- paste0('{
+                  "quantity": ', cantidad, ',
+                  "product": {
+                    "description": "', descripcion, '",
+                    "product_key": "', product_key, '",
+                    "price": ', precio, ',
+                  },
+                }')
   }
+  
   return(json)
 }
 
@@ -252,18 +289,20 @@ facturapi_descargar_recibos <- function(id,auth_facturapi){
     req_perform() 
 }
 
-facturapi_crear_factura_recibo <- function(auth_facturapi){
+facturapi_crear_factura_recibo <- function(auth_facturapi,recibo,mes,serie,date){
   res<-request(paste0("https://www.facturapi.io/v2/receipts/global-invoice")) %>% 
     req_method("POST") %>% 
     req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
     req_body_json(list(
-      "from"= "2025-04-02T01:00:00.000Z",
-      "to"=   "2025-04-02T23:00:00.000Z",
+      "from"= recibo$date,
+      "to"=   recibo$created_at,
       "receipts"= list(
         recibo$id
       ),
-      "periodicity"= "month"
-      
+      "date"=date,
+      "months" = months,
+      "periodicity"= "day",
+      "serie"=serie
     )) %>% 
     req_error(is_error = function(res) FALSE) %>%
     req_perform() 

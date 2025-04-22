@@ -88,9 +88,10 @@ amz_register_lineitems <- function(amz_order){
   amz_items <- get_amzorderitem_byid(amz_order$payload$AmazonOrderId,amz_token)
   vp_recordids <- vector(mode="list", length(amz_items$payload$OrderItems))
   for(i in 1:length(length(amz_items$payload$OrderItems))){
+    tax <- amz_items$payload$OrderItems[[i]]$ItemTax$Amount
     cantidad <- amz_items$payload$OrderItems[[i]]$QuantityOrdered
     nombre_producto <- amz_items$payload$OrderItems[[i]]$Title
-    precio <- as.double(amz_items$payload$OrderItems[[i]]$ItemPrice$Amount)#Es probable que se cambie
+    precio <- as.numeric(amz_items$payload$OrderItems[[i]]$ItemPrice$Amount) + as.numeric(ifelse(is.null(tax)||is.na(tax), 0, tax))
     sku <- str_extract(amz_items$payload$OrderItems[[i]]$SellerSKU,"\\d+")
     id_lineitem <- as.character(amz_items$payload$OrderItems[[i]]$OrderItemId)
     comentarios <- paste0(nombre_producto,"\n Fecha limite: ",

@@ -2,6 +2,7 @@ library(httr)
 library(httr2)
 library(dplyr)
 library(jsonlite)
+library(purrr)
 
 #Asi se debe de llamar el archivo "api_logs_documentation.sqlite"
 
@@ -180,7 +181,19 @@ airtable_record_delete <- function(recordid, tablename, base_id,origen="",con=NU
 }
 
 airtable_tibblewithfields <- function(recordlist){
-  lapply(recordlist, pluck, 'fields') %>% bind_rows()
+  lapply(recordlist, function(x) {
+    campos <- x$fields
+    campos <- lapply(campos, function(value) {
+      if (length(value) == 0) return(NA)  
+      if (length(value) > 1) return(list(value))
+      return(value)
+    })
+    return(campos)}) %>% 
+    bind_rows() %>% 
+    mutate(across(where(is.list), ~ sapply(., function(x) {
+    if (is.null(x)) return("")
+    else return(jsonlite::toJSON(x, auto_unbox = TRUE))
+  })))
 }
 
 airtable_subir_pdf <- function(record,ruta_pdf,columna,base_id,tipo){
