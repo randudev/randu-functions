@@ -233,8 +233,8 @@ generar_json <- function(cantidad, descripcion, product_key, precio, sku,descuen
                   "product": {
                     "description": "', descripcion, '",
                     "product_key": "', product_key, '",
-                    "price": ', precio, ',
-                  },
+                    "price": ', precio, '
+                  }
                 }')
   }
   

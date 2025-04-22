@@ -62,6 +62,7 @@ email_error_general <- function(mensaje,archivo=NULL, max_retries=3, delay=5){
   if(nchar(mensaje)>300){
     mensaje <- substr(mensaje,1,300)
   }
+  Sys.sleep(3)
   tryCatch(
     expr = {
       # email <- envelope() %>%
