@@ -141,10 +141,6 @@ datos_recibo <- function(canal_venta,orden,id_orden){
       }
     }
     if(canal_venta == "shp"){
-      iteracion <- 
-      if(as.numeric(orden$shipping_lines$price[[1]])!=0){
-        
-      }
       for(i in 1:length(orden$line_items$id)){
         descuento <- orden$line_items$discount_allocations[[i]]$amount
         items_orden[[length(items_orden) + 1]] <- list(
@@ -168,7 +164,7 @@ datos_recibo <- function(canal_venta,orden,id_orden){
   for(i in 1:length(items_orden)){
     if(!is.null(items_orden[[i]]$sku)){
       if(!is.na(items_orden[[i]]$sku) && str_detect(items_orden[[i]]$sku,"^\\d\\d\\d\\d\\d$") ){
-        if(sku!=1000){
+        if(items_orden[[i]]$sku!=1000){
           producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
                                             paste0("sku=",items_orden[[i]]$sku))
           if(length(producto)!=0){

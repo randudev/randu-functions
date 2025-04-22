@@ -58,17 +58,24 @@ email_error <- function(status,funcion,origen,archivo=""){
 }
 
 email_error_general <- function(mensaje,archivo=NULL, max_retries=3, delay=5){
-  if(nchar(mensaje)>100){
-    mensaje <- substr(mensaje,1,100)
+  print(mensaje)
+  if(nchar(mensaje)>300){
+    mensaje <- substr(mensaje,1,300)
   }
   tryCatch(
     expr = {
-      
-      email <- envelope() %>%
-        from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
-        to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
-        subject(paste0("Error : ",uuid::UUIDgenerate())) %>%
-        text(paste0("¡Tuvimos un problema: ", mensaje)) 
+      # email <- envelope() %>%
+      #   from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
+      #   to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
+      #   subject(paste0("Error : ",uuid::UUIDgenerate())) %>%
+      #   text(paste0("¡Tuvimos un problema: ", mensaje)) 
+      # 
+      email <- envelope(
+        to = Sys.getenv("EMAIL_ERROR_FAST_MAIL"),
+        from = Sys.getenv("EMAIL_FAST_MAIL"),
+        subject = paste0("Error : ",uuid::UUIDgenerate()),
+        text = paste0("¡Tuvimos un problema: ", mensaje)
+      )
       
       if(!is.null(archivo)){
         email <- email %>% attachment(path = archivo) # Ruta al archivo a adjuntar
@@ -102,8 +109,6 @@ email_error_general <- function(mensaje,archivo=NULL, max_retries=3, delay=5){
       print(error_mensaje)
     }
   )
-  
-  smtp(email)
 }
 
 enviar_email <- function(mensaje,correo,archivo=NULL){
