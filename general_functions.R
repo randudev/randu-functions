@@ -238,15 +238,17 @@ registrar_producto <- function(producto,venta_producto){
           }else{
             field$tabla <- NULL
             aux <- airtable_createrecord(field,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
-            link_qr <- aux$fields$barcode_link
-            if(is.null(link_qr)){
-              link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
+            if(!is.null(aux)){
+              link_qr <- aux$fields$barcode_link
+              if(is.null(link_qr)){
+                link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
+              }
+              sp <- aux$fields$id_solicitud
+              nombre_producto <- aux$fields$producto_solicitado
+              url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
             }
-            sp <- aux$fields$id_solicitud
-            nombre_producto <- aux$fields$producto_solicitado
-            url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
-            airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
-                                        'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
+            # airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
+            #                             'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
           }
           if(is.null(aux)){
             break
@@ -299,17 +301,16 @@ registrar_producto <- function(producto,venta_producto){
             fields <- append(fields,list('prioridad'="7 - Extrema"))
           }
           aux <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
-          link_qr <- aux$fields$barcode_link
-          if(is.null(link_qr)){
-            link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
-          }
-          sp <- aux$fields$id_solicitud
-          nombre_producto <- aux$fields$producto_solicitado
-          url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
-          airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
-                                      'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
+          
           print(paste0("-Las solicitudes de la venta producto : ", venta_producto$fields$id_ventas_producto, " se registro exitosamente"))
           if(!is.null(aux)){
+            link_qr <- aux$fields$barcode_link
+            if(is.null(link_qr)){
+              link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
+            }
+            sp <- aux$fields$id_solicitud
+            nombre_producto <- aux$fields$producto_solicitado
+            url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
             airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
           }
           
