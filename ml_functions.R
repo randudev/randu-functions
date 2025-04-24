@@ -261,3 +261,18 @@ responder_mensaje <- function(ml_order,ml_token,mensaje){
     req_body_json(list('from'= list('user_id'=ml_order$seller$id),'to'=list('user_id'=ml_order$buyer$id),'text'=mensaje)) %>%
     req_error(is_error = function(resp) FALSE) %>%
     req_perform()}
+
+ml_obtener_mensajes <- function(ml_order,ml_token){
+  if(!is.null(ml_order$pack_id)){
+    id <- ml_order$pack_id
+  }else{
+    id <- ml_order$id
+  }
+  res_sup <- request(paste0("https://api.mercadolibre.com/messages/packs/",id,"/sellers/",ml_order$seller$id,"?tag=post_sale")) %>%
+    req_method("GET") %>%
+    req_headers('Authorization'=paste0("Bearer ",ml_token)) %>% 
+    req_headers('Content-type'='application/json') %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
+}

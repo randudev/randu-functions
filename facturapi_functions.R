@@ -150,14 +150,18 @@ datos_recibo <- function(canal_venta,orden,id_orden){
           "cantidad" = orden$line_items$quantity[[i]],
           "descuento" = NULL
         )  
-        if(i == length(orden$line_items$id) && as.numeric(orden$shipping_lines$price[[1]])!=0){
-          items_orden[[length(items_orden) + 1]] <- list(
-            "nombre" = orden$shipping_lines$title[[1]],
-            "precio"= sum(as.numeric(orden$shipping_lines$price),na.rm=TRUE),
-            "sku"=1000,
-            "cantidad" = 1,
-            "descuento" = NULL
-          )  
+        
+        
+        if(length(orden$shipping_lines)!=0){
+          if(i == length(orden$line_items$id) && as.numeric(orden$shipping_lines$price[[1]])!=0){
+            items_orden[[length(items_orden) + 1]] <- list(
+              "nombre" = orden$shipping_lines$title[[1]],
+              "precio"= sum(as.numeric(orden$shipping_lines$price),na.rm=TRUE),
+              "sku"=1000,
+              "cantidad" = 1,
+              "descuento" = NULL
+            )  
+          }
         }
       }
     }
