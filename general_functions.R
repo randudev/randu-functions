@@ -135,6 +135,17 @@ enviar_email <- function(mensaje,correo,archivo=NULL){
   smtp(email)
 }
 
+enviar_mensaje_slack <- function(url,mensaje){
+  request <- request(url) %>%
+    req_method("POST") %>%
+    req_headers(
+      "Content-Type" = "application/json"
+    ) %>%
+    req_body_json(list(text = mensaje)) %>%
+    req_perform()
+}
+
+
 guardar <- function(origen="", resp, req, con, func, tabla){
   tryCatch(expr={
     logs <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(resp_body_json(resp)),
@@ -222,7 +233,8 @@ registrar_producto <- function(producto,venta_producto){
               if(cantidad_restante<=6){
                 mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
                                   cantidad_restante, "unidades\nRevisa")
-                enviar_email(mensaje,"mauricio@randu.mx")
+                enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
+                #enviar_email(mensaje,"mauricio@randu.mx")
                 #enviar_email(mensaje,"yatzel@randu.mx")
               }
             }
@@ -333,7 +345,8 @@ registrar_producto <- function(producto,venta_producto){
           if(cantidad_restante<=6){
             mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, "solo cuenta con ", 
                               cantidad_restante, " unidades\nRevisa")
-            enviar_email(mensaje,"mauricio@randu.mx")
+            enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
+            #enviar_email(mensaje,"mauricio@randu.mx")
             #enviar_email(mensaje,"yatzel@randu.mx")
           }
         }
