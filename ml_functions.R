@@ -59,8 +59,17 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
     'fecha'=mlorder$date_created,
     'canal_venta'='mercadolibrernd',
     'ventas_producto'=lineitems_recordid,
-    'id_origen'=as.character(mlorder$id)
+    'id_origen'=as.character(mlorder$id),
+    'ml_id_envio'=mlorder$shipping$id
   )
+  if("splitted_order" %in% mlorder$tags){
+    ml_shipping <- get_dir_mlorder(mlorder,ml_token)
+    ov_padre <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("ml_id_envio='",ml_shipping$sibling$sibling_id,"'"))
+    if(length(ov_padre)==1){
+      fieldslist <- append(fieldslist,list("ov_padre"=list(ov_padre[[1]]$id)))
+    }
+    
+  }
   if(!is.null(canal)){
     fieldslist$canal_venta <- 'mercadolibreasm'
   }
@@ -127,7 +136,7 @@ register_shippingadd_ml_atb <- function(mlorder, mltoken, atb_recid_ovml){
     'ordenes_venta'=list(atb_recid_ovml)
   )
   if(!is.null(mlshipment$logistic$type)){
-    if(mlshipment$logistic$type != "fulfillment" ){
+    if(mlshipment$logistic$type != "fulfillment"){
       recordid <- airtable_createrecord(fieldslist,"direcciones",Sys.getenv('AIRTABLE_CES_BASE'))
       return(recordid)
     } 
@@ -157,21 +166,26 @@ register_lineitems_ml <- function(mlorder, ml_token){
       'vp_revisada'=TRUE,
       'comentarios'=comentarios)
   }else{
+    fieldslist <- list(
+      'cantidad'=cantidad,
+      'helper_product_name'=nombre_producto,
+      'precio_unitario'=precio,
+      'pendiente_envio'=cantidad,
+      'comentarios'=comentarios)
     if("splitted_order" %in% mlorder$tags){
-      fieldslist <- list(
-        'cantidad'=cantidad,
-        'helper_product_name'=nombre_producto,
-        'precio_unitario'=0,
-        'pendiente_envio'=0,
-        'vp_revisada'=TRUE,
-        'comentarios'=comentarios)
-    }else{
-      fieldslist <- list(
-        'cantidad'=cantidad,
-        'helper_product_name'=nombre_producto,
-        'precio_unitario'=precio,
-        'pendiente_envio'=cantidad,
-        'comentarios'=comentarios)  
+      ml_shipping <- get_dir_mlorder(mlorder,ml_token)
+      ov_padre <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("ml_id_envio='",ml_shipping$sibling$sibling_id,"'"))
+      if(length(ov_padre)==1){
+        if(length(ov_padre[[1]]$fields$recibos)!=0){
+          fieldslist <- list(
+            'cantidad'=cantidad,
+            'helper_product_name'=nombre_producto,
+            'precio_unitario'=0,
+            'pendiente_envio'=0,
+            'vp_revisada'=TRUE,
+            'comentarios'=comentarios)
+        }
+      }
     }
   }
   
@@ -276,3 +290,38 @@ ml_obtener_mensajes <- function(ml_order,ml_token){
     req_perform() %>% 
     resp_body_json()
 }
+
+ml_separar_orden <- function(ml_order,ml_token){
+  shipment_id <- ml_order$shipping$id
+  json <- paste0('{
+    "reason": "OTHER_MOTIVE",
+    "packs": [
+        {
+            "orders": [
+                {
+                    "id": "',ml_order$id,'",
+                    "quantity": ', 1 ,'
+                }
+            ]
+        },
+        {
+            "orders": [
+                {
+                    "id": "',ml_order$id,'",
+                    "quantity": ',ml_order$order_items[[1]]$quantity - 1 ,'
+                }
+            ]
+        }
+    ]
+}')
+  
+  
+  
+  resp <- request(paste0("https://api.mercadolibre.com/shipments/", shipment_id, "/split")) %>%
+    req_method("POST") %>% 
+    req_headers("Authorization" = paste0("Bearer ", ml_token),
+                "x-format-new" = "true") %>% 
+    req_body_json(fromJSON(json)) %>% 
+    req_perform() %>% 
+    resp_body_json()
+} 

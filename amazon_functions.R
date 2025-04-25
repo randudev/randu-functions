@@ -87,7 +87,7 @@ amz_register_lineitems <- function(amz_order){
   amz_token <- amz_get_active_token()
   amz_items <- get_amzorderitem_byid(amz_order$payload$AmazonOrderId,amz_token)
   vp_recordids <- vector(mode="list", length(amz_items$payload$OrderItems))
-  for(i in 1:length(length(amz_items$payload$OrderItems))){
+  for(i in 1:length(amz_items$payload$OrderItems)){
     tax <- amz_items$payload$OrderItems[[i]]$ItemTax$Amount
     cantidad <- amz_items$payload$OrderItems[[i]]$QuantityOrdered
     nombre_producto <- amz_items$payload$OrderItems[[i]]$Title
