@@ -367,11 +367,14 @@ slack_mensaje_pregunta <- function(questions_id, ml_token){
       if(questions$status == "UNANSWERED"){
         item <- ml_obtener_item(questions$item_id,ml_token)
         articulo <- item$title
-        ml_user <- ml_user <- ml_obtener_user(questions$from$id,ml_token)
-        if(!is.null(ml_user$first_name)){
-          nombre <- paste(ml_user$first_name,ml_user$last_name)
-        }else{
-          nombre <- ml_user$nickname
+        nombre <- ""
+        if(!is.null(questions$from$id)){
+          ml_user <- ml_obtener_user(questions$from$id,ml_token)
+          if(!is.null(ml_user$first_name)){
+            nombre <- paste(ml_user$first_name,ml_user$last_name)
+          }else{
+            nombre <- ml_user$nickname
+          }
         }
         mensaje <-paste0("El articulo: ",item$id," ",articulo,"\nhttps://articulo.mercadolibre.com.mx/MLM-",
                          str_sub(item_id,4,nchar(item_id)),"\nRecibio una pregunta de ",nombre,"\n\nID pregunta: ",questions$id,"\n",questions$text)
