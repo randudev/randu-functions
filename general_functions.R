@@ -138,13 +138,10 @@ enviar_email <- function(mensaje,correo,archivo=NULL){
 enviar_mensaje_slack <- function(url,mensaje){
   request <- request(url) %>%
     req_method("POST") %>%
-    req_headers(
-      "Content-Type" = "application/json"
-    ) %>%
+    req_headers("Content-Type" = "application/json") %>%
     req_body_json(list(text = mensaje)) %>%
     req_perform()
 }
-
 
 guardar <- function(origen="", resp, req, con, func, tabla){
   tryCatch(expr={
@@ -232,7 +229,7 @@ registrar_producto <- function(producto,venta_producto){
               cantidad_restante <- parte_producto$fields$cantidad_disponible - venta_producto$fields$cantidad
               if(cantidad_restante<=6){
                 mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
-                                  cantidad_restante, "unidades\nRevisa")
+                                  cantidad_restante, " unidades\nRevisa")
                 enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
                 #enviar_email(mensaje,"mauricio@randu.mx")
                 #enviar_email(mensaje,"yatzel@randu.mx")
@@ -365,4 +362,3 @@ registrar_producto <- function(producto,venta_producto){
   }
   return(0)
 }
-

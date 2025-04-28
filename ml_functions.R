@@ -60,7 +60,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
     'canal_venta'='mercadolibrernd',
     'ventas_producto'=lineitems_recordid,
     'id_origen'=as.character(mlorder$id),
-    'ml_id_envio'=mlorder$shipping$id
+    'ml_id_envio'=paste0(mlorder$shipping$id)
   )
   if("splitted_order" %in% mlorder$tags){
     ml_shipping <- get_dir_mlorder(mlorder,ml_token)
@@ -325,3 +325,40 @@ ml_separar_orden <- function(ml_order,ml_token){
     req_perform() %>% 
     resp_body_json()
 } 
+
+ml_preguntas <- function(question_id,ml_token){
+  resp <- request(paste0("https://api.mercadolibre.com/questions/", question_id)) %>% 
+    req_method("GET") %>% 
+    req_headers(Authorization = paste("Bearer", ml_token)) %>% 
+    req_url_query(api_version = 4) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
+  return(resp)
+}
+
+ml_obtener_item <- function(item_id, ml_token) {
+  url <- paste0("https://api.mercadolibre.com/items/", item_id)
+  resp <- request(url) %>% 
+    req_method("GET") %>% 
+    req_headers(Authorization = paste("Bearer", ml_token)) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
+  # Convertimos la respuesta a JSON
+  return(resp)
+}
+
+slack_mensaje_pregunta <- function(questions_id, ml_token){
+  for(i in seq_along(questions_id)){
+    questions <- ml_preguntas(questions_id[[i]],ml_token)
+    if(last_response()$status_code %in% c(199:299)){
+      if(questions$status == "UNANSWERED"){
+        item <- ml_obtener_item(questions$item_id,ml_token)
+        articulo <- item$title
+        mensaje <-paste0("El articulo: ",item$id," ",articulo," recibio una pregunta.\n",questions$id,": ",questions$text)
+        enviar_mensaje_slack(Sys.getenv("SLACK_QUESTIONS_URL"),mensaje = mensaje)      
+      }
+    }
+  }
+}
