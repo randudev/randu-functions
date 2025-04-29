@@ -1,9 +1,18 @@
-library(httr2)
-library(jsonlite)
-if (!require("emayili")) {install.packages("emayili")}
-if (!require("tidyr")) {install.packages("tidyr")}
-library(tidyr)
-library(emayili)
+paquetes <- c("tidyr","emayili")
+
+cargar_paquetes <- function(paquetes) {
+  for (pkg in paquetes) {
+    if (!pkg %in% loadedNamespaces()) {
+      if (!requireNamespace(pkg, quietly = TRUE)) {
+        install.packages(pkg)
+      }
+      library(pkg, character.only = TRUE)
+      print(pkg)
+    }
+  }
+}
+
+cargar_paquetes(paquetes)
 
 generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid){
   renderform_api_key  <- Sys.getenv("RENDERFORM_API_KEY")
@@ -133,14 +142,6 @@ enviar_email <- function(mensaje,correo,archivo=NULL){
   )
   
   smtp(email)
-}
-
-enviar_mensaje_slack <- function(url,mensaje){
-  request <- request(url) %>%
-    req_method("POST") %>%
-    req_headers("Content-Type" = "application/json") %>%
-    req_body_json(list(text = mensaje)) %>%
-    req_perform()
 }
 
 guardar <- function(origen="", resp, req, con, func, tabla){
@@ -361,4 +362,8 @@ registrar_producto <- function(producto,venta_producto){
     } 
   }
   return(0)
+}
+
+es_numero <- function(cadena) {
+  return(grepl("^[0-9]+$", cadena))
 }

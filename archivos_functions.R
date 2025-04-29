@@ -1,5 +1,8 @@
 if (!require("openxlsx")) {install.packages("openxlsx")}
 library(openxlsx)
+paquetes <- c("tidyr","emayili")
+cargar_paquetes(paquetes)
+
 
 procesar_gs1 <- function(id_archivo){
   archivo <- airtable_getrecordslist("archivos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_archivo='",id_archivo,"'"))[[1]]

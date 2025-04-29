@@ -1,7 +1,5 @@
-library(httr2)
-library(purrr)
-library(stringr)
 
+cargar_paquetes(c("stringr"))
 
 get_all_shopifyrandu_orders <- function(){
   shopify_request <- request("https://randumexico.myshopify.com/admin/api/2022-10/orders.json?status=any") %>% 

@@ -1,5 +1,3 @@
-library(httr2)
-library(jsonlite)
 
 facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL,filters=NULL) {
   # Inicializar la página de búsqueda

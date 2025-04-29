@@ -1,6 +1,5 @@
 library(lubridate)
 library(httr2)
-
 #source("~/airtable_utils.R")
 
 get_active_token <- function(recordid=""){
@@ -356,32 +355,24 @@ ml_obtener_user <- function(user_id, ml_token) {
   resp <- request(url) %>% 
     req_method("GET") %>% 
     req_headers(Authorization = paste("Bearer", ml_token)) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
     req_perform() %>% 
     resp_body_json()
   # Convertimos la respuesta a JSON
   return(resp)
 }
 
-slack_mensaje_pregunta <- function(questions_id, ml_token){
-  for(i in seq_along(questions_id)){
-    questions <- ml_preguntas(questions_id[[i]],ml_token)
-    if(last_response()$status_code %in% c(199:299)){
-      if(questions$status == "UNANSWERED"){
-        item <- ml_obtener_item(questions$item_id,ml_token)
-        articulo <- item$title
-        nombre <- ""
-        if(!is.null(questions$from$id)){
-          ml_user <- ml_obtener_user(questions$from$id,ml_token)
-          if(!is.null(ml_user$first_name)){
-            nombre <- paste(ml_user$first_name,ml_user$last_name)
-          }else{
-            nombre <- ml_user$nickname
-          }
-        }
-        mensaje <-paste0("El articulo: ",item$id," ",articulo,"\nhttps://articulo.mercadolibre.com.mx/MLM-",
-                         str_sub(item$id,4,nchar(item$id)),"\nRecibio una pregunta de ",nombre,"\n\nID pregunta: ",questions$id,"\n",questions$text)
-        enviar_mensaje_slack(Sys.getenv("SLACK_QUESTIONS_URL"),mensaje = mensaje)      
-      }
-    }
-  }
+ml_responder_pregunta <- function(id,mensaje,ml_token){
+  body <- list(
+    "question_id" = id,
+    "text" = mensaje
+  )
+  resp <- request("https://api.mercadolibre.com/answers") %>% 
+    req_headers(
+      "Authorization" = paste0("Bearer ", ml_token),
+      "Content-Type" = "application/json") %>% 
+    req_body_json(body) %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
 }

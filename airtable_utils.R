@@ -1,8 +1,18 @@
-library(httr)
-library(httr2)
-library(dplyr)
-library(jsonlite)
-library(purrr)
+cargar_paquetes <- function(paquetes) {
+  for (pkg in paquetes) {
+    if (!pkg %in% loadedNamespaces()) {
+      if (!requireNamespace(pkg, quietly = TRUE)) {
+        install.packages(pkg)
+      }
+      library(pkg, character.only = TRUE)
+      print(pkg)
+    }
+  }
+}
+
+paquetes <- c("httr2","dplyr","jsonlite","purrr")
+cargar_paquetes(paquetes)
+
 
 #Asi se debe de llamar el archivo "api_logs_documentation.sqlite"
 
