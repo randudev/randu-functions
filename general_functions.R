@@ -7,7 +7,6 @@ cargar_paquetes <- function(paquetes) {
         install.packages(pkg)
       }
       library(pkg, character.only = TRUE)
-      print(pkg)
     }
   }
 }
