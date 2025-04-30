@@ -6,8 +6,18 @@ enviar_mensaje_slack <- function(url,mensaje){
     req_perform()
 }
 
-slack_mensaje_pregunta <- function(questions_id, ml_token){
+slack_mensaje_pregunta <- function(preguntas){
+  questions_id <- preguntas$id_resource
   for(i in seq_along(questions_id)){
+    cuerpo <- fromJSON(preguntas$body[[i]])
+    if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
+      recordid_token <- "recQLtjnMhd4ZCiJq"
+      canal <- "mercadolibreasm"
+    }else{
+      recordid_token <- ""
+      canal <- NULL
+    }
+    ml_token <- get_active_token(recordid_token)
     questions <- ml_preguntas(questions_id[[i]],ml_token)
     if(last_response()$status_code %in% c(199:299)){
       if(questions$status == "UNANSWERED"){
