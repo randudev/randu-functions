@@ -32,17 +32,19 @@ slack_mensaje_pregunta <- function(questions_id, ml_token){
 
 slack_responder_pregunta <- function(resp_mensaje,ml_token){
   texto <- resp_mensaje$event$text
-  if(str_detect(texto,"<@U08LEBF4Q85> ")){
-    mensaje_slack <- str_split(texto,"<@U08LEBF4Q85> ")[[1]][2]
-    id <- str_split(mensaje_slack," ")[[1]][1]
-    if(es_numero(id) && length(str_split(mensaje_slack," ")[[1]][-1]) != 0){
-      mensaje <- paste(str_split(mensaje_slack," ")[[1]][-1],collapse = " ")
-      ml_responder_pregunta(id,mensaje,ml_token)
-      if(last_response()$status_code %in% (199:299)){
-        respuesta_slack <- paste0("Se respondio la pregunta: ", id)
-        slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$ts,respuesta_slack)
-      }
-    } 
+  hilo<- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$thread_ts)
+  if(!is.null(hilo[[1]]$subtype)){
+    if(str_detect(texto,"<@U08LEBF4Q85> ") && str_detect(hilo[[1]]$text,"ID pregunta: ")){
+      mensaje_slack <- str_split(texto,"<@U08LEBF4Q85> ")[[1]][2]
+      id <- str_split(str_split(hilo[[1]]$text,"ID pregunta: ")[[1]][2],"\\n")[[1]][1]
+      if(es_numero(id) && nchar(mensaje_slack)!=0){
+        ml_responder_pregunta(id,mensaje_slack,ml_token)
+        if(last_response()$status_code %in% (199:299)){
+          respuesta_slack <- paste0("Se respondio la pregunta: ", id)
+          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$ts,respuesta_slack)
+        }
+      } 
+    }
   }
 }
 
@@ -58,5 +60,12 @@ slack_responder_en_hilo <- function(bot_token, canal, thread_ts, mensaje) {
     resp_body_json()
 }
 
-
+slack_obtener_hilo <- function(bot_token, canal, thread_ts){
+    request("https://slack.com/api/conversations.replies") %>%
+      req_headers(Authorization = paste0("Bearer ", bot_token)) %>%
+      req_url_query(channel = canal, ts = thread_ts) %>%
+      req_perform() %>%
+      resp_body_json() %>%
+      .$messages
+}
 
