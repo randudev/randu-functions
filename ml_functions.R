@@ -29,7 +29,7 @@ get_active_token <- function(recordid=""){
     newtokendata <- last_response() %>% resp_body_json()
     newaccess_token <- newtokendata$access_token
     newrefreshtoken <- newtokendata$refresh_token
-    newexpire <- last_response() %>% resp_date() + 21600 
+    newexpire <- last_response() %>% resp_date() + 21300 
     
     airtable_updatesinglerecord(fieldslist = list('access_token'=newaccess_token,
                                                   'refresh_token'=newrefreshtoken,

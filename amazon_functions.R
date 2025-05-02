@@ -20,7 +20,7 @@ amz_get_active_token <- function(){
     newtokendata <- last_response() %>% resp_body_json()
     newaccess_token <- newtokendata$access_token
     newrefreshtoken <- newtokendata$refresh_token
-    newexpire <- last_response() %>% resp_date() + 3600 
+    newexpire <- last_response() %>% resp_date() + 3360
     
     airtable_updatesinglerecord(fieldslist = list('access_token'=newaccess_token,
                                                   'refresh_token'=newrefreshtoken,

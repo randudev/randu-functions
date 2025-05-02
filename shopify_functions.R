@@ -366,6 +366,11 @@ consulta_por_nombre <- function(order_name,access_token) {
         node {
           id
           name
+          totalPriceSet {
+            shopMoney{
+              amount
+            }
+          }
           cancelledAt
           fulfillmentOrders(first: 10) {
             edges {

@@ -362,3 +362,64 @@ registrar_recibo <- function(recibo,orden_venta=NULL){
     i <- i + 1
   }
 }
+
+revisar_recibo <- function(recibos){
+  ml_token <- get_active_token()
+  amz_token <- amz_get_active_token()
+  ml_token_asm <- get_active_token("recQLtjnMhd4ZCiJq")
+  shp_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
+  recibos_validos <- list()
+  fecha_final <- as.Date(format(Sys.Date(), "%Y-%m-01"))-1
+  fecha_inicio <- as.Date(format(fecha_final, "%Y-%m-01"))
+  for(i in seq_along(recibos)){
+    if(recibos[[i]]$fields$fecha_creacion>fecha_inicio && recibos[[i]]$fields$fecha_creacion<fecha_final){
+      if(recibo[[i]]$canal_venta=="mercadolibrernd"){
+        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+        ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
+        if(ml_order$status!="cancelled"){
+          if(ml_order$total_amount== recibos[[i]]$fields$monto){
+            recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
+          }
+        }else{
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta)
+        }
+      }
+      if(recibo[[i]]$fields$canal_venta == "amazonrnd"){
+        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+        amz_order <- get_amzorder_byid(orden_venta$fields$id_origen,amz_token)
+        if(amz_order$payload$OrderStatus != "Canceled"){
+          if(amz_order$payload$OrderTotal$Amount== recibos[[i]]$fields$monto){
+            recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
+          }
+        }else{
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta)
+        }
+      }
+      if(recibo[[i]]$canal_venta == "shprndmx"){
+        if(!str_detect(vp$fields$id_origen_ov,"DST")){
+          orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+          shp_order <- consulta_por_nombre(orden_venta$fields$id_origen,shp_token)
+          if(is.null(shp_order$data$orders$edges[[1]]$node$cancelledAt)){
+            if(shp_order$data$orders$edges[[1]]$node$totalPriceSet$shopMoney$amount == recibos[[i]]$fields$monto){
+              recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
+            }
+          }else{
+            airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta)
+          }
+        }
+      }
+      if(recibo[[i]]$canal_venta == "mercadolibreasm"){
+        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+        ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token_asm)
+        if(ml_order$status!="cancelled"){
+          if(ml_order$total_amount== recibos[[i]]$fields$monto){
+            recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
+          }
+        }else{
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta)
+        }
+      }
+    }
+  }
+  return(recibos_validos)
+}
