@@ -366,3 +366,12 @@ registrar_producto <- function(producto,venta_producto){
 es_numero <- function(cadena) {
   return(grepl("^[0-9]+$", cadena))
 }
+
+ultimo_dia_mes_anterior <- function(fecha) {
+  fecha <- as.Date(fecha)
+  primer_dia_mes_actual <- as.Date(format(fecha, "%Y-%m-01"))
+  ultimo_dia_mes_anterior <- primer_dia_mes_actual - 1
+  hora_actual <- Sys.time()-6*3600
+  resultado <- as.POSIXct(paste(ultimo_dia_mes_anterior, format(hora_actual, "%H:%M:%S")), tz = "UTC")
+  return(resultado)
+}
