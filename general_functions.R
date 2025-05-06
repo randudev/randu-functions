@@ -177,7 +177,7 @@ registrar_producto <- function(producto,venta_producto){
             if(!is.null(parte_producto$fields$item_produccion)){
               fields[[length(fields) + 1]] <- list(
                 "tabla"="solicitudes",
-                "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R"),
+                "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
                 "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
                 "producto"=list(parte_producto$id),
                 "venta_producto"=list(venta_producto$id),
