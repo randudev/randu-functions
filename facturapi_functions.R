@@ -24,7 +24,7 @@ facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL,filters=NULL) {
     
     if (length(result$data) == 0) {
       break  
-      }
+    }
     
     # Agregar las facturas obtenidas a la lista
     facturas_totales <- append(facturas_totales, result$data)
@@ -103,66 +103,66 @@ facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta){
 datos_recibo <- function(canal_venta,orden,id_orden){
   items_orden <- list()
   
-    if(canal_venta=="ml"){
-      for(i in 1:length(orden$order_item)){
-        items_orden[[length(items_orden) + 1]] <- list(
+  if(canal_venta=="ml"){
+    for(i in 1:length(orden$order_item)){
+      items_orden[[length(items_orden) + 1]] <- list(
         "nombre" = orden$order_items[[1]]$item$title,
         "precio"= orden$order_items[[1]]$unit_price,
         "sku"=orden$order_items[[1]]$item$seller_sku,
         "cantidad" = orden$order_items[[1]]$quantity 
       )  
-        
-      }
+      
     }
-    if(canal_venta=="amz"){
-      for(item in orden$payload$OrderItems){
-        descuento <- NULL
-        precio <- as.numeric(item$ItemPrice$Amount)
-        if(!is.null(item$PromotionDiscount$Amount)){
-          if(as.numeric(item$PromotionDiscount$Amount)!=0){
-            descuento <- item$PromotionDiscount$Amount
-          }
-        }
-        sku <- str_extract(item$SellerSKU,"\\d+")
-        if(!is.null(item$ItemTax$Amount)){
-          if(!is.na(item$ItemTax$Amount)){
-            precio <- precio + as.numeric(item$ItemTax$Amount)
-          }
-        }
-        items_orden[[length(items_orden) + 1]] <- list(
-          "nombre" = item$Title,
-          "precio" = precio,
-          "sku"=sku,
-          "cantidad" = item$QuantityOrdered,
-          "descuento"=descuento
-        )  
-      }
-    }
-    if(canal_venta == "shp"){
-      for(i in 1:length(orden$line_items$id)){
-        descuento <- orden$line_items$discount_allocations[[i]]$amount
-        items_orden[[length(items_orden) + 1]] <- list(
-          "nombre" = orden$line_items$name[[i]],
-          "precio"= as.numeric(orden$line_items$price[[i]]) - as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento)),
-          "sku"=orden$line_items$sku[[i]],
-          "cantidad" = orden$line_items$quantity[[i]],
-          "descuento" = NULL
-        )  
-        
-        
-        if(length(orden$shipping_lines)!=0){
-          if(i == length(orden$line_items$id) && as.numeric(orden$shipping_lines$price[[1]])!=0){
-            items_orden[[length(items_orden) + 1]] <- list(
-              "nombre" = orden$shipping_lines$title[[1]],
-              "precio"= sum(as.numeric(orden$shipping_lines$price),na.rm=TRUE),
-              "sku"=1000,
-              "cantidad" = 1,
-              "descuento" = NULL
-            )  
-          }
+  }
+  if(canal_venta=="amz"){
+    for(item in orden$payload$OrderItems){
+      descuento <- NULL
+      precio <- as.numeric(item$ItemPrice$Amount)
+      if(!is.null(item$PromotionDiscount$Amount)){
+        if(as.numeric(item$PromotionDiscount$Amount)!=0){
+          descuento <- item$PromotionDiscount$Amount
         }
       }
+      sku <- str_extract(item$SellerSKU,"\\d+")
+      if(!is.null(item$ItemTax$Amount)){
+        if(!is.na(item$ItemTax$Amount)){
+          precio <- precio + as.numeric(item$ItemTax$Amount)
+        }
+      }
+      items_orden[[length(items_orden) + 1]] <- list(
+        "nombre" = item$Title,
+        "precio" = precio,
+        "sku"=sku,
+        "cantidad" = item$QuantityOrdered,
+        "descuento"=descuento
+      )  
     }
+  }
+  if(canal_venta == "shp"){
+    for(i in 1:length(orden$line_items$id)){
+      descuento <- orden$line_items$discount_allocations[[i]]$amount
+      items_orden[[length(items_orden) + 1]] <- list(
+        "nombre" = orden$line_items$name[[i]],
+        "precio"= as.numeric(orden$line_items$price[[i]]) - as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento)),
+        "sku"=orden$line_items$sku[[i]],
+        "cantidad" = orden$line_items$quantity[[i]],
+        "descuento" = NULL
+      )  
+      
+      
+      if(length(orden$shipping_lines)!=0){
+        if(i == length(orden$line_items$id) && as.numeric(orden$shipping_lines$price[[1]])!=0){
+          items_orden[[length(items_orden) + 1]] <- list(
+            "nombre" = orden$shipping_lines$title[[1]],
+            "precio"= sum(as.numeric(orden$shipping_lines$price),na.rm=TRUE),
+            "sku"=1000,
+            "cantidad" = 1,
+            "descuento" = NULL
+          )  
+        }
+      }
+    }
+  }
   for(i in 1:length(items_orden)){
     if(!is.null(items_orden[[i]]$sku)){
       if(!is.na(items_orden[[i]]$sku) && str_detect(items_orden[[i]]$sku,"^\\d\\d\\d\\d\\d$") ){
@@ -298,9 +298,9 @@ facturapi_crear_factura_recibo <- function(auth_facturapi,recibo,mes,serie,date)
         recibo$id
       ),
       "date"=date,
-      "months" = months,
+      "months" = mes,
       "periodicity"= "day",
-      "serie"=serie
+      "series"=serie
     )) %>% 
     req_error(is_error = function(res) FALSE) %>%
     req_perform() 
@@ -370,53 +370,55 @@ revisar_recibo <- function(recibos){
   shp_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
   recibos_validos <- list()
   fecha_final <- as.Date(format(Sys.Date(), "%Y-%m-01"))-1
+  fecha_final <- as.Date(format(fecha_final,"%Y-%m-24"))
   fecha_inicio <- as.Date(format(fecha_final, "%Y-%m-01"))
   for(i in seq_along(recibos)){
     if(recibos[[i]]$fields$fecha_creacion>fecha_inicio && recibos[[i]]$fields$fecha_creacion<fecha_final){
-      if(recibo[[i]]$canal_venta=="mercadolibrernd"){
-        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+      if(recibos[[i]]$fields$canal_venta=="mercadolibrernd"){
+        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
         ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
         if(ml_order$status!="cancelled"){
           if(ml_order$total_amount== recibos[[i]]$fields$monto){
             recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
           }
         }else{
-          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta)
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta[[1]])
         }
       }
-      if(recibo[[i]]$fields$canal_venta == "amazonrnd"){
-        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+      if(recibos[[i]]$fields$canal_venta == "amazonrnd"){
+        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
         amz_order <- get_amzorder_byid(orden_venta$fields$id_origen,amz_token)
         if(amz_order$payload$OrderStatus != "Canceled"){
           if(amz_order$payload$OrderTotal$Amount== recibos[[i]]$fields$monto){
             recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
           }
         }else{
-          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta)
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta[[1]])
         }
       }
-      if(recibo[[i]]$canal_venta == "shprndmx"){
-        if(!str_detect(vp$fields$id_origen_ov,"DST")){
-          orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+      if(recibos[[i]]$fields$canal_venta == "shprndmx"){
+        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+        if(!str_detect(orden_venta$fields$id_ordenes_venta,"DST")){
+          #orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
           shp_order <- consulta_por_nombre(orden_venta$fields$id_origen,shp_token)
           if(is.null(shp_order$data$orders$edges[[1]]$node$cancelledAt)){
             if(shp_order$data$orders$edges[[1]]$node$totalPriceSet$shopMoney$amount == recibos[[i]]$fields$monto){
               recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
             }
           }else{
-            airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta)
+            airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta[[1]])
           }
         }
       }
-      if(recibo[[i]]$canal_venta == "mercadolibreasm"){
-        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+      if(recibos[[i]]$fields$canal_venta == "mercadolibreasm"){
+        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
         ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token_asm)
         if(ml_order$status!="cancelled"){
           if(ml_order$total_amount== recibos[[i]]$fields$monto){
             recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
           }
         }else{
-          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta)
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta[[1]])
         }
       }
     }
