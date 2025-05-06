@@ -341,7 +341,7 @@ registrar_recibo <- function(recibo,orden_venta=NULL){
     fieldslist <- append(fieldslist,list("status_recibo"="cerrado"))
   }
   if(length(productos)!=0){
-    fieldslist <- append(fieldslist,list("producto"=productos))
+    fieldslist <- append(fieldslist,list("producto"=unique(productos)))
   }
   if(length(orden_venta)!=0){
     fieldslist <- append(fieldslist,list("orden_venta"=list(orden_venta$id)))
