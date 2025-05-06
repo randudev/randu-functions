@@ -193,7 +193,7 @@ registrar_producto <- function(producto,venta_producto){
                 if(!is.null(ml_order$shipping$id)){
                   ml_shipping <- get_dir_mlorder(ml_order,ml_token)
                   if(ml_shipping$logistic$mode == "me2"){
-                    fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 2"))
+                    fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de la 1"))
                   } else{
                     fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
                   }
@@ -295,7 +295,7 @@ registrar_producto <- function(producto,venta_producto){
             if(!is.null(ml_order$shipping$id)){
               ml_shipping <- get_dir_mlorder(ml_order,ml_token)
               if(ml_shipping$logistic$mode == "me2"){
-                fields <- append(fields,list('prioridad'="8 - Antes de las 2"))
+                fields <- append(fields,list('prioridad'="8 - Antes de la 1"))
               } else{
                 fields <- append(fields,list('prioridad'="2 - Media Alta"))
               }
