@@ -79,3 +79,21 @@ slack_obtener_hilo <- function(bot_token, canal, thread_ts){
       .$messages
 }
 
+slack_npu <- function(cuerpo,ml_token){
+  bot_token <- Sys.getenv("SLACK_BOT_TOKEN")
+  mensaje_persona <- str_split(cuerpo$event$text,"<@U08LEBF4Q85> ")[[1]][2]
+  titulo <- str_match(mensaje_persona, '"(.*?)"')[,2]
+  sin_comillas <- str_remove_all(mensaje_persona, '"[^"]*"')
+  precio <- as.numeric(str_extract(sin_comillas, "\\d+"))
+  if(es_numero(precio)){
+    titulo <- paste0(titulo," BSL")
+    resp <- ml_crear_publicacion(titulo,precio,ml_token)
+    if(last_response()$status_code %in% c(199:299)){
+      Sys.sleep(10)
+      item <- ml_status_item(resp$id,ml_token, "active")
+      mensaje <- paste0(item$id,": ",item$permalink)
+      print(mensaje)
+      slack_responder_en_hilo(bot_token,cuerpo$event$channel,cuerpo$event$event_ts,mensaje)
+    }
+  }
+}
