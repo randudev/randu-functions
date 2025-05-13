@@ -432,7 +432,7 @@ ml_crear_publicacion <- function(titulo,precio,ml_token){
   "attributes":[
      {
         "id":"BRAND",
-        "value_name":"Marca del producto"
+        "value_name":"Randu"
      },
      {
         "id":"MANUFACTURER",
@@ -472,4 +472,17 @@ ml_crear_publicacion <- function(titulo,precio,ml_token){
     req_perform() %>% 
     resp_body_json()
   return(resp)
+}
+
+ml_crear_descripcion <- function(id_item,descripcion,ml_token){
+  url <- paste0("https://api.mercadolibre.com/items/",id_item,"/description")
+  resp <- request(url) %>% 
+    req_method("POST") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers(accept= "application/json") %>% 
+    req_headers('content-type' = 'application/x-www-form-urlencoded') %>% 
+    req_body_json(list("plain_text"=paste0("Producto personalizado: ", descripcion))) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
 }

@@ -91,6 +91,7 @@ slack_npu <- function(cuerpo,ml_token){
     if(last_response()$status_code %in% c(199:299)){
       Sys.sleep(10)
       item <- ml_status_item(resp$id,ml_token, "active")
+      ml_crear_descripcion(resp$id, titulo,ml_token)
       mensaje <- paste0(item$id,": ",item$permalink)
       print(mensaje)
       slack_responder_en_hilo(bot_token,cuerpo$event$channel,cuerpo$event$event_ts,mensaje)
