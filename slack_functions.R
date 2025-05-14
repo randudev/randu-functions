@@ -93,6 +93,16 @@ slack_npu <- function(cuerpo,ml_token){
       item <- ml_status_item(resp$id,ml_token, "active")
       ml_crear_descripcion(resp$id, titulo,ml_token)
       mensaje <- paste0(item$id,": ",item$permalink)
+      tryCatch(expr={
+        publicaciones_slack <- readRDS("publicacions_slack.RDS")
+        publicaciones_slack <- append(publicaciones_slack,item$id)
+        saveRDS(publicaciones_slack,"publicacions_slack.RDS")
+      },
+      error=function(er){
+        publicaciones_slack <- list(item$id)
+        saveRDS(publicaciones_slack,"publicacions_slack.RDS")
+      }
+      )
       print(mensaje)
       slack_responder_en_hilo(bot_token,cuerpo$event$channel,cuerpo$event$event_ts,mensaje)
     }

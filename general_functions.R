@@ -375,3 +375,9 @@ ultimo_dia_mes_anterior <- function(fecha) {
   resultado <- as.POSIXct(paste(ultimo_dia_mes_anterior, format(hora_actual, "%H:%M:%S")), tz = "UTC")
   return(resultado)
 }
+
+
+ejecutar <- function(horas_permitidas){
+  hora_actual <- format(Sys.time()-6*3600, "%H:%M")
+  return(hora_actual %in% horas_permitidas)
+}

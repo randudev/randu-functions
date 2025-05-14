@@ -394,7 +394,12 @@ consulta_por_nombre <- function(order_name,access_token) {
                   name
                 }
               }
-            }
+          }
+          transactions {
+            kind
+            gateway
+            status
+          }
         }
       }
     }
