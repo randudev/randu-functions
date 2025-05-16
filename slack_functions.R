@@ -108,3 +108,36 @@ slack_npu <- function(cuerpo,ml_token){
     }
   }
 }
+
+slack_mensaje_fulfillment_stock <- function(operaciones){
+  operacion_id <- operaciones$id_resource
+  for(i in seq_along(operacion_id)){
+    cuerpo <- fromJSON(operaciones$body[[i]])
+    if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
+      recordid_token <- "recQLtjnMhd4ZCiJq"
+      canal <- "mercadolibreasm"
+    }else{
+      recordid_token <- ""
+      canal <- NULL
+    }
+    ml_token <- get_active_token(recordid_token)
+    operacion <- ml_operaciones_fulfillment(operacion_id[[i]],ml_token)
+    if(last_response()$status_code %in% c(199:299)){
+      if(operacion$result$available_quantity==0 ){
+        id_item <- ""
+        permalink <- ""
+        nombre <- ""
+        publicacion <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_inventario_marketplace='",operacion$inventory_id,"'"))
+        if(last_response()$status_code %in% c(199:299) && length(publicacion)!=0){
+          id_item <- publicacion[[1]]$fields$id_canal
+          nombre <- publicacion[[1]]$fields$titulo
+          permalink <-   publicacion[[1]]$fields$link_ml      
+        }
+        mensaje_operacion <- paste0("El stock de la publicacion: ", item_id, "  ", nombre,"\n",permalink
+                                    ,"\nID del inventario de fulfillment: ",operacion$inventory_id,"\n"
+                                    ,"Se quedo sin stock en full por la operacion: ",operacion$type," ",operacion$detail$available_quantity)
+        enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_FULL_ML_URL"),mensaje_operacion)
+      }
+    }
+  }
+}

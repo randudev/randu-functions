@@ -486,3 +486,153 @@ ml_crear_descripcion <- function(id_item,descripcion,ml_token){
     req_perform() %>% 
     resp_body_json()
 }
+
+ml_cerrar_item <- function(ml_token){
+  # Recolectar todas las publicaciones
+  items <- c()
+  offset <- 0
+  limit <- 50
+  while(T) {
+    fecha_desde <- format(Sys.Date() - 2, "%Y-%m-%dT00:00:00.000Z") 
+    fecha_desde <- Sys.Date()-3
+    res <- request(paste0("https://api.mercadolibre.com/users/", Sys.getenv("SELLERID_ML_RANDU"), "/items/search")) %>%
+      req_auth_bearer_token(ml_token) %>%
+      req_url_query(items.date_created.from = fecha_desde, offset = offset, limit = limit) %>%
+      req_perform() %>% 
+      resp_body_json()
+    items <- c(items, res$results)
+    if(!last_response()$status_code %in% c(199:299)){
+      print(resp_body_json())
+      break
+    }
+   # break
+    offset <- offset + limit
+    if (length(res$results) < limit) {
+      return(res)
+      break
+    }
+    
+  print(offset)
+  
+  }
+}
+
+ml_subir_publicaciones <- function(item){
+  subtitle <- ""
+  # for(k in 1:length(id_img_var[[j]]$selectedoptions)){
+  #   if(k==1){
+  #     subtitle <- paste0(id_img_var[[j]]$selectedoptions[[k]]$name,": ",id_img_var[[j]]$selectedoptions[[k]]$value)
+  #   }
+  #   
+  # }
+  # 
+  for(i in seq_along(item$attributes)){
+    subtitle <- paste0(subtitle,item$attributes[[i]]$name,": ",item$attributes[[i]]$value_name,"/")
+    
+    if(str_detect(tolower(item$attributes[[i]]$name),"sku")){
+      sku <- item$attributes[[i]]$value_name
+    }
+  }
+  producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
+  if(item$status!="paused"){
+    status <- "Activo"
+  }else{
+    status <- "Inactivo" 
+  }
+  if(item$shipping$mode == "me2"){
+    if(!is.null(item$shipping$logistic_type)){
+      if(item$shipping$logistic_type == "fulfillment"){
+        envio <- "Fulfillment by marketplace"
+      }else{
+        envio <- "Agencia"
+      }
+    }else{
+      envio <- "Agencia"
+    }
+  }else{
+    envio <- "Fulfillment by Randu"
+  }
+  
+  fields <- list(
+    "canal"= "mercadolibre randu",
+    "id_canal" = item$id,
+    "titulo" = item$title,
+    "subtitulo"=subtitle,
+    "status"=status,
+    "tipo_envio"=envio
+  )
+  if(length(producto)!=0){
+    fields <- append(fields,list("producto"=list(producto[[1]]$id)))
+  }
+  if(!is.null(item$inventory_id)){
+    url_etiqueta <- paste0("https://processmediacesrir.s3.us-west-2.amazonaws.com/publicaciones/etiqueta_marketplace/",item$inventory_id,".pdf")
+    fields <- append(fields,list("id_inventario_marketplace"=item$inventory_id ,"etiqueta_marketplace"=list(list("url"=url_etiqueta))))
+  }
+  airtable_createrecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"))
+  if(!last_response()$status_code %in% c(199:299)){
+    print(item$title)
+  }
+}
+
+ml_actualizar_publicaciones <- function(item,publicacion){
+  
+  subtitle <- ""
+ 
+  for(i in seq_along(item$attributes)){
+    subtitle <- paste0(subtitle,item$attributes[[i]]$name,": ",item$attributes[[i]]$value_name,"/")
+    
+    if(str_detect(tolower(item$attributes[[i]]$name),"sku")){
+      sku <- item$attributes[[i]]$value_name
+    }
+  }
+  producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
+  if(item$status!="paused"){
+    status <- "Activo"
+  }else{
+    status <- "Inactivo" 
+  }
+  if(item$shipping$mode == "me2"){
+    if(!is.null(item$shipping$logistic_type)){
+      if(item$shipping$logistic_type == "fulfillment"){
+        envio <- "Fulfillment by marketplace"
+      }else{
+        envio <- "Agencia"
+      }
+    }else{
+      envio <- "Agencia"
+    }
+  }else{
+    envio <- "Fulfillment by Randu"
+  }
+  
+  fields <- list(
+    "titulo" = item$title,
+    "subtitulo"=subtitle,
+    "status"=status,
+    "tipo_envio"=envio
+  )
+  if(length(producto)!=0){
+    fields <- append(fields,list("producto"=list(producto[[1]]$id)))
+  }
+  if(!is.null(item$inventory_id)){
+    #url_etiqueta <- paste0("https://processmediacesrir.s3.us-west-2.amazonaws.com/publicaciones/etiqueta_marketplace/",item$inventory_id,".pdf")
+    fields <- append(fields,list("id_inventario_marketplace"=item$inventory_id ))
+  }
+  #airtable_createrecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"))
+  airtable_updatesinglerecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),publicacion$id)
+  if(!last_response()$status_code %in% c(199:299)){
+    print("Al actualizar")
+    print(item$title)
+  }
+}
+
+ml_operaciones_fulfillment <- function(id_operacion,ml_token){
+  url <- paste0("https://api.mercadolibre.com/stock/fulfillment/operations/", id_operacion)
+  resp <- request(url) %>% 
+    req_method("GET") %>% 
+    req_headers(Authorization = paste("Bearer", ml_token)) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
+  return(resp)
+}

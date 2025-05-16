@@ -376,8 +376,12 @@ ultimo_dia_mes_anterior <- function(fecha) {
   return(resultado)
 }
 
-
 ejecutar <- function(horas_permitidas){
   hora_actual <- format(Sys.time()-6*3600, "%H:%M")
   return(hora_actual %in% horas_permitidas)
+}
+
+quitar_null <- function(lista){
+  mi_lista_sin_null <- Filter(Negate(is.null), lista)
+  return(mi_lista_sin_null)
 }
