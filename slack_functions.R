@@ -123,7 +123,7 @@ slack_mensaje_fulfillment_stock <- function(operaciones){
     ml_token <- get_active_token(recordid_token)
     operacion <- ml_operaciones_fulfillment(operacion_id[[i]],ml_token)
     if(last_response()$status_code %in% c(199:299)){
-      if(operacion$result$available_quantity==0 ){
+      if(operacion$result$available_quantity==0 && operacion$result$total == 0){
         id_item <- ""
         permalink <- ""
         nombre <- ""
@@ -133,7 +133,7 @@ slack_mensaje_fulfillment_stock <- function(operaciones){
           nombre <- publicacion[[1]]$fields$titulo
           permalink <-   publicacion[[1]]$fields$link_ml      
         }
-        mensaje_operacion <- paste0("El stock de la publicacion: ", item_id, "  ", nombre,"\n",permalink
+        mensaje_operacion <- paste0("El stock de la publicacion: ", id_item, "  ", nombre,"\n",permalink
                                     ,"\nID del inventario de fulfillment: ",operacion$inventory_id,"\n"
                                     ,"Se quedo sin stock en full por la operacion: ",operacion$type," ",operacion$detail$available_quantity)
         enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_FULL_ML_URL"),mensaje_operacion)

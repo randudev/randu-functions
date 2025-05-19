@@ -143,7 +143,7 @@ datos_recibo <- function(canal_venta,orden,id_orden){
       descuento <- orden$line_items$discount_allocations[[i]]$amount
       items_orden[[length(items_orden) + 1]] <- list(
         "nombre" = orden$line_items$name[[i]],
-        "precio"= as.numeric(orden$line_items$price[[i]]) - as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento)),
+        "precio"= as.numeric(orden$line_items$price[[i]]) - as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento))/orden$line_items$quantity[[i]],
         "sku"=orden$line_items$sku[[i]],
         "cantidad" = orden$line_items$quantity[[i]],
         "descuento" = NULL
