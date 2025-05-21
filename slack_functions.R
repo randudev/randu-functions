@@ -51,13 +51,11 @@ slack_responder_pregunta <- function(resp_mensaje,ml_token){
   if(!is.null(hilo[[1]]$subtype)){
     if(str_detect(texto,"<@U08LEBF4Q85> ") && str_detect(hilo[[1]]$text,"ID pregunta: ")){
       if(str_detect(hilo[[1]]$text,Sys.getenv("SELLERID_ML_ASM"))){
-        if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
           recordid_token <- "recQLtjnMhd4ZCiJq"
           canal <- "mercadolibreasm"
-        }else{
-          recordid_token <- ""
-          canal <- NULL
-        }
+      }else{
+        recordid_token <- ""
+        canal <- NULL
       }
       ml_token <- get_active_token(recordid_token)
       mensaje_slack <- str_split(texto,"<@U08LEBF4Q85> ")[[1]][2]
