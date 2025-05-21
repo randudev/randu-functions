@@ -34,6 +34,11 @@ slack_mensaje_pregunta <- function(preguntas){
         }
         mensaje <-paste0("El articulo: ",item$id," ",articulo,"\nhttps://articulo.mercadolibre.com.mx/MLM-",
                          str_sub(item$id,4,nchar(item$id)),"\nRecibio una pregunta de ",nombre,"\n\nID pregunta: ",questions$id,"\n",questions$text)
+        
+        if(recordid_token == "recQLtjnMhd4ZCiJq"){
+          mensaje <- paste0(Sys.getenv("SELLERID_ML_ASM"), " ", mensaje)
+        }
+        
         enviar_mensaje_slack(Sys.getenv("SLACK_QUESTIONS_URL"),mensaje = mensaje)      
       }
     }
@@ -45,6 +50,16 @@ slack_responder_pregunta <- function(resp_mensaje,ml_token){
   hilo<- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$thread_ts)
   if(!is.null(hilo[[1]]$subtype)){
     if(str_detect(texto,"<@U08LEBF4Q85> ") && str_detect(hilo[[1]]$text,"ID pregunta: ")){
+      if(str_detect(hilo[[1]]$text,Sys.getenv("SELLERID_ML_ASM"))){
+        if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
+          recordid_token <- "recQLtjnMhd4ZCiJq"
+          canal <- "mercadolibreasm"
+        }else{
+          recordid_token <- ""
+          canal <- NULL
+        }
+      }
+      ml_token <- get_active_token(recordid_token)
       mensaje_slack <- str_split(texto,"<@U08LEBF4Q85> ")[[1]][2]
       id <- str_split(str_split(hilo[[1]]$text,"ID pregunta: ")[[1]][2],"\\n")[[1]][1]
       if(es_numero(id) && nchar(mensaje_slack)!=0){
