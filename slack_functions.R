@@ -131,7 +131,7 @@ slack_mensaje_fulfillment_stock <- function(operaciones){
         if(last_response()$status_code %in% c(199:299) && length(publicacion)!=0){
           id_item <- publicacion[[1]]$fields$id_canal
           nombre <- publicacion[[1]]$fields$titulo
-          permalink <-   publicacion[[1]]$fields$link_ml      
+          permalink <-   publicacion[[1]]$fields$link_ml$url      
         }
         mensaje_operacion <- paste0("El stock de la publicacion: ", id_item, "  ", nombre,"\n",permalink
                                     ,"\nID del inventario de fulfillment: ",operacion$inventory_id,"\n"
