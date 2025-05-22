@@ -517,7 +517,7 @@ ml_cerrar_item <- function(ml_token){
   }
 }
 
-ml_subir_publicaciones <- function(item){
+ml_subir_publicaciones_air <- function(item){
   subtitle <- ""
   # for(k in 1:length(id_img_var[[j]]$selectedoptions)){
   #   if(k==1){
@@ -574,7 +574,7 @@ ml_subir_publicaciones <- function(item){
   }
 }
 
-ml_actualizar_publicaciones <- function(item,publicacion){
+ml_actualizar_publicaciones_air <- function(item,publicacion){
   
   subtitle <- ""
  
@@ -635,4 +635,106 @@ ml_operaciones_fulfillment <- function(id_operacion,ml_token){
     req_perform() %>% 
     resp_body_json()
   return(resp)
+}
+
+ml_stock_item <- function(id_item,ml_token,stock){
+  url <- paste0("https://api.mercadolibre.com/items/",id_item)
+  resp <- request(url) %>% 
+    req_method("PUT") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers(accept= "application/json") %>% 
+    req_headers('content-type' = 'application/x-www-form-urlencoded') %>% 
+    req_body_json(list("available_quantity" = stock)) %>% 
+    req_perform()
+}
+
+pausar_publicaciones_ml <- function(){
+  contar <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),
+                                    "AND({empacado}='',{empaque_terminado}='',{prioridad}='8 - Antes de la 1',FIND('2000',{comentarios}))")
+  #contar <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),"AND(FIND('VP17600 - 10914 - recibidor 100x30 - 25mm negro',{venta_producto}))")
+  contar_productos <- sapply(contar, function(x){
+    if(!str_detect(x$fields$producto_solicitado,"caja")){
+      x$fields$producto_solicitado
+    }
+  },simplify = T)
+  contar_cajas <- sapply(contar, function(x){
+    if(str_detect(x$fields$producto_solicitado,"caja")){
+      x$fields$producto_solicitado
+    }
+  },simplify = T)
+  contar_productos <- quitar_null(contar_productos)
+  if(length(contar_productos)>6){
+    productos  <- readRDS("publicaciones_a_pausar.RDS")
+    if(productos[[1]]=="activo"){
+      ml_status_publicacion_agencia(ml_token,"paused")
+      productos[[1]] <- "pausa"
+      saveRDS(productos,"publicaciones_a_pausar.RDS")
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),"Se pausaron las publicaciones")
+    }
+  }
+}
+
+ml_agencia_sin_partes <- function(){
+  publicaciones_agencia <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),
+                                                   "AND({canal}='mercadolibre randu',{tipo_envio}='Agencia',{status}='Activo')")
+  productos <- sapply(publicaciones_agencia,function(x){
+    producto <- airtable_getrecorddata_byid(x$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+    if(length(producto$fields$partes_producto)<=1 && !is.null(producto$fields$item_produccion)){
+      return(x$fields$id_canal)
+    }
+  })
+  productos <- quitar_null(productos)
+  productos <- append("activo",productos)
+  saveRDS(productos,"publicaciones_a_pausar.RDS")
+  return(productos)
+}
+
+ml_status_publicacion_agencia <- function(ml_token,status){
+  productos  <- readRDS("publicaciones_a_pausar.RDS")
+  if(length(productos)!=0){
+    for(i in productos[-1]){
+      item <- ml_status_item(productos[[i]],ml_token,status)
+      if(!last_response()$status_code %in% c(199:299) ){
+        causa <- toJSON(last_response() %>% resp_body_json())
+        item_no_cambio <- ml_obtener_item(productos[[i]],ml_token)
+        if(length(item$cause)!=0){
+          no_stock <- F
+          for(i in seq_along(item$cause)){
+            no_stock <- no_stock || str_detect(item$cause[[i]]$message,"stock") || str_detect(item$cause[[i]]$message,"not possible to activate")
+          }
+          if(no_stock){
+            aux <- ml_stock_item(productos[[i]],ml_token,10)
+            if(!last_response()$status_code %in% c(199:299) ){
+              
+              mensaje_dar_pausa <- paste0("El item: ",item_no_cambio$id," ",item_no_cambio$title,"\nNo se pudo poner en ",
+                                          status," ni cambiar la cantidad\n",toJSON(last_response() %>% resp_body_json()))
+              enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+            }
+          }else{
+            mensaje_dar_pausa <- paste0("El item: ",item_no_cambio$id," ",item_no_cambio$title,"\nNo se pudo poner en ",
+                                        status,"\n",causa)
+            enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+          }
+        }else{
+          mensaje_dar_pausa <- paste0("El item: ",item_no_cambio$id," ",item_no_cambio$title,"\nNo se pudo poner en ",
+                                      status,"\n",causa)
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+        }
+      }else{
+        if(item$status != status){
+          mensaje_dar_pausa <- paste0("El item: ",item$id," ",item$title,"\n",
+                                      "No se pudo poner en ",status)
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+        }
+        if(item$available_quantity<2){
+          aux <- ml_stock_item(item$id,ml_token,10)
+          if(!last_response()$status_code %in% c(199:299) ){
+            mensaje_dar_pausa <- paste0("El item: ",item$id," ",item$title,"\nNo se pudo poner cambiar la cantidad\n",
+                                        toJSON(last_response() %>% resp_body_json()))
+            enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+          }
+        }
+      }
+    }
+  }
 }
