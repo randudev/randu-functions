@@ -738,3 +738,31 @@ ml_status_publicacion_agencia <- function(ml_token,status){
     }
   }
 }
+
+ml_items_id <- function(user_id,ml_token){
+  base_url <- paste0("https://api.mercadolibre.com/users/", user_id, "/items/search")
+  offset <- 0
+  limit <- 50
+  all_ids <- c()
+  
+  while(T) {
+    url <- paste0(base_url, "?offset=", offset, "&limit=", limit)
+    
+    resp <- request(url) %>%
+      req_auth_bearer_token(ml_token) %>%
+      req_perform() %>%
+      resp_body_json()
+    
+    ids <- resp$results
+    total <- resp$paging$total
+    
+    all_ids <- append(all_ids, ids)
+    
+    offset <- offset + limit
+    if (offset >= total){
+      break
+    }
+  }
+  
+  return(all_ids)
+}

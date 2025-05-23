@@ -33,7 +33,7 @@ generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid){
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() %>% 
     resp_body_json()
-  airtable_updatesinglerecord(list('qr_image'=list(list('url'=response$href))),"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),recordid)
+  #airtable_updatesinglerecord(list('qr_image'=list(list('url'=response$href))),"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),recordid)
   
   if(last_response()$status_code %in% c(199:299)){
     return(response$href)
