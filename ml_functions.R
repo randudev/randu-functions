@@ -559,7 +559,8 @@ ml_subir_publicaciones_air <- function(item){
     "titulo" = item$title,
     "subtitulo"=subtitle,
     "status"=status,
-    "tipo_envio"=envio
+    "tipo_envio"=envio,
+    "stock_publicacion"=item$available_quantity
   )
   if(length(producto)!=0){
     fields <- append(fields,list("producto"=list(producto[[1]]$id)))
@@ -609,7 +610,8 @@ ml_actualizar_publicaciones_air <- function(item,publicacion){
     "titulo" = item$title,
     "subtitulo"=subtitle,
     "status"=status,
-    "tipo_envio"=envio
+    "tipo_envio"=envio,
+    "stock_publicacion"=item$available_quantity
   )
   if(length(producto)!=0){
     fields <- append(fields,list("producto"=list(producto[[1]]$id)))
