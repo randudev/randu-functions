@@ -653,27 +653,30 @@ ml_stock_item <- function(id_item,ml_token,stock){
 }
 
 pausar_publicaciones_ml <- function(){
-  contar <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),
-                                    "AND({empacado}='',{empaque_terminado}='',{prioridad}='8 - Antes de la 1',FIND('2000',{comentarios}))")
-  #contar <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),"AND(FIND('VP17600 - 10914 - recibidor 100x30 - 25mm negro',{venta_producto}))")
-  contar_productos <- sapply(contar, function(x){
-    if(!str_detect(x$fields$producto_solicitado,"caja")){
-      x$fields$producto_solicitado
-    }
-  },simplify = T)
-  contar_cajas <- sapply(contar, function(x){
-    if(str_detect(x$fields$producto_solicitado,"caja")){
-      x$fields$producto_solicitado
-    }
-  },simplify = T)
-  contar_productos <- quitar_null(contar_productos)
-  if(length(contar_productos)>6){
-    productos  <- readRDS("publicaciones_a_pausar.RDS")
-    if(productos[[1]]=="activo"){
-      ml_status_publicacion_agencia(ml_token,"paused")
-      productos[[1]] <- "pausa"
-      saveRDS(productos,"publicaciones_a_pausar.RDS")
-      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),"Se pausaron las publicaciones")
+  productos  <- readRDS("publicaciones_a_pausar.RDS")
+  if(productos[[1]]=="activo"){
+    contar <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),
+                                      "AND({empacado}='',{empaque_terminado}='',{prioridad}='8 - Antes de la 1',FIND('2000',{comentarios}))")
+    #contar <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),"AND(FIND('VP17600 - 10914 - recibidor 100x30 - 25mm negro',{venta_producto}))")
+    if(length(contar)!=0){
+      contar_productos <- sapply(contar, function(x){
+        if(!str_detect(x$fields$producto_solicitado,"caja")){
+          x$fields$producto_solicitado
+        }
+      },simplify = T)
+      contar_cajas <- sapply(contar, function(x){
+        if(str_detect(x$fields$producto_solicitado,"caja")){
+          x$fields$producto_solicitado
+        }
+      },simplify = T)
+      contar_productos <- quitar_null(contar_productos)
+      if(length(contar_productos)>6){
+        
+        ml_status_publicacion_agencia(ml_token,"paused")
+        productos[[1]] <- "pausa"
+        saveRDS(productos,"publicaciones_a_pausar.RDS")
+        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),"Se pausaron las publicaciones")
+      }
     }
   }
 }
