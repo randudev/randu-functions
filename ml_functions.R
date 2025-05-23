@@ -578,7 +578,7 @@ ml_subir_publicaciones_air <- function(item){
 ml_actualizar_publicaciones_air <- function(item,publicacion){
   
   subtitle <- ""
- 
+  sku <- 0
   for(i in seq_along(item$attributes)){
     subtitle <- paste0(subtitle,item$attributes[[i]]$name,": ",item$attributes[[i]]$value_name,"/")
     
@@ -586,7 +586,9 @@ ml_actualizar_publicaciones_air <- function(item,publicacion){
       sku <- item$attributes[[i]]$value_name
     }
   }
-  producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
+  
+  producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE1"),paste0("sku=",sku))
+  
   if(item$status!="paused"){
     status <- "Activo"
   }else{
