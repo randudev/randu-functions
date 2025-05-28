@@ -81,13 +81,13 @@ facturapi_cancelar_recibo <- function(id,auth_facturapi){
     req_perform() 
 }
 
-facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta){
+facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago="31"){
   items <- datos_recibo(canal_venta,orden,id_orden)
   
   items_json <- sapply(items, function(producto) {
     generar_json(producto$cantidad, producto$nombre, producto$producto_key, producto$precio, producto$sku,producto$descuento)
   })
-  recibo <- paste0('{"payment_form": "31", "items": [', paste(items_json, collapse = ","), ']}')
+  recibo <- paste0('{"payment_form": "',tipo_de_pago,'", "items": [', paste(items_json, collapse = ","), ']}')
   recibo_lista <- fromJSON(recibo)
   recibo_lista <- append(recibo_lista,list("external_id"=id_orden))
   

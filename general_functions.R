@@ -220,6 +220,12 @@ registrar_producto <- function(producto,venta_producto){
               if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
                 fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
               }
+              if(orden_venta$fields$canal_venta=="walmartrnd"){
+                fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
+              }
+              if(orden_venta$fields$canal_venta=="dstrnd"){
+                fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="3 - Alta"))
+              }
               #airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
               
             }
