@@ -10,6 +10,12 @@ slack_mensaje_pregunta <- function(preguntas){
   questions_id <- preguntas$id_resource
   for(i in seq_along(questions_id)){
     cuerpo <- fromJSON(preguntas$body[[i]])
+    if(!is.null(cuerpo$attempts)){
+      if(cuerpo$attempts != 1){
+        next
+      }
+    }
+    
     if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
       recordid_token <- "recQLtjnMhd4ZCiJq"
       canal <- "mercadolibreasm"
