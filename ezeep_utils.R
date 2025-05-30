@@ -46,9 +46,10 @@ ezeep_getactivetoken <- function(){
 ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=NULL){
   switch(printername,
          'impresora_rosa'={
-           printer_id <- "1f0763ce-3112-4c5d-929c-800354d6ca83"
+           #printer_id <- "1f0763ce-3112-4c5d-929c-800354d6ca83"
+           printer_id <- "2c34289c-5304-4c43-a66b-cadea20fc2e2"
            paper_id <- 257
-           paper_name <- "4 x 2"
+           paper_name <- "4x2"
            orientation <- 2
          },
          'impresora_azul'={
