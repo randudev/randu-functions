@@ -705,12 +705,17 @@ ml_agencia_sin_partes <- function(){
 
 ml_status_publicacion_agencia <- function(ml_token,status){
   productos  <- readRDS("publicaciones_a_pausar.RDS")
-  if(length(productos)!=0){
-    for(i in 1:length(productos[-1])){
+  if(length(productos)>1 ){
+    productos <- productos[-1]
+    for(i in 1:length(productos)){
+      item_no_cambio <- ml_obtener_item(productos[[i]],ml_token)
+      if(item_no_cambio$status == "under_review"){
+        next
+      }
       item <- ml_status_item(productos[[i]],ml_token,status)
       if(!last_response()$status_code %in% c(199:299) ){
         causa <- toJSON(last_response() %>% resp_body_json())
-        item_no_cambio <- ml_obtener_item(productos[[i]],ml_token)
+        
         if(length(item$cause)!=0){
           no_stock <- F
           for(i in seq_along(item$cause)){
