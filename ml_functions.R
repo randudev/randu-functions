@@ -654,6 +654,7 @@ ml_stock_item <- function(id_item,ml_token,stock){
 
 pausar_publicaciones_ml <- function(){
   productos  <- readRDS("publicaciones_a_pausar.RDS")
+  ml_token <- get_active_token()
   if(productos[[1]]=="activo"){
     contar <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),
                                       "AND({empacado}='',{prioridad}='8 - Antes de la 1',FIND('2000',{comentarios}),NOT(FIND('caja',{producto_solicitado})))")
