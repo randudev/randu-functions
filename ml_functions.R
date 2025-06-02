@@ -691,8 +691,14 @@ ml_agencia_sin_partes <- function(){
       return(x$fields$id_canal)
     }
   })
+  if(file.exists("publicaciones_a_pausar.RDS")) {
+    publicaciones_a_pausar <- readRDS("publicaciones_a_pausar.RDS")
+    status <- publicaciones_a_pausar[[1]]
+  } else {
+    status <- "activo"
+  }
   productos <- quitar_null(productos)
-  productos <- append("activo",productos)
+  productos <- append(status,productos)
   saveRDS(productos,"publicaciones_a_pausar.RDS")
   return(productos)
 }
