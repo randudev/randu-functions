@@ -370,9 +370,14 @@ revisar_recibo <- function(recibos){
   shp_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
   recibos_validos <- list()
   fecha_final <- as.Date(format(Sys.Date(), "%Y-%m-01"))-1
-  fecha_final <- as.Date(format(fecha_final,"%Y-%m-24"))
+  #fecha_final <- as.Date(format(fecha_final,"%Y-%m-31"))
   fecha_inicio <- as.Date(format(fecha_final, "%Y-%m-01"))
   for(i in seq_along(recibos)){
+    if(recibos[[i]]$fields$canal_venta=="shprndmx"){
+      fecha_final <- as.Date(format(fecha_final,"%Y-%m-28"))
+    }else{
+      fecha_final <- as.Date(format(Sys.Date(), "%Y-%m-01"))-1
+    }
     if(recibos[[i]]$fields$fecha_creacion>fecha_inicio && recibos[[i]]$fields$fecha_creacion<fecha_final){
       if(recibos[[i]]$fields$canal_venta=="mercadolibrernd"){
         orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
