@@ -373,10 +373,14 @@ revisar_recibo <- function(recibos){
   #fecha_final <- as.Date(format(fecha_final,"%Y-%m-31"))
   fecha_inicio <- as.Date(format(fecha_final, "%Y-%m-01"))
   for(i in seq_along(recibos)){
+    if(i%%5==0){
+      print(i)
+    }
+    fecha_final <- as.Date(format(Sys.Date(), "%Y-%m-01"))-1
+    if(is.null(recibos[[i]]$fields$canal_venta)){print(recibos[[i]]$fields)}
+    
     if(recibos[[i]]$fields$canal_venta=="shprndmx"){
       fecha_final <- as.Date(format(fecha_final,"%Y-%m-28"))
-    }else{
-      fecha_final <- as.Date(format(Sys.Date(), "%Y-%m-01"))-1
     }
     if(recibos[[i]]$fields$fecha_creacion>fecha_inicio && recibos[[i]]$fields$fecha_creacion<fecha_final){
       if(recibos[[i]]$fields$canal_venta=="mercadolibrernd"){
@@ -394,7 +398,7 @@ revisar_recibo <- function(recibos){
         orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
         amz_order <- get_amzorder_byid(orden_venta$fields$id_origen,amz_token)
         if(amz_order$payload$OrderStatus != "Canceled"){
-          if(amz_order$payload$OrderTotal$Amount== recibos[[i]]$fields$monto){
+          if(as.numeric(amz_order$payload$OrderTotal$Amount)== as.numeric(recibos[[i]]$fields$monto)){
             recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
           }
         }else{
@@ -407,7 +411,7 @@ revisar_recibo <- function(recibos){
           #orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta,"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
           shp_order <- consulta_por_nombre(orden_venta$fields$id_origen,shp_token)
           if(is.null(shp_order$data$orders$edges[[1]]$node$cancelledAt)){
-            if(shp_order$data$orders$edges[[1]]$node$totalPriceSet$shopMoney$amount == recibos[[i]]$fields$monto){
+            if(as.numeric(shp_order$data$orders$edges[[1]]$node$totalPriceSet$shopMoney$amount) == as.numeric(recibos[[i]]$fields$monto)){
               recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
             }
           }else{
