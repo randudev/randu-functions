@@ -391,7 +391,7 @@ revisar_recibo <- function(recibos){
             recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
           }
         }else{
-          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta[[1]])
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibos[[i]]$fields$orden_venta[[1]])
         }
       }
       if(recibos[[i]]$fields$canal_venta == "amazonrnd"){
@@ -402,7 +402,7 @@ revisar_recibo <- function(recibos){
             recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
           }
         }else{
-          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta[[1]])
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibos[[i]]$fields$orden_venta[[1]])
         }
       }
       if(recibos[[i]]$fields$canal_venta == "shprndmx"){
@@ -415,7 +415,7 @@ revisar_recibo <- function(recibos){
               recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
             }
           }else{
-            airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta[[1]])
+            airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibos[[i]]$fields$orden_venta[[1]])
           }
         }
       }
@@ -427,7 +427,7 @@ revisar_recibo <- function(recibos){
             recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
           }
         }else{
-          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibo$fields$ordenes_venta[[1]])
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibos[[i]]$fields$orden_venta[[1]])
         }
       }
     }
