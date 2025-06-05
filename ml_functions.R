@@ -708,7 +708,7 @@ pausar_publicaciones_ml <- function(){
 
 ml_agencia_sin_partes <- function(){
   publicaciones_agencia <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),
-                                                   "AND({canal}='mercadolibre randu',{tipo_envio}='Agencia',{status}='Activo')")
+                                                   "AND({canal}='mercadolibre randu',{tipo_envio}='Agencia')")
   productos <- sapply(publicaciones_agencia,function(x){
     producto <- airtable_getrecorddata_byid(x$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
     if(length(producto$fields$partes_producto)<=1 && !is.null(producto$fields$item_produccion)){

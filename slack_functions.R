@@ -164,6 +164,9 @@ slack_mensaje_fulfillment_stock <- function(operaciones){
 slack_cambiar_envio <- function(cuerpo){
   hilo <- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$thread_ts)
   texto <- hilo[[1]]$text
+  if(str_detect(texto,"test")){
+    return(0)
+  }
   id_orden <- str_split(str_split(texto,"\\n")[[1]][1]," ")[[1]][1]
   orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
                                          paste0("id_origen='",id_orden,"'"))
