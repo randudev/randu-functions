@@ -54,7 +54,6 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
   lineitems_recordid <- register_lineitems_ml(mlorder, ml_token)
   #client_recordid <- register_client(shopifyorder)
   #shippingaddress_recordid <- register_address(shopifyorder)
-  mlshipment <- get_dir_mlorder(mlorder,mltoken)
   fieldslist <- list(
     'fecha'=mlorder$date_created,
     'canal_venta'='mercadolibrernd',
