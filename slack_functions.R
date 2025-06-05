@@ -164,7 +164,7 @@ slack_mensaje_fulfillment_stock <- function(operaciones){
 slack_cambiar_envio <- function(cuerpo){
   hilo <- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$thread_ts)
   texto <- hilo[[1]]$text
-  if(str_detect(texto,"test")){
+  if(str_detect(cuerpo$event$text,"test")){
     return(0)
   }
   id_orden <- str_split(str_split(texto,"\\n")[[1]][1]," ")[[1]][1]
