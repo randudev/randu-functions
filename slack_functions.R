@@ -160,3 +160,52 @@ slack_mensaje_fulfillment_stock <- function(operaciones){
     }
   }
 }
+
+slack_cambiar_envio <- function(cuerpo){
+  hilo <- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$thread_ts)
+  texto <- hilo[[1]]$text
+  id_orden <- str_split(str_split(texto,"\\n")[[1]][1]," ")[[1]][1]
+  orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                         paste0("id_origen='",id_orden,"'"))
+  id_solicitudes <- ""
+  bandera <- T
+  if(length(orden_venta)!=0){
+    if(length(orden_venta[[1]]$fields$solicitud_produccion)!=0){
+      for(i in seq_along(orden_venta[[1]]$fields$solicitud_produccion)){
+        fields <- list("tipo_empaque"="estándar")
+        airtable_updatesinglerecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),
+                                    orden_venta[[1]]$fields$solicitud_produccion[[i]])
+        solicitud <- airtable_getrecorddata_byid(orden_venta[[1]]$fields$solicitud_produccion[[i]],"solicitudes_produccion",
+                                                 Sys.getenv("AIRTABLE_CES_BASE"))
+        id_solititud <- solicitud$fields$id_solicitud
+        
+        if(!last_response()$status_code %in% c(200:299)){
+          mensaje_error <-paste0("Tuvimos un error: ",last_response()$status_code,"\n",
+                                 toJSON(last_response() %>% resp_body_json()))
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+          respuesta_slack <- paste0("No se pudo cambiar el tipo de empaque de la solicitud: ", solicitud$fields$id_solicitud)
+          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$ts,respuesta_slack)
+          id_solititud <- ""
+        }
+        id_solicitudes <- paste0(id_solicitudes,id_solititud," ")
+      }
+    }
+    airtable_updatesinglerecord(list("envio_local"=FALSE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                orden_venta[[1]]$id)
+    if(!last_response()$status_code %in% c(200:299)){
+      mensaje_error <-paste0("Tuvimos un error: ",last_response()$status_code,"\n",
+                             toJSON(last_response() %>% resp_body_json()))
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+      respuesta_slack <- paste0("No se pudo cambiar el envio local de: ", orden_venta[[1]]$fields$id_ordenes_venta)
+      slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$ts,respuesta_slack)
+    }else{
+      respuesta_slack <- ""
+      if(str_detect(id_solicitudes,"SP")){
+        respuesta_slack <- paste0("Se modifico exitosamente las solicitudes de produccion: ", id_solicitudes)
+      }
+      respuesta_slack <- paste0(respuesta_slack,"\n","Se modifico el envio local de la orden de venta:", 
+                                orden_venta[[1]]$fields$id_ordenes_venta)
+      slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$ts,respuesta_slack)
+    }
+  }
+}

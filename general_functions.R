@@ -200,6 +200,9 @@ registrar_producto <- function(producto,venta_producto){
               if(parte_producto$fields$categoria == "Empaque"){
                 fields[[length(fields)]]$origen <- "empaque CNC"
               }
+              if(!is.null(orden_venta$fields$envio_local)){
+                fields[[length(fields)]]$tipo_empaque <- "ligero"
+              }
               if(orden_venta$fields$canal_venta=="mercadolibrernd"){
                 ml_token <- get_active_token()
                 ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
@@ -311,6 +314,9 @@ registrar_producto <- function(producto,venta_producto){
             "tipo_empaque"="estándar",
             "origen"="pedido"
           )
+          if(!is.null(orden_venta$fields$envio_local)){
+            fields$tipo_empaque <- "ligero"
+          }
           if(orden_venta$fields$canal_venta=="mercadolibrernd"){
             ml_token <- get_active_token()
             ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)

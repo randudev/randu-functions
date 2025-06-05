@@ -54,6 +54,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
   lineitems_recordid <- register_lineitems_ml(mlorder, ml_token)
   #client_recordid <- register_client(shopifyorder)
   #shippingaddress_recordid <- register_address(shopifyorder)
+  mlshipment <- get_dir_mlorder(mlorder,mltoken)
   fieldslist <- list(
     'fecha'=mlorder$date_created,
     'canal_venta'='mercadolibrernd',
@@ -63,8 +64,8 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
   if(!is.null(mlorder$shipping$id)){
     fieldslist <- append(fieldslist,list('ml_id_envio'=paste0(mlorder$shipping$id)))
   }
+  ml_shipping <- get_dir_mlorder(mlorder,ml_token)
   if("splitted_order" %in% mlorder$tags){
-    ml_shipping <- get_dir_mlorder(mlorder,ml_token)
     ov_padre <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("ml_id_envio='",ml_shipping$sibling$sibling_id,"'"))
     if(length(ov_padre)==1){
       fieldslist <- append(fieldslist,list("ov_padre"=list(ov_padre[[1]]$id)))
@@ -82,6 +83,29 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
     if(!is.null(mlorder$shipping$id)){
       dir_id <- register_shippingadd_ml_atb(mlorder, ml_token, newov_content$id)
       register_client_ml(mlorder,ml_token,dir_id,newov_content$id)
+      codigospostalesQRO <- readRDS("~/codigospostalesQRO.RDS")
+      if(!is.null(ml_shipping$logistic$type)){
+        if(ml_shipping$logistic$type != "xd_drop_off" && ml_shipping$logistic$type != "fulfillment"){
+          if(ml_shipping$destination$shipping_address$zip_code %in% codigospostalesQRO){
+            mensaje_envio <- paste0(ml_order$id ," pack_id: ",ml_order$pack_id,"\nLa orden de venta se registro como envio local \n",
+                                    "CP: ",ml_shipping$destination$shipping_address$zip_code, " Calle: ",shopifyorder$shipping_address$address1,
+                                    " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
+                                    "\n¿Deseas cambiar el tipo de envio a paqueteria?")
+            enviar_mensaje_slack(,mensaje_envio)
+            airtable_updatesinglerecord(list("entrega_local"=TRUE),"ordenes_venta",Sys.getenv('AIRTABLE_CES_BASE'),newov_content$id)
+          }
+        }
+      }else{
+        if(ml_shipping$destination$shipping_address$zip_code %in% codigospostalesQRO){
+          mensaje_envio <- paste0(ml_order$id ," pack_id: ",ml_order$pack_id,"\nLa orden de venta se registro como envio local \n",
+                                  "CP: ",ml_shipping$destination$shipping_address$zip_code, " Calle: ",ml_shipping$destination$shipping_address$street_name,
+                                  " Colonia: ",ml_shipping$destination$shipping_address$neighborhood$name," Ciudad: ",ml_shipping$destination$shipping_address$city$name,
+                                  "\n¿Deseas cambiar el tipo de envio a paqueteria?")
+          enviar_mensaje_slack(,mensaje_envio)
+          airtable_updatesinglerecord(list("entrega_local"=TRUE),"ordenes_venta",Sys.getenv('AIRTABLE_CES_BASE'),newov_content$id)
+        }
+      }
+      
     }
   }
   return(newov_content)
