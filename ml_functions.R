@@ -62,8 +62,9 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
   )
   if(!is.null(mlorder$shipping$id)){
     fieldslist <- append(fieldslist,list('ml_id_envio'=paste0(mlorder$shipping$id)))
+    ml_shipping <- get_dir_mlorder(mlorder,ml_token)
   }
-  ml_shipping <- get_dir_mlorder(mlorder,ml_token)
+  
   if("splitted_order" %in% mlorder$tags){
     ov_padre <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("ml_id_envio='",ml_shipping$sibling$sibling_id,"'"))
     if(length(ov_padre)==1){
