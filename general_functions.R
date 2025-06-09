@@ -175,7 +175,7 @@ registrar_producto <- function(producto,venta_producto){
           #parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_RIR_BASE"))
           if(parte_producto$fields$cantidad_disponible<venta_producto$fields$cantidad){
             if(!is.null(parte_producto$fields$item_produccion)){
-              if(str_detect(tolower(producto$fields$id_productos),"juego")){
+              if(str_detect(tolower(producto$fields$id_productos),"juego") && !str_detect(tolower(parte_producto$fields$id_productos),"caja bulto")){
                 fields[[length(fields) + 1]] <- list(
                   "tabla"="solicitudes",
                   "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
