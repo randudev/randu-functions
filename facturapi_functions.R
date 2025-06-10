@@ -461,7 +461,7 @@ cambiar_recibo <- function(id_origen,forma_pago){
     }else{
       orden_venta <-  airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_origen='",id_origen,"'"))
       if(length(orden_venta)==0){
-        orden_venta airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("ml_pack_id='",id_origen,"'"))
+        orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("ml_pack_id='",id_origen,"'"))
       }
       if(length(orden_venta) != 0){
         orden_venta <- orden_venta[[1]]
