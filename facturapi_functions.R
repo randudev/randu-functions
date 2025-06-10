@@ -434,3 +434,55 @@ revisar_recibo <- function(recibos){
   }
   return(recibos_validos)
 }
+
+cambiar_recibo <- function(id_origen,forma_pago){
+  if(str_detect(id_origen,"SHP")){
+    id_origen <- trimws(id_origen)
+    noti <- supabase_getrecordslist("notificaciones",,paste0('body=ilike.*',id_origen,'*')) %>% bind_rows()
+    if(length(noti)==0){
+      return(0)
+    }
+    orden_shopify <- subset(noti,str_detect(headers,"orders/create"))
+    shopifyorden <- fromJSON(orden_shopify$body[[i]])
+    ov_shopi <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_origen='",id_origen,"'"))[[1]]
+    recibo <- facturapi_crear_recibo(shopifyorden,Sys.getenv("FACTURAPI_KEY"),shopifyorden$name,"shp",forma_pago)
+    registrar_recibo(recibo,ov_shopi)
+    airtable_updatesinglerecord(list("id_recibo"=recibo$id),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),ov_shopi$id)
+    
+  }else{
+    if(str_detect(id_origen,"-")){
+      amz_token<- amz_get_active_token()
+      amz_order <- get_amzorder_byid(id_origen,amz_token)
+      ov_amz <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_origen='",id_origen,"'"))[[1]]
+      amz_order_items <- get_amzorderitem_byid(id_origen,amz_token)
+      recibo <- facturapi_crear_recibo(amz_order_items,Sys.getenv("FACTURAPI_KEY"),id_origen,"amz",forma_pago)
+      registrar_recibo(recibo,ov_amz)
+      airtable_updatesinglerecord(list("id_recibo"=recibo$id),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),ov_amz$id)
+    }else{
+      orden_venta <-  airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_origen='",id_origen,"'"))
+      if(length(orden_venta)==0){
+        orden_venta airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("ml_pack_id='",id_origen,"'"))
+      }
+      if(length(orden_venta) != 0){
+        orden_venta <- orden_venta[[1]]
+      }
+      
+      noti <- supabase_getrecordslist("notificaciones",,paste0('body=ilike.*',orden_venta,'*')) %>% bind_rows()
+      cuerpo <- fromJSON(noti$body[[1]])
+      if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
+        recordid_token <- "recQLtjnMhd4ZCiJq"
+        canal <- "mercadolibreasm"
+      }else{
+        recordid_token <- ""
+        canal <- NULL
+      }
+      ml_token <- get_active_token(recordid_token)
+      ml_order <- get_mlorder_byid(id_origen)
+      
+      recibo <- facturapi_crear_recibo(ml_order,Sys.getenv("FACTURAPI_KEY"),paste0(ml_order$id),"ml",forma_pago)
+      registrar_recibo(recibo,orden_venta)
+      airtable_updatesinglerecord(list("id_recibo"=recibo$id),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),orden_venta$id)
+    }
+  }
+  return(recibo)
+}
