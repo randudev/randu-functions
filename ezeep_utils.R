@@ -5,10 +5,11 @@ library(dotenv)
 #source(airtableutils.R)
 #dotenv::load_dot_env('production.env')
 
-atb_dev_base <- Sys.getenv('AIRTABLE_DEV_BASE')
-clientidsec_ezeep_b64 <- Sys.getenv('EZEEP_CLID_B64')
 
 ezeep_getactivetoken <- function(){
+  atb_dev_base <- Sys.getenv('AIRTABLE_DEV_BASE')
+  clientidsec_ezeep_b64 <- Sys.getenv('EZEEP_CLID_B64')
+  
   tkdata <- airtable_getrecorddata_byid("recGnx94XcVEgnpVZ", "tokens", atb_dev_base)
   tkdata <- tkdata$fields
   token_expires <- lubridate::as_datetime(tkdata$token_expires)
@@ -23,10 +24,22 @@ ezeep_getactivetoken <- function(){
       req_method("POST") %>% 
       req_headers('Content-type'='application/x-www-form-urlencoded') %>% 
       req_headers('Authorization'=paste0('Basic ',clientidsec_ezeep_b64)) %>% 
-      req_body_form('grant_type'='refresh_token') %>% 
-      req_body_form('scope'='printing') %>% 
-      req_body_form('refresh_token'=refresh_token) %>%
+      req_body_form("grant_type" = 'refresh_token',
+                    "scope" = 'printing',
+                    "refresh_token" = refresh_token) %>% 
+      req_error(is_error = function(resp) FALSE) %>%
       req_perform()
+    if(!last_response()$status_code() %in% c(199:299)){
+      tryCatch(
+        expr = {
+          mensaje <- paste0("No se pudo actualizar el token por: ", last_response() %>% resp_body_string())
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+        },error =function(e){
+          mensaje <- paste0("No se pudo actualizar el token y ocurrio un error", e)
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+        }
+      )
+    }
     
     newtokendata <- last_response() %>% resp_body_json()
     newaccess_token <- newtokendata$access_token
