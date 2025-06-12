@@ -681,7 +681,8 @@ pausar_publicaciones_ml <- function(){
   ml_token <- get_active_token()
   if(productos[[1]]=="activo"){
     contar <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),
-                                      "AND({empacado}='',{prioridad}='8 - Antes de la 1',FIND('2000',{comentarios}),NOT(FIND('caja',{producto_solicitado})))")
+                                      "AND({empacado}='',{prioridad}='8 - Antes de la 1',FIND('2000',{comentarios}),
+                                      NOT(FIND('caja',{producto_solicitado})),{origen}!='empaque CNC')")
     #contar <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),"AND(FIND('VP17600 - 10914 - recibidor 100x30 - 25mm negro',{venta_producto}))")
     if(length(contar)!=0){
       contar_productos <- sapply(contar, function(x){
