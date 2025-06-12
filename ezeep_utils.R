@@ -29,7 +29,7 @@ ezeep_getactivetoken <- function(){
                     "refresh_token" = refresh_token) %>% 
       req_error(is_error = function(resp) FALSE) %>%
       req_perform()
-    if(!last_response()$status_code() %in% c(199:299)){
+    if(!last_response()$status_code %in% c(199:299)){
       tryCatch(
         expr = {
           mensaje <- paste0("No se pudo actualizar el token por: ", last_response() %>% resp_body_string())
