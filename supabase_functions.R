@@ -71,9 +71,15 @@ supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="") {
     rango <- paste0(offset,"-",limit)
 
     pagina_url <- url_supabase
-    if (filters !="") {
-      for (filtro in filters) {
-        pagina_url <- paste0(pagina_url, "?", filtro)
+    if (length(filters) > 1 || filters !="") {
+      for (i in seq_along(filters)) {
+        filtro <- filters[[i]]
+        if(i == 1){
+          pagina_url <- paste0(pagina_url, "?", filtro)
+        }else{
+          pagina_url <- paste0(pagina_url, "&", filtro)
+        }
+        
       }
     }
   
