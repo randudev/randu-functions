@@ -252,7 +252,7 @@ registrar_producto <- function(producto,venta_producto){
               "ventas_producto"=list(venta_producto$id),
               "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
               "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
-              "ubicacion"="navex 93"
+              "ubicacion"="navex93"
             )
             if(is.null(parte_producto$fields$item_produccion)){
               cantidad_restante <- parte_producto$fields$cantidad_disponible - venta_producto$fields$cantidad
@@ -376,7 +376,7 @@ registrar_producto <- function(producto,venta_producto){
           "producto"=list(producto$id),
           "ventas_producto"=list(venta_producto$id),
           "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
-          "ubicacion"="navex 93",
+          "ubicacion"="navex93",
           "cantidad"=venta_producto$fields$cantidad
         )
         if(is.null(producto$fields$item_produccion)){
