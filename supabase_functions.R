@@ -109,6 +109,9 @@ supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="") {
       limit <- limit + 500
     } else {
       print(paste0("Error: ", response$status_code))
+      mensaje <- paste0("Error: ", response$status_code, " \n URL: " ,response$url, "\n",
+                        toJSON(last_response() %>% resp_body_json()))
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
       break
     }
     data <- list()
