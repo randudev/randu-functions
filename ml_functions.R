@@ -231,6 +231,26 @@ register_lineitems_ml <- function(mlorder, ml_token){
   vp_recordidlist
 }
 
+transaccion_mlfull <- function(ml_order,orden_venta){
+  fields <- list()
+  if(ml_order$seller$id == Sys.getenv("SELLERID_ML_ASM")){
+    ubicacion <- "ml_full_asm"
+  }else{
+    ubicacion <- "ml_full_rnd"
+  }
+  venta_producto <- airtable_getrecorddata_byid(orden_venta$fields$ventas_producto[[1]],"ventas_producto",
+                                                Sys.getenv("AIRTABLE_CES_BASE"))
+  fields <- list(
+    'tipo'='baja',
+    "producto"=venta_producto$fields$producto,
+    "ventas_producto"=orden_venta$fields$ventas_producto,
+    "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+    "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
+    "ubicacion"= ubicacion
+  )
+  airtable_createrecord(fields, "transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
+}
+
 guia_agencia_pdf <- function(ml_token,id_shipping,ruta=NULL,id_orden){
   url_envio <- paste0("https://api.mercadolibre.com/shipment_labels?shipment_ids=",id_shipping,"&response_type=pdf")
   response_envio <- request(url_envio) %>%

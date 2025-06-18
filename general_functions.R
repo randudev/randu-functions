@@ -166,7 +166,7 @@ registrar_producto <- function(producto,venta_producto){
   if(orden_venta$fields$canal_venta == "shprndmx" && str_detect(tolower(producto$fields$id_productos),"escritorio de altura ajustable en escuadra base negro")){
     return(0)
   }
-  if(!str_detect(tolower(producto$fields$id_productos),"10700") & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"personalizado")){
+  if(!str_detect(tolower(producto$fields$id_productos),"10700") & !str_detect(tolower(producto$fields$id_productos),"silla ergomax") & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"personalizado")){
     if(length(producto$fields$partes_producto) != 0){
       for(parte in producto$fields$partes_producto){
         #print(parte)
@@ -176,7 +176,7 @@ registrar_producto <- function(producto,venta_producto){
           
           parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
           #parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_RIR_BASE"))
-          if(parte_producto$fields$cantidad_disponible<venta_producto$fields$cantidad){
+          if(parte_producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
             if(!is.null(parte_producto$fields$item_produccion)){
               if(str_detect(tolower(producto$fields$id_productos),"juego") && !str_detect(tolower(parte_producto$fields$id_productos),"caja bulto")){
                 fields[[length(fields) + 1]] <- list(
@@ -255,7 +255,7 @@ registrar_producto <- function(producto,venta_producto){
               "ubicacion"="navex93"
             )
             if(is.null(parte_producto$fields$item_produccion)){
-              cantidad_restante <- parte_producto$fields$cantidad_disponible - venta_producto$fields$cantidad
+              cantidad_restante <- parte_producto$fields$cantidad_disponible_navex93 - venta_producto$fields$cantidad
               if(cantidad_restante<=6){
                 mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
                                   cantidad_restante, " unidades\nRevisa")
@@ -308,7 +308,7 @@ registrar_producto <- function(producto,venta_producto){
       else{print("No se registro")
         print(venta_producto$fields$id_ventas_producto)}
     }else{
-      if(venta_producto$fields$cantidad>producto$fields$cantidad_disponible){
+      if(venta_producto$fields$cantidad > producto$fields$cantidad_disponible_navex93){
         if(!is.null(producto$fields$item_produccion)){
           fields <- list(
             "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
@@ -380,7 +380,7 @@ registrar_producto <- function(producto,venta_producto){
           "cantidad"=venta_producto$fields$cantidad
         )
         if(is.null(producto$fields$item_produccion)){
-          cantidad_restante <- producto$fields$cantidad_disponible - venta_producto$fields$cantidad
+          cantidad_restante <- producto$fields$cantidad_disponible_navex93 - venta_producto$fields$cantidad
           if(cantidad_restante<=6){
             mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, "solo cuenta con ", 
                               cantidad_restante, " unidades\nRevisa")
