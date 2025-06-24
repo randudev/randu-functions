@@ -178,6 +178,10 @@ registrar_producto <- function(producto,venta_producto){
           #parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_RIR_BASE"))
           if(parte_producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
             if(!is.null(parte_producto$fields$item_produccion)){
+              tipo_empaque <- "estándar"
+              if(venta_producto$fields$cantidad >= 5 || !is.null(orden_venta$fields$entrega_local)){
+                tipo_empaque <- "ligero"
+              }
               if(str_detect(tolower(producto$fields$id_productos),"juego") && !str_detect(tolower(parte_producto$fields$id_productos),"caja bulto")){
                 fields[[length(fields) + 1]] <- list(
                   "tabla"="solicitudes",
@@ -185,7 +189,7 @@ registrar_producto <- function(producto,venta_producto){
                   "cantidad"=venta_producto$fields$cantidad,
                   "producto"=list(producto$id),
                   "venta_producto"=list(venta_producto$id),
-                  "tipo_empaque"="estándar",
+                  "tipo_empaque"=tipo_empaque,
                   "origen"="pedido"
                 )
               }else{
@@ -195,16 +199,13 @@ registrar_producto <- function(producto,venta_producto){
                   "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
                   "producto"=list(parte_producto$id),
                   "venta_producto"=list(venta_producto$id),
-                  "tipo_empaque"="estándar",
+                  "tipo_empaque"=tipo_empaque,
                   "origen"="pedido"
                 )
               }
               
               if(parte_producto$fields$categoria == "Empaque"){
                 fields[[length(fields)]]$origen <- "empaque CNC"
-              }
-              if(!is.null(orden_venta$fields$entrega_local)){
-                fields[[length(fields)]]$tipo_empaque <- "ligero"
               }
               if(orden_venta$fields$canal_venta=="mercadolibrernd"){
                 ml_token <- get_active_token()
@@ -310,17 +311,19 @@ registrar_producto <- function(producto,venta_producto){
     }else{
       if(venta_producto$fields$cantidad > producto$fields$cantidad_disponible_navex93){
         if(!is.null(producto$fields$item_produccion)){
+          tipo_empaque <- "estándar"
+          if(venta_producto$fields$cantidad >= 5 || !is.null(orden_venta$fields$entrega_local)){
+            tipo_empaque <- "ligero"
+          }
           fields <- list(
             "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
             "cantidad"=venta_producto$fields$cantidad,
             "producto"=list(producto$id),
             "venta_producto"=list(venta_producto$id),
-            "tipo_empaque"="estándar",
+            "tipo_empaque"=tipo_empaque,
             "origen"="pedido"
           )
-          if(!is.null(orden_venta$fields$entrega_local)){
-            fields$tipo_empaque <- "ligero"
-          }
+          
           if(orden_venta$fields$canal_venta=="mercadolibrernd"){
             ml_token <- get_active_token()
             ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
