@@ -106,10 +106,10 @@ datos_recibo <- function(canal_venta,orden,id_orden){
   if(canal_venta=="ml"){
     for(i in 1:length(orden$order_item)){
       items_orden[[length(items_orden) + 1]] <- list(
-        "nombre" = orden$order_items[[1]]$item$title,
-        "precio"= orden$order_items[[1]]$unit_price,
-        "sku"=orden$order_items[[1]]$item$seller_sku,
-        "cantidad" = orden$order_items[[1]]$quantity 
+        "nombre" = orden$order_items[[i]]$item$title,
+        "precio"= orden$order_items[[i]]$unit_price,
+        "sku"=orden$order_items[[i]]$item$seller_sku,
+        "cantidad" = orden$order_items[[i]]$quantity 
       )  
       
     }
@@ -163,38 +163,53 @@ datos_recibo <- function(canal_venta,orden,id_orden){
       }
     }
   }
-  for(i in 1:length(items_orden)){
-    if(!is.null(items_orden[[i]]$sku)){
-      if(!is.na(items_orden[[i]]$sku) && str_detect(items_orden[[i]]$sku,"^\\d\\d\\d\\d\\d$") ){
-        if(items_orden[[i]]$sku!=1000){
-          producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
-                                            paste0("sku=",items_orden[[i]]$sku))
-          if(length(producto)!=0){
-            if(!is.null(producto)){
-              producto_key <- producto[[1]]$fields$clave_sat 
+  if(canal_venta == "directa"){
+    ventas_producto <- airtable_getrecordslist("ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",id_orden,"',{ordenes_venta})"))
+    for(i in 1:length(ventas_producto)){
+      producto <- airtable_getrecorddata_byid(ventas_producto[[i]]$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+      items_orden[[length(items_orden) + 1]] <- list(
+        "nombre" = ventas_producto[[i]]$fields$helper_productname,
+        "precio"= ventas_producto[[i]]$fields$precio_unitario_con_descuento,
+        "sku"=paste0(producto$fields$sku),
+        "cantidad" = ventas_producto[[i]]$fields$cantidad,
+        "producto_key"=producto$fields$clave_sat
+      )  
+    }
+  }
+  if(canal_venta != "directa"){
+    for(i in 1:length(items_orden)){
+      if(!is.null(items_orden[[i]]$sku)){
+        if(!is.na(items_orden[[i]]$sku) && str_detect(items_orden[[i]]$sku,"^\\d\\d\\d\\d\\d$") ){
+          if(items_orden[[i]]$sku!=1000){
+            producto<-airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
+                                              paste0("sku=",items_orden[[i]]$sku))
+            if(length(producto)!=0){
+              if(!is.null(producto)){
+                producto_key <- producto[[1]]$fields$clave_sat 
+              }else{
+                producto_key <- NULL
+              }
             }else{
               producto_key <- NULL
             }
           }else{
-            producto_key <- NULL
+            producto_key <- 78101800
           }
+          
         }else{
-          producto_key <- 78101800
+          producto_key <- NULL
         }
-        
       }else{
         producto_key <- NULL
       }
-    }else{
-      producto_key <- NULL
+      if(!is.null(producto_key)){
+        items_orden[[i]]$producto_key <- producto_key
+      }else{
+        items_orden[[i]]$producto_key <- 56101703
+      }
     }
-    if(!is.null(producto_key)){
-      items_orden[[i]]$producto_key <- producto_key
-    }else{
-      items_orden[[i]]$producto_key <- 56101703
-    }
+    
   }
-  
   return(items_orden)
 }
 
