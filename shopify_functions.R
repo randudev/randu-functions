@@ -300,7 +300,7 @@ register_lineitemsv3 <- function(shopifyorder){
       mensaje <- paste0("Hubo un problema al registrar la el line_item venta_producto #",i," de la orden ",shopifyorder$name,
                         "\nSe subio la orden pero no completa falto:",nombre_producto)
       print(mensaje)
-      email_error_general(mensaje)
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
     }
     #fieldslist1[[i]] <- fieldslist
   }
