@@ -232,4 +232,29 @@ airtable_estructura <- function(base_id){
     req_perform() %>% 
     resp_body_json()
 }
+
+delete_airtable_records <- function(api_key, base_id, table_name, record_ids) {
+  base_url <- paste0("https://api.airtable.com/v0/", base_id, "/", URLencode(table_name))
   
+  url <- base_url
+  for (id in record_ids) {
+    url <- paste0(url, ifelse(grepl("\\?", url), "&", "?"), "records[]=", id)
+  }
+  
+  # Hacer la solicitud DELETE
+  resp <- request(url) %>%
+    req_method("DELETE") %>%
+    req_headers(Authorization = paste("Bearer", api_key)) %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
+  # Verificar respuesta
+  if(!last_response()$status_code %in% c(199:299)){
+    mensaje <- paste0("No se pudieron eliminar estos records: \n", toJSON(record_ids),
+                      "\n", toJSON(last_response() %>% resp_body_json()))
+    enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+  }
+   
+  
+  return(resp)
+}

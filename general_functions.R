@@ -203,8 +203,8 @@ registrar_producto <- function(producto,venta_producto){
                   "origen"="pedido"
                 )
               }
-              
-              if(parte_producto$fields$categoria == "Empaque"){
+              sku_no_produccion <- c(10660:10671)
+              if(parte_producto$fields$categoria == "Empaque" || producto$fields$sku %in% sku_no_produccion){
                 fields[[length(fields)]]$origen <- "empaque CNC"
               }
               if(orden_venta$fields$canal_venta=="mercadolibrernd"){
@@ -283,7 +283,7 @@ registrar_producto <- function(producto,venta_producto){
                 link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
               }
               sp <- aux$fields$id_solicitud
-              nombre_producto <- aux$fields$producto_solicitado
+              nombre_producto <- paste0(aux$fields$producto_solicitado,".")
               url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
               airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
                                           'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
@@ -332,7 +332,10 @@ registrar_producto <- function(producto,venta_producto){
             "tipo_empaque"=tipo_empaque,
             "origen"="pedido"
           )
-          
+          sku_no_produccion <- c(10660:10671)
+          if(producto$fields$sku %in% sku_no_produccion){
+              fields$origen <- "empaque CNC"
+          }
           if(orden_venta$fields$canal_venta=="mercadolibrernd"){
             ml_token <- get_active_token()
             ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
@@ -371,7 +374,7 @@ registrar_producto <- function(producto,venta_producto){
               link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
             }
             sp <- aux$fields$id_solicitud
-            nombre_producto <- aux$fields$producto_solicitado
+            nombre_producto <- paste0(aux$fields$producto_solicitado,".")
             url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
             airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
                                         'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)

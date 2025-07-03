@@ -3,7 +3,7 @@ library(jsonlite)
 library(dotenv)
 library(purrr)
 
-supabase_createrecord <- function(fields, tablename="", base_id=""){
+supabase_createrecord <- function(fields, tablename="", base_id="",apikey=Sys.getenv("AUTH_SUPABASE_DEV")){
   tryCatch(
     expr = {
       if(base_id!=""){
@@ -13,7 +13,6 @@ supabase_createrecord <- function(fields, tablename="", base_id=""){
       }
       
       #url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablename)
-      apikey <- Sys.getenv("AUTH_SUPABASE_DEV")
       resp_sup <- request(url_supabase) %>%
         req_method("POST") %>%
         req_headers('apikey'=apikey) %>%
@@ -30,7 +29,7 @@ supabase_createrecord <- function(fields, tablename="", base_id=""){
   
 }
 
-supabase_update <- function(id,fieldslist, tablename="", base_id=""){
+supabase_update <- function(id,fieldslist, tablename="", base_id="",apikey=Sys.getenv("AUTH_SUPABASE_DEV")){
   if(base_id!=""){
     url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablename)
   }else{
@@ -39,7 +38,6 @@ supabase_update <- function(id,fieldslist, tablename="", base_id=""){
   ids <- paste0("(", paste(id, collapse = ","),")")
   url_supabase <- paste0(url_supabase,'?id=in.',ids)
  
-  apikey <- Sys.getenv("AUTH_SUPABASE_DEV")
   res<-request(url_supabase) %>% 
     req_method("PATCH") %>% 
     req_headers("apikey"=apikey,
@@ -55,8 +53,7 @@ supabase_update <- function(id,fieldslist, tablename="", base_id=""){
   } 
 }
 
-supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="") {
-  apikey <- Sys.getenv("AUTH_SUPABASE_DEV")
+supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="",apikey=Sys.getenv("AUTH_SUPABASE_DEV"),ordenar = T) {
   if(base_id!=""){
     url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tabla)
   }else{
@@ -82,6 +79,9 @@ supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="") {
         
       }
     }
+    if(ordenar){
+      pagina_url <- paste0(pagina_url, "&order=id.asc")
+    }
   
     if (fields!="") {
       pagina_url <- paste0(pagina_url, "&select=", paste(fields, collapse = ","))
@@ -92,7 +92,6 @@ supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="") {
       req_headers("Authorization" = paste0("Bearer ", apikey)) %>% 
       req_headers("Range"= rango) %>% 
       req_headers("Content-Type" = "application/json") %>%
-      req_url_query(order = "id.asc") %>%
       req_error(is_error = function(resp) FALSE) %>%
       req_perform()
     
@@ -118,7 +117,7 @@ supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="") {
 }
 
 #Esta funcion se usa para cuando quieres hacer cambio en mas de 2000 filas
-supabase_updates <- function(id,fieldslist, tablename="", base_id=""){
+supabase_updates <- function(id,fieldslist, tablename="", base_id="",apikey=Sys.getenv("AUTH_SUPABASE_DEV")){
   if(length(id)>2000){
    
     n_parts <- ceiling(length(id)/2000) + 1
@@ -129,6 +128,6 @@ supabase_updates <- function(id,fieldslist, tablename="", base_id=""){
      supabase_update(unlist(ids),fieldslist, tablename, base_id)
    }
   }else{
-    supabase_update(id,fieldslist, tablename, base_id)
+    supabase_update(id,fieldslist, tablename, base_id,api_key)
   }
 }
