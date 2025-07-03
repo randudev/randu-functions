@@ -128,6 +128,6 @@ supabase_updates <- function(id,fieldslist, tablename="", base_id="",apikey=Sys.
      supabase_update(unlist(ids),fieldslist, tablename, base_id)
    }
   }else{
-    supabase_update(id,fieldslist, tablename, base_id,api_key)
+    supabase_update(id,fieldslist, tablename, base_id,apikey)
   }
 }
