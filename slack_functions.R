@@ -212,3 +212,52 @@ slack_cambiar_envio <- function(cuerpo){
     }
   }
 }
+
+enviar_a_slack <- function(token,canal,mensaje = NULL,archivo = NULL,nombre_archivo = NULL,titulo_archivo = NULL){
+  if (!is.null(mensaje)) {
+    res <- request("https://slack.com/api/chat.postMessage") %>% 
+      req_method("POST") %>% 
+      req_headers(Authorization = paste("Bearer", token)) %>% 
+      req_body_json(list(
+        channel = canal,
+        text = mensaje
+      )) %>% 
+      req_perform() %>% 
+      resp_body_json()
+    if(last_response()$status_code %in% c(199:299)){
+      return(res)
+    }else{
+      mensaje_error <- paste0("No se pudo enviar el mensaje: ", mensaje,
+                              "\nRevisa ", last_response() %>% resp_body_string())
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+    }
+    
+  }
+  
+  # Enviar archivo si se proporciona
+  if (!is.null(archivo)) {
+    if (!file.exists(archivo)) {
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),"Archivo no encontrado")
+    }
+    
+    res <- request("https://slack.com/api/files.upload") %>% 
+      req_method("POST") %>% 
+      req_headers(Authorization = paste("Bearer", token)) %>% 
+      req_body_multipart(
+        channels = canal,
+        file = curl::form_file(archivo, type = "auto"),
+        filename = nombre_archivo %||% basename(archivo),
+        title = titulo_archivo %||% basename(archivo)
+      ) %>% 
+      req_perform() %>% 
+      resp_body_json()
+    
+    if(last_response()$status_code %in% c(199:299)){
+      return(res)
+    }else{
+      mensaje_error <- paste0("No se pudo enviar el mensaje: ", mensaje,
+                              "\nRevisa ", last_response() %>% resp_body_string())
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+    }
+  }
+}
