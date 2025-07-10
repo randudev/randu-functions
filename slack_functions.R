@@ -3,6 +3,7 @@ enviar_mensaje_slack <- function(url,mensaje){
     req_method("POST") %>%
     req_headers("Content-Type" = "application/json") %>%
     req_body_json(list(text = mensaje)) %>%
+    req_error(is_error = function(resp) FALSE) %>%
     req_perform()
 }
 
@@ -222,6 +223,7 @@ enviar_a_slack <- function(token,canal,mensaje = NULL,archivo = NULL,nombre_arch
         channel = canal,
         text = mensaje
       )) %>% 
+      req_error(is_error = function(resp) FALSE) %>%
       req_perform() %>% 
       resp_body_json()
     if(last_response()$status_code %in% c(199:299)){

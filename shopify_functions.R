@@ -502,6 +502,8 @@ enviar_nota <- function(order_id,numeros_rastreo,paqueteria,access_token){
   nota <- shopify_api_resquest(shopify_url,access_token,query_get_notes)
   nota <- nota$data$order$note
   notes <- paste0(nota,"\n",notes)
+  print(nota)
+  print(notes)
   
   notes_mutation <- paste0('
     mutation {

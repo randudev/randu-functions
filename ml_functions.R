@@ -182,7 +182,7 @@ register_lineitems_ml <- function(mlorder, ml_token){
   sku <- mlorder$order_items[[1]]$item$seller_sku
   comentarios <- ""
   fullfilment_type <- mlorder_checkfullfilment(mlorder, ml_token)
-  if(fullfilment_type=="fulfillment"){
+  if(fullfilment_type=="fulfillment" || mlorder$seller$id==Sys.getenv("SELLERID_ML_ASM")){
     fieldslist <- list(
       'cantidad'=cantidad,
       'helper_product_name'=nombre_producto,
