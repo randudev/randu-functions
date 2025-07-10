@@ -182,10 +182,14 @@ registrar_producto <- function(producto,venta_producto){
               if(venta_producto$fields$cantidad >= 5 || !is.null(orden_venta$fields$entrega_local)){
                 tipo_empaque <- "ligero"
               }
+              ov <- ""
+              if(is.null(orden_venta$fields$id_origen)){
+                ov <- orden_venta$fields$id_ordenes_venta
+              }
               if(str_detect(tolower(producto$fields$id_productos),"juego") && !str_detect(tolower(parte_producto$fields$id_productos),"caja bulto")){
                 fields[[length(fields) + 1]] <- list(
                   "tabla"="solicitudes",
-                  "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+                  "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
                   "cantidad"=venta_producto$fields$cantidad,
                   "producto"=list(producto$id),
                   "venta_producto"=list(venta_producto$id),
@@ -195,7 +199,7 @@ registrar_producto <- function(producto,venta_producto){
               }else{
                 fields[[length(fields) + 1]] <- list(
                   "tabla"="solicitudes",
-                  "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+                  "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
                   "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
                   "producto"=list(parte_producto$id),
                   "venta_producto"=list(venta_producto$id),
@@ -246,12 +250,16 @@ registrar_producto <- function(producto,venta_producto){
             }
           }
           else{
+            ov <- ""
+            if(is.null(orden_venta$fields$id_origen)){
+              ov <- orden_venta$fields$id_ordenes_venta
+            }
             fields[[length(fields) + 1]] <- list(
               "tabla"="transacciones",
               'tipo'='reserva',
               "producto"=list(parte_producto$id),
               "ventas_producto"=list(venta_producto$id),
-              "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+              "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
               "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
               "ubicacion"="navex93"
             )
@@ -324,8 +332,12 @@ registrar_producto <- function(producto,venta_producto){
           if(venta_producto$fields$cantidad >= 5 || !is.null(orden_venta$fields$entrega_local)){
             tipo_empaque <- "ligero"
           }
+          ov <- ""
+          if(is.null(orden_venta$fields$id_origen)){
+            ov <- orden_venta$fields$id_ordenes_venta
+          }
           fields <- list(
-            "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+            "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
             "cantidad"=venta_producto$fields$cantidad,
             "producto"=list(producto$id),
             "venta_producto"=list(venta_producto$id),
@@ -395,12 +407,15 @@ registrar_producto <- function(producto,venta_producto){
           print(venta_producto$fields$id_ventas_producto)
         }
       }else{
-        
+        ov <- ""
+        if(is.null(orden_venta$fields$id_origen)){
+          ov <- orden_venta$fields$id_ordenes_venta
+        }
         fields <- list(
           'tipo'='reserva',
           "producto"=list(producto$id),
           "ventas_producto"=list(venta_producto$id),
-          "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+          "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
           "ubicacion"="navex93",
           "cantidad"=venta_producto$fields$cantidad
         )
