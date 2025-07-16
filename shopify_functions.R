@@ -489,7 +489,12 @@ enviar_nota <- function(order_id,numeros_rastreo,paqueteria,access_token){
   if(paqueteria[[2]]=="PQX"){
     notes <- paste("Paqueteria:",paqueteria[[1]],"\nMulti-guia:\n", paste(numeros_rastreo, collapse = "\n"))
   }else{
-    notes <- paste("Paqueteria:",paqueteria[[1]],"\nNúmeros de rastreo adicionales:\n", paste(numeros_rastreo, collapse = "\n"))
+    if(paqueteria[[2]]=="Interna"){
+      notes <- paste("Paqueteria:","intera","\nNúmeros de rastreo adicionales:\n", paste(numeros_rastreo, collapse = "\n"))
+    }else{
+      notes <- paste("Paqueteria:",paqueteria[[1]],"\nNúmeros de rastreo adicionales:\n", paste(numeros_rastreo, collapse = "\n"))
+    }
+    
   }
   shopify_url <- "https://randumexico.myshopify.com/admin/api/2025-01/graphql.json"
   query_get_notes <- paste0('
@@ -520,6 +525,32 @@ enviar_nota <- function(order_id,numeros_rastreo,paqueteria,access_token){
 
   response_notes <- shopify_api_resquest(shopify_url,access_token,notes_mutation)
   return(response_notes)
+}
+
+shopify_marcar_enviado <- function(fulfill_id,access_token){
+  query <- paste0('mutation {
+  fulfillmentCreateV2(
+    fulfillment: {
+      lineItemsByFulfillmentOrder: [
+        {
+          fulfillmentOrderId: "',fulfill_id,'"
+        }
+      ],
+      notifyCustomer: true
+    }
+  ) {
+    fulfillment {
+      id
+      status
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}')
+  shopify_url <- "https://randumexico.myshopify.com/admin/api/2025-01/graphql.json"
+  ayuda <- shopify_api_resquest(shopify_url,access_token,query)
 }
 
 shopify_api_resquest <- function(shop_url,shopi_token, graphql_query,variables=NULL){
