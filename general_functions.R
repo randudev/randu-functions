@@ -467,3 +467,24 @@ quitar_null <- function(lista){
   mi_lista_sin_null <- Filter(Negate(is.null), lista)
   return(mi_lista_sin_null)
 }
+
+crear_pdf <- function(html){
+  url <-  "https://api.pdfendpoint.com/v1/convert"
+  pdf_key <- Sys.getenv("PDF_API_KEY")
+  resp <- request(url) %>% 
+    req_method("POST") %>% 
+    req_headers("Content-Type"= "application/json",
+                "Authorization"= paste0("Bearer ",pdf_key)) %>%
+    req_body_json(list("html"=html,
+                       "margin_top"= "0.5cm",
+                       "margin_bottom"= "0.5cm",
+                       "margin_right"= "0.5cm",
+                       "margin_left"= "0.5cm",
+                       "no_backgrounds"= T)) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
+  if(last_response()$status_code %in% c(199:299)){
+    return(resp$data$url)
+  }
+}
