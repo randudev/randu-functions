@@ -207,9 +207,7 @@ registrar_producto <- function(producto,venta_producto){
                   "origen"="pedido"
                 )
               }
-              sku_no_produccion <- c(10660:10671)
-              sku_no_produccion <- sku_no_produccion[!sku_no_produccion %in% c(10667, 10671)]
-              if(parte_producto$fields$categoria == "Empaque" || producto$fields$sku %in% sku_no_produccion){
+              if(parte_producto$fields$categoria == "Empaque"){
                 fields[[length(fields)]]$origen <- "empaque CNC"
               }
               if(orden_venta$fields$canal_venta=="mercadolibrernd"){
