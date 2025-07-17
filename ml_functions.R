@@ -91,7 +91,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
                                     "CP: ",ml_shipping$destination$shipping_address$zip_code, " Calle: ",shopifyorder$shipping_address$address1,
                                     " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
                                     "\n¿Deseas cambiar el tipo de envio a paqueteria?")
-            enviar_mensaje_slack(,mensaje_envio)
+            enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
             airtable_updatesinglerecord(list("entrega_local"=TRUE),"ordenes_venta",Sys.getenv('AIRTABLE_CES_BASE'),newov_content$id)
           }
         }
@@ -101,7 +101,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
                                   "CP: ",ml_shipping$destination$shipping_address$zip_code, " Calle: ",ml_shipping$destination$shipping_address$street_name,
                                   " Colonia: ",ml_shipping$destination$shipping_address$neighborhood$name," Ciudad: ",ml_shipping$destination$shipping_address$city$name,
                                   "\n¿Deseas cambiar el tipo de envio a paqueteria?")
-          enviar_mensaje_slack(,mensaje_envio)
+          enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
           airtable_updatesinglerecord(list("entrega_local"=TRUE),"ordenes_venta",Sys.getenv('AIRTABLE_CES_BASE'),newov_content$id)
         }
       }
@@ -829,4 +829,19 @@ ml_items_id <- function(user_id,ml_token){
   }
   
   return(all_ids)
+}
+
+ml_enviar_guia <- function(ml_order,ml_token,guia){
+  ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+  url <- paste0("https://api.mercadolibre.com/shipments/",ml_shipping$id)
+  resp <- request(url) %>% 
+    req_method("PUT") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers("accept"= "application/json") %>% 
+    req_headers('content-type' = 'application/json') %>% 
+    req_body_json(list( "tracking_number"= guia,"status"="shipped",
+                        "receiver_id": ml_shipping$destination$receiver_id)) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform()%>% 
+    resp_body_json()
 }
