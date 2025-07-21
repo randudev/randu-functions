@@ -792,7 +792,7 @@ ml_agencia_sin_partes <- function(){
 
 ml_status_conjunto_publicaciones <- function(productos,ml_token,status){
   
-  if(length(productos)>1 ){
+  if(length(productos)=>1 ){
     productos <- productos[-1]
     for(i in 1:length(productos)){
       item_no_cambio <- ml_obtener_item(productos[[i]],ml_token)
