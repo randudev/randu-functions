@@ -323,7 +323,7 @@ slack_responder_mensajes_ml <- function(resp_mensaje){
         }
         responder_mensaje(ml_order,ml_token,mensajes_slack)
         if(last_response()$status_code %in% (199:299)){
-          respuesta_slack <- paste0("Se respondio la pregunta: ", id)
+          respuesta_slack <- paste0("Se respondio el mensaje")
           slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$ts,respuesta_slack)
         }
       } 
