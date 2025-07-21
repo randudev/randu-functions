@@ -347,6 +347,10 @@ slack_responder_mensajes_ml <- function(resp_mensaje){
           add_slack_reaction(Sys.getenv("SLACK_BOT_TOKEN"), channel_id, message_ts)
           
           #slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$ts,respuesta_slack)
+        }else{
+          mensaje_error <- paste0("No se pudo enviar el mensaje de respuesta: ",texto,
+                                  "\nDel canal mensajes_mercado_libre ",toJSON(last_response() %>% resp_body_json()))
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
         }
       } 
     }
