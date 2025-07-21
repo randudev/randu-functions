@@ -264,6 +264,43 @@ enviar_a_slack <- function(token,canal,mensaje = NULL,archivo = NULL,nombre_arch
   }
 }
 
+buscar_mensajes_slack <- function(texto, token, max_paginas = 10) {
+  url <- "https://slack.com/api/search.messages"
+  resultados <- list()
+  pagina <- 1
+  
+  while (pagina <= max_paginas) {
+    cat("Página", pagina, "\n")
+    
+    req <- request(url) |>
+      req_headers(Authorization = paste("Bearer", token)) |>
+      req_url_query(query = texto, count = 100, page = pagina)
+    
+    resp <- req_perform(req)
+    data <- resp_body_json(resp)
+    
+    if (!data$ok){
+      mensaje <- paste("ocurrio un error al buscar mensajes ", data$error)
+    } 
+    
+    resultados <- append(resultados, data$messages$matches)
+    
+    total_paginas <- data$messages$pagination$page_count
+    if (pagina >= total_paginas) break
+    
+    pagina <- pagina + 1
+  }
+  
+  # Convertir resultados a data.frame
+  data.frame(
+    canal   = sapply(resultados, \(x) x$channel$name),
+    usuario = sapply(resultados, \(x) x$username),
+    texto   = sapply(resultados, \(x) x$text),
+    ts      = sapply(resultados, \(x) x$ts),
+    stringsAsFactors = FALSE
+  )
+}
+
 slack_responder_mensajes_ml <- function(resp_mensaje){
   texto <- resp_mensaje$event$text
   hilo<- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$thread_ts)
