@@ -263,3 +263,33 @@ enviar_a_slack <- function(token,canal,mensaje = NULL,archivo = NULL,nombre_arch
     }
   }
 }
+
+slack_responder_mensajes_ml <- function(resp_mensaje){
+  texto <- resp_mensaje$event$text
+  hilo<- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$thread_ts)
+  if(!is.null(hilo[[1]]$subtype)){
+    if(str_detect(texto,"<@U08LEBF4Q85> ") ){
+      if(str_detect(hilo[[1]]$text,Sys.getenv("SELLERID_ML_ASM"))){
+        recordid_token <- "recQLtjnMhd4ZCiJq"
+        canal <- "mercadolibreasm"
+      }else{
+        recordid_token <- ""
+        canal <- NULL
+      }
+      ml_token <- get_active_token(recordid_token)
+      mensaje_slack <- str_split(texto,"<@U08LEBF4Q85> ")[[1]][2]
+      id <- str_split(hilo[[1]]$text,":\n")[[1]][1]
+      if(es_numero(id) && nchar(mensaje_slack)!=0){
+        ml_order <- mlorder_bypackid(id,ml_token)
+        if(length(ml_order$orders)!=0){
+          ml_order <- mlorder_bypackid(paste0(ml_order$orders[[1]]$id),ml_token)
+        }
+        responder_mensaje(ml_order,ml_token,mensajes_slack)
+        if(last_response()$status_code %in% (199:299)){
+          respuesta_slack <- paste0("Se respondio la pregunta: ", id)
+          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$ts,respuesta_slack)
+        }
+      } 
+    }
+  }
+}

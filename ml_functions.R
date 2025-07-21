@@ -50,6 +50,33 @@ get_mlorder_byid <- function(orderid, mltoken){
     resp_body_json()
 }
 
+mlorder_bypackid <- function(orderid, mltoken) {
+
+    # Intentar como order_id
+  url_order <- paste0("https://api.mercadolibre.com/orders/", orderid)
+  
+  resp <- tryCatch({
+    request(url_order) %>% 
+      req_auth_bearer_token(mltoken) %>% 
+      req_error(is_error = function(resp) FALSE) %>%
+      req_perform()
+  }, error = function(e) NULL)
+  
+  if (!is.null(resp) && last_response()$status_code %in%  c(199:299)) {
+    print("tonto")
+    return(resp_body_json(resp))
+  }
+  
+  # Si falló, intentar como pack_id
+  url_pack <- paste0("https://api.mercadolibre.com/packs/", orderid)
+  
+  resp_pack <- request(url_pack) %>% 
+    req_auth_bearer_token(mltoken) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
+}
+
 register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
   lineitems_recordid <- register_lineitems_ml(mlorder, ml_token)
   #client_recordid <- register_client(shopifyorder)
@@ -839,9 +866,78 @@ ml_enviar_guia <- function(ml_order,ml_token,guia){
     req_auth_bearer_token(ml_token) %>% 
     req_headers("accept"= "application/json") %>% 
     req_headers('content-type' = 'application/json') %>% 
-    req_body_json(list( "tracking_number"= guia,"status"="shipped",
-                        "receiver_id": ml_shipping$destination$receiver_id)) %>% 
+    req_body_json(list( "tracking_number"= guia[[1]],"status"= "ready_to_ship",
+                        "receiver_id"= ml_shipping$destination$receiver_id,
+                        "carrier_info" = list(
+                          "name"= guia[[2]]
+                        )
+    )) %>% 
     req_error(is_error = function(resp) FALSE) %>%
     req_perform()%>% 
     resp_body_json()
+}
+
+ml_obtener_mensaje <- function(id_mensaje,ml_token){
+  url <- paste0("https://api.mercadolibre.com/messages/", id_mensaje)
+  response <- request(url) %>% 
+    req_headers(
+      Authorization = paste("Bearer", ml_token)
+    ) %>% 
+    req_url_query(tag = "post_sale") %>%   # Agrega el parámetro ?tag=post_sale
+    req_perform() %>% 
+    resp_body_json()
+}
+
+ml_mensaje_slack <- function(mensaje_body){
+  tryCatch(
+    expr = {
+      id_mensaje <- mensaje_body$id_resource
+      for(i in seq_along(id_mensaje)){
+        cuerpo <- fromJSON(mensaje_body$body[[i]])
+        if(!is.null(cuerpo$attempts)){
+          if(cuerpo$attempts != 1){
+            next
+          }
+        }
+        
+        if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
+          recordid_token <- "recQLtjnMhd4ZCiJq"
+          canal <- "mercadolibreasm"
+          next
+        }else{
+          recordid_token <- ""
+          canal <- NULL
+        }
+        ml_token <- get_active_token(recordid_token)
+        slack_user_token <- Sys.getenv("SLACK_USER_TOKEN")
+        mensaje_ml <- ml_obtener_mensaje(id_mensaje[[i]],ml_token)
+        if(mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_RANDU") || mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_ASM")){
+          mensajes_slack <- buscar_mensajes_slack(mensaje_ml$messages[[1]]$message_resources[[1]]$id,slack_user_token)
+          ml_order <- mlorder_bypackid(mensaje_ml$messages[[1]]$message_resources[[1]]$id,ml_token)
+          if(length(ml_order$orders)!=0){
+            ml_order <- mlorder_bypackid(paste0(ml_order$orders[[1]]$id),ml_token)
+          }
+          mensaje_hilo <- paste0(mensaje_ml$messages[[1]]$message_resources[[1]]$id,
+                                 ":\n",ml_order$order_items[[1]]$item$title,"\n",ml_order$buyer$nickname,
+                                 " ",ml_order$buyer$first_name, " ", ml_order$buyer$last_name,"\n",
+                                 "Envió un mensaje:\n*",mensaje_ml$messages[[1]]$text,"*")
+          if(length(mensajes_slack)!=0){
+            mensajes_slack_canal <- subset(mensajes_slack,canal == "mensajes_mercado_libre" & usuario == "procesos") 
+            
+            if(length(mensajes_slack_canal$canal)!=0){
+              #puede fallar por el id del canal
+              slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),mensajes_slack_canal$canal[[length(mensajes_slack_canal$ts)]],mensajes_slack_canal$ts[[length(mensajes_slack_canal$ts)]],mensaje_hilo)
+            }else{
+              enviar_mensaje_slack(Sys.getenv("SLACK_MENSAJES_ML_URL"),mensaje_hilo)
+            }
+          }else{
+            enviar_mensaje_slack(Sys.getenv("SLACK_MENSAJES_ML_URL"),mensaje_hilo)
+          }
+        }
+      }
+    },error=function(e){
+      mensaje_error <- paste0("Ocurrio un error al enviar el mensaje de mercado libre a slack", e)
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+    }
+  )
 }
