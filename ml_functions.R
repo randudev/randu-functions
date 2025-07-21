@@ -765,13 +765,84 @@ ml_agencia_sin_partes <- function(){
   if(file.exists("publicaciones_a_pausar.RDS")) {
     publicaciones_a_pausar <- readRDS("publicaciones_a_pausar.RDS")
     status <- publicaciones_a_pausar[[1]]
+    productos <- quitar_null(productos)
+    if(status == "pausa"){
+      ml_token <- get_active_token()
+      dar_de_baja <- setdiff(productos,publicaciones_a_pausar[-1])
+      dar_de_alta <- setdiff(publicaciones_a_pausar[-1],productos)
+      if(length(dar_de_baja) !=0){
+        ml_status_conjunto_publicaciones(dar_de_baja,ml_token,"paused")
+      }
+      if(length(dar_de_alta) !=0){
+        ml_status_conjunto_publicaciones(dar_de_alta,ml_token,"active")
+      }
+    }
+    productos <- append(status,productos)
+    saveRDS(productos,"publicaciones_a_pausar.RDS")
+    return(productos)
   } else {
     status <- "activo"
+    productos <- quitar_null(productos)
+    productos <- append(status,productos)
+    saveRDS(productos,"publicaciones_a_pausar.RDS")
+    return(productos)
   }
-  productos <- quitar_null(productos)
-  productos <- append(status,productos)
-  saveRDS(productos,"publicaciones_a_pausar.RDS")
-  return(productos)
+  
+}
+
+ml_status_conjunto_publicaciones <- function(productos,ml_token,status){
+  
+  if(length(productos)>1 ){
+    productos <- productos[-1]
+    for(i in 1:length(productos)){
+      item_no_cambio <- ml_obtener_item(productos[[i]],ml_token)
+      if(item_no_cambio$status == "under_review"){
+        next
+      }
+      item <- ml_status_item(productos[[i]],ml_token,status)
+      if(!last_response()$status_code %in% c(199:299) ){
+        causa <- toJSON(last_response() %>% resp_body_json())
+        
+        if(length(item$cause)!=0){
+          no_stock <- F
+          for(i in seq_along(item$cause)){
+            no_stock <- no_stock || str_detect(item$cause[[i]]$message,"stock") || str_detect(item$cause[[i]]$message,"not possible to activate")
+          }
+          if(no_stock){
+            aux <- ml_stock_item(productos[[i]],ml_token,10)
+            if(!last_response()$status_code %in% c(199:299) ){
+              
+              mensaje_dar_pausa <- paste0("El item: ",item_no_cambio$id," ",item_no_cambio$title,"\nNo se pudo poner en ",
+                                          status," ni cambiar la cantidad\n",toJSON(last_response() %>% resp_body_json()))
+              enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+            }
+          }else{
+            mensaje_dar_pausa <- paste0("El item: ",item_no_cambio$id," ",item_no_cambio$title,"\nNo se pudo poner en ",
+                                        status,"\n",causa)
+            enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+          }
+        }else{
+          mensaje_dar_pausa <- paste0("El item: ",item_no_cambio$id," ",item_no_cambio$title,"\nNo se pudo poner en ",
+                                      status,"\n",causa)
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+        }
+      }else{
+        if(item$status != status){
+          mensaje_dar_pausa <- paste0("El item: ",item$id," ",item$title,"\n",
+                                      "No se pudo poner en ",status)
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+        }
+        if(item$available_quantity<2){
+          aux <- ml_stock_item(item$id,ml_token,10)
+          if(!last_response()$status_code %in% c(199:299) ){
+            mensaje_dar_pausa <- paste0("El item: ",item$id," ",item$title,"\nNo se pudo poner cambiar la cantidad\n",
+                                        toJSON(last_response() %>% resp_body_json()))
+            enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+          }
+        }
+      }
+    }
+  }
 }
 
 ml_status_publicacion_agencia <- function(ml_token,status){
