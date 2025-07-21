@@ -911,11 +911,13 @@ ml_mensaje_slack <- function(mensaje_body){
         ml_token <- get_active_token(recordid_token)
         slack_user_token <- Sys.getenv("SLACK_USER_TOKEN")
         mensaje_ml <- ml_obtener_mensaje(id_mensaje[[i]],ml_token)
-        mensajes_slack_aux <- buscar_mensajes_slack(mensaje_ml$messages[[1]]$id,slack_user_token)
-        if(length(mensajes_slack_aux)!=0){
-          next 
-        }
+        
         if(mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_RANDU") && mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_ASM")){
+          mensajes_slack_aux <- buscar_mensajes_slack(mensaje_ml$messages[[1]]$id,slack_user_token)
+          if(length(mensajes_slack_aux)!=0){
+            next 
+          }
+          
           mensajes_slack <- buscar_mensajes_slack(mensaje_ml$messages[[1]]$message_resources[[1]]$id,slack_user_token)
           ml_order <- mlorder_bypackid(mensaje_ml$messages[[1]]$message_resources[[1]]$id,ml_token)
           if(length(ml_order$orders)!=0){
