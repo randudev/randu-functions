@@ -63,7 +63,6 @@ mlorder_bypackid <- function(orderid, mltoken) {
   }, error = function(e) NULL)
   
   if (!is.null(resp) && last_response()$status_code %in%  c(199:299)) {
-    print("tonto")
     return(resp_body_json(resp))
   }
   
@@ -893,6 +892,7 @@ ml_mensaje_slack <- function(mensaje_body){
     expr = {
       id_mensaje <- mensaje_body$id_resource
       for(i in seq_along(id_mensaje)){
+        Sys.sleep(.5)
         cuerpo <- fromJSON(mensaje_body$body[[i]])
         if(!is.null(cuerpo$attempts)){
           if(cuerpo$attempts != 1){
@@ -911,14 +911,19 @@ ml_mensaje_slack <- function(mensaje_body){
         ml_token <- get_active_token(recordid_token)
         slack_user_token <- Sys.getenv("SLACK_USER_TOKEN")
         mensaje_ml <- ml_obtener_mensaje(id_mensaje[[i]],ml_token)
-        if(mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_RANDU") || mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_ASM")){
+        mensajes_slack_aux <- buscar_mensajes_slack(mensaje_ml$messages[[1]]$id,slack_user_token)
+        if(length(mensajes_slack_aux)!=0){
+          next 
+        }
+        if(mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_RANDU") && mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_ASM")){
           mensajes_slack <- buscar_mensajes_slack(mensaje_ml$messages[[1]]$message_resources[[1]]$id,slack_user_token)
           ml_order <- mlorder_bypackid(mensaje_ml$messages[[1]]$message_resources[[1]]$id,ml_token)
           if(length(ml_order$orders)!=0){
             ml_order <- mlorder_bypackid(paste0(ml_order$orders[[1]]$id),ml_token)
           }
           mensaje_hilo <- paste0(mensaje_ml$messages[[1]]$message_resources[[1]]$id,
-                                 ":\n",ml_order$order_items[[1]]$item$title,"\n",ml_order$buyer$nickname,
+                                 ":\nID mensaje:",mensaje_ml$messages[[1]]$id,
+                                 "\n",ml_order$order_items[[1]]$item$title,"\n",ml_order$buyer$nickname,
                                  " ",ml_order$buyer$first_name, " ", ml_order$buyer$last_name,"\n",
                                  "Envió un mensaje:\n*",mensaje_ml$messages[[1]]$text,"*")
           if(length(mensajes_slack)!=0){

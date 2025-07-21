@@ -301,6 +301,23 @@ buscar_mensajes_slack <- function(texto, token, max_paginas = 10) {
   )
 }
 
+add_slack_reaction <- function(token, channel, timestamp, emoji = "white_check_mark") {
+  request("https://slack.com/api/reactions.add") %>% 
+    req_method("POST") %>% 
+    req_headers(
+      Authorization = paste("Bearer", token),
+      `Content-Type` = "application/json"
+    ) %>% 
+    req_body_json(list(
+      name = emoji,
+      channel = channel,
+      timestamp = timestamp
+    )) %>% 
+    req_perform() %>% 
+    resp_body_json()
+}
+
+
 slack_responder_mensajes_ml <- function(resp_mensaje){
   texto <- resp_mensaje$event$text
   hilo<- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$thread_ts)
@@ -321,10 +338,15 @@ slack_responder_mensajes_ml <- function(resp_mensaje){
         if(length(ml_order$orders)!=0){
           ml_order <- mlorder_bypackid(paste0(ml_order$orders[[1]]$id),ml_token)
         }
-        responder_mensaje(ml_order,ml_token,mensajes_slack)
+        responder_mensaje(ml_order,ml_token,mensaje_slack)
         if(last_response()$status_code %in% (199:299)){
           respuesta_slack <- paste0("Se respondio el mensaje")
-          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$ts,respuesta_slack)
+          channel_id <- resp_mensaje$event$channel
+          message_ts <- resp_mensaje$event$ts
+          
+          add_slack_reaction(Sys.getenv("SLACK_BOT_TOKEN"), channel_id, message_ts)
+          
+          #slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$ts,respuesta_slack)
         }
       } 
     }
