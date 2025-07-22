@@ -262,7 +262,8 @@ registrar_producto <- function(producto,venta_producto){
               "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
               "ubicacion"="navex93"
             )
-            if(is.null(parte_producto$fields$item_produccion)){
+            sku_no_produccion <- c(10660:10671)
+            if(is.null(parte_producto$fields$item_produccion) || producto$fields$sku %in% sku_no_produccion){
               cantidad_restante <- parte_producto$fields$cantidad_disponible_navex93 - venta_producto$fields$cantidad
               if(cantidad_restante<=6){
                 mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
@@ -343,10 +344,7 @@ registrar_producto <- function(producto,venta_producto){
             "tipo_empaque"=tipo_empaque,
             "origen"="pedido"
           )
-          sku_no_produccion <- c(10660:10671)
-          if(producto$fields$sku %in% sku_no_produccion){
-              fields$origen <- "empaque CNC"
-          }
+          
           if(orden_venta$fields$canal_venta=="mercadolibrernd"){
             ml_token <- get_active_token()
             ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
@@ -418,7 +416,8 @@ registrar_producto <- function(producto,venta_producto){
           "ubicacion"="navex93",
           "cantidad"=venta_producto$fields$cantidad
         )
-        if(is.null(producto$fields$item_produccion)){
+        sku_no_produccion <- c(10660:10671)
+        if(is.null(producto$fields$item_produccion) || producto$fields$sku %in% sku_no_produccion){
           cantidad_restante <- producto$fields$cantidad_disponible_navex93 - venta_producto$fields$cantidad
           if(cantidad_restante<=6){
             mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, "solo cuenta con ", 
