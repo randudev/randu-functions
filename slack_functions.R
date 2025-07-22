@@ -319,7 +319,7 @@ buscar_mensajes_slack <- function(texto, token, max_paginas = 10) {
   pagina <- 1
   
   while (pagina <= max_paginas) {
-    cat("Página", pagina, "\n")
+    #cat("Página", pagina, "\n")
     
     req <- request(url) |>
       req_headers(Authorization = paste("Bearer", token)) |>

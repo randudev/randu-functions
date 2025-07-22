@@ -963,7 +963,7 @@ ml_mensaje_slack <- function(mensaje_body){
     expr = {
       id_mensaje <- mensaje_body$id_resource
       for(i in seq_along(id_mensaje)){
-        Sys.sleep(.5)
+        
         cuerpo <- fromJSON(mensaje_body$body[[i]])
         if(!is.null(cuerpo$attempts)){
           if(cuerpo$attempts != 1){
@@ -984,6 +984,7 @@ ml_mensaje_slack <- function(mensaje_body){
         mensaje_ml <- ml_obtener_mensaje(id_mensaje[[i]],ml_token)
         
         if(mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_RANDU") && mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_ASM")){
+          Sys.sleep(2.5)
           mensajes_slack_aux <- buscar_mensajes_slack(mensaje_ml$messages[[1]]$id,slack_user_token)
           if(length(mensajes_slack_aux)!=0){
             next 
