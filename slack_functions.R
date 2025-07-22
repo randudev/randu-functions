@@ -129,6 +129,55 @@ slack_npu <- function(cuerpo,ml_token){
   }
 }
 
+slack_iniciar_conversacion <- function(cuerpo,ml_token){
+  tryCatch(
+    expr={
+      
+      bot_token <- Sys.getenv("SLACK_BOT_TOKEN")
+      mensaje_persona <- str_split(cuerpo$event$text,"<@U08LEBF4Q85> ")[[1]][2]
+      texto_sin_espacio_inicio <- sub("^\\s+", "", mensaje_persona)
+      sin_comillas <- str_remove_all(mensaje_persona, '"[^"]*"')
+      numero_orden <- str_extract(sin_comillas, "\\d+")
+      mensaje_enviar <- str_split(texto_sin_espacio_inicio,paste0("/ic ",numero_orden," "))[[1]][2]
+      if(nchar(mensaje_enviar)>0){
+        ml_order <- mlorder_bypackid(numero_orden,ml_token)
+        if(length(ml_order$orders)!=0){
+          ml_order <- mlorder_bypackid(paste0(ml_order$orders[[1]]$id),ml_token)
+        }
+        mensajes_ml <- ml_obtener_mensajes(ml_order,ml_token)
+        if(length(mensaje_ml$messages) != 0){
+          responder_mensaje(ml_order,ml_token,mensaje_enviar)
+        }else{
+          ml_primer_mensaje(ml_order,ml_order,mensaje_enviar)
+          if(!last_response()$status_code %in% c(199:299)){
+            responder_mensaje(ml_order,ml_token,mensaje_enviar)
+          }
+        }
+        if(last_response()$status_code %in% c(199:299)){
+          Sys.sleep(1)
+          channel_id <- cuerpo$event$channel
+          message_ts <- cuerpo$event$ts
+          
+          add_slack_reaction(Sys.getenv("SLACK_BOT_TOKEN"), channel_id, message_ts)
+          print(mensaje)
+          slack_responder_en_hilo(bot_token,cuerpo$event$channel,cuerpo$event$event_ts,mensaje)
+        }else{
+          mensaje_no <- "No se pudo enviar el mensaje, revise"
+          mensaje_error <- paste0("No se pudo enviar el mensaje: ",mensaje_enviar,
+                                  "\nURL: ",last_response()$url,
+                                  "\nStatus",last_response()$status_code,
+                                  "\nlast_response() %>% resp_body_json(): ",toJSON(last_response() %>% resp_body_json()))
+          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,mensaje_no)
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+        }
+      }
+    },error=function(e){
+      mensaje_error <- paste0("Hubo un error : ",e)
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+    }
+  )
+}
+
 slack_mensaje_fulfillment_stock <- function(operaciones){
   operacion_id <- operaciones$id_resource
   for(i in seq_along(operacion_id)){
@@ -320,7 +369,12 @@ add_slack_reaction <- function(token, channel, timestamp, emoji = "white_check_m
 
 slack_responder_mensajes_ml <- function(resp_mensaje){
   texto <- resp_mensaje$event$text
-  hilo<- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$thread_ts)
+  if(!is.null(resp_mensaje$event$thread_ts)){
+    ts <- resp_mensaje$event$thread_ts
+  }else{
+    ts <- resp_mensaje$event$ts
+  }
+  hilo<- slack_obtener_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,ts)
   if(!is.null(hilo[[1]]$subtype)){
     if(str_detect(texto,"<@U08LEBF4Q85> ") ){
       if(str_detect(hilo[[1]]$text,Sys.getenv("SELLERID_ML_ASM"))){
@@ -333,6 +387,49 @@ slack_responder_mensajes_ml <- function(resp_mensaje){
       ml_token <- get_active_token(recordid_token)
       mensaje_slack <- str_split(texto,"<@U08LEBF4Q85> ")[[1]][2]
       id <- str_split(hilo[[1]]$text,":\n")[[1]][1]
+      if(es_numero(id) && nchar(mensaje_slack)!=0){
+        ml_order <- mlorder_bypackid(id,ml_token)
+        if(length(ml_order$orders)!=0){
+          ml_order <- mlorder_bypackid(paste0(ml_order$orders[[1]]$id),ml_token)
+        }
+        responder_mensaje(ml_order,ml_token,mensaje_slack)
+        if(last_response()$status_code %in% (199:299)){
+          respuesta_slack <- paste0("Se respondio el mensaje")
+          channel_id <- resp_mensaje$event$channel
+          message_ts <- resp_mensaje$event$ts
+          
+          add_slack_reaction(Sys.getenv("SLACK_BOT_TOKEN"), channel_id, message_ts)
+          
+          #slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),resp_mensaje$event$channel,resp_mensaje$event$ts,respuesta_slack)
+        }else{
+          mensaje_error <- paste0("No se pudo enviar el mensaje de respuesta: ",texto,
+                                  "\nDel canal mensajes_mercado_libre ",toJSON(last_response() %>% resp_body_json()))
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+        }
+      } 
+    }
+  }else{
+    if(str_detect(texto,"<@U08LEBF4Q85> ") ){
+      if(str_detect(hilo[[1]]$text,Sys.getenv("SELLERID_ML_ASM"))){
+        recordid_token <- "recQLtjnMhd4ZCiJq"
+        canal <- "mercadolibreasm"
+      }else{
+        recordid_token <- ""
+        canal <- NULL
+      }
+      ml_token <- get_active_token(recordid_token)
+      if(str_detect(texto,"<@U08LEBF4Q85> /ic")){
+        mensaje_persona <- str_split(texto,"<@U08LEBF4Q85> ")[[1]][2]
+        texto_sin_espacio_inicio <- sub("^\\s+", "", mensaje_persona)
+        sin_comillas <- str_remove_all(mensaje_persona, '"[^"]*"')
+        numero_orden <- str_extract(sin_comillas, "\\d+")
+        mensaje_slack <- str_split(texto_sin_espacio_inicio,paste0("/ic ",numero_orden," "))[[1]][2]
+        id <- numero_orden
+      }else{
+        id <- str_split(hilo[[1]]$text,":\n")[[1]][1]
+        mensaje_slack <- str_split(texto,"<@U08LEBF4Q85> ")[[1]][2]
+      }
+      
       if(es_numero(id) && nchar(mensaje_slack)!=0){
         ml_order <- mlorder_bypackid(id,ml_token)
         if(length(ml_order$orders)!=0){
