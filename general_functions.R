@@ -180,7 +180,7 @@ registrar_producto <- function(producto,venta_producto){
             if(!is.null(parte_producto$fields$item_produccion)){
               tipo_empaque <- "estándar"
               if(venta_producto$fields$cantidad >= 5 || !is.null(orden_venta$fields$entrega_local)){
-                tipo_empaque <- "ligero"
+                tipo_empaque <- "tarima"
               }
               ov <- ""
               if(is.null(orden_venta$fields$id_origen)){
@@ -330,7 +330,7 @@ registrar_producto <- function(producto,venta_producto){
         if(!is.null(producto$fields$item_produccion)){
           tipo_empaque <- "estándar"
           if(venta_producto$fields$cantidad >= 5 || !is.null(orden_venta$fields$entrega_local)){
-            tipo_empaque <- "ligero"
+            tipo_empaque <- "tarima"
           }
           ov <- ""
           if(is.null(orden_venta$fields$id_origen)){

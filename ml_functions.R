@@ -604,11 +604,21 @@ ml_subir_publicaciones_air <- function(item){
     }
   }
   producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
-  if(item$status!="paused"){
-    status <- "Activo"
+  if(item$status == "paused"){
+    status <- "Pausada"
   }else{
-    status <- "Inactivo" 
+    if(item$status == "active"){
+      status <- "Activo"
+    }else{
+      if(item$status == "closed"){
+        status <- "Cerrado"
+      }else{
+        status <- "Inactivo"
+      }
+    }
   }
+  
+  
   if(item$shipping$mode == "me2"){
     if(!is.null(item$shipping$logistic_type)){
       if(item$shipping$logistic_type == "fulfillment"){
@@ -658,12 +668,20 @@ ml_actualizar_publicaciones_air <- function(item,publicacion){
   }
   
   producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE1"),paste0("sku=",sku))
-  
-  if(item$status!="paused"){
-    status <- "Activo"
+  if(item$status == "paused"){
+    status <- "Pausada"
   }else{
-    status <- "Inactivo" 
+    if(item$status == "active"){
+      status <- "Activo"
+    }else{
+      if(item$status == "closed"){
+        status <- "Cerrado"
+      }else{
+        status <- "Inactivo"
+      }
+    }
   }
+  
   if(item$shipping$mode == "me2"){
     if(!is.null(item$shipping$logistic_type)){
       if(item$shipping$logistic_type == "fulfillment"){
