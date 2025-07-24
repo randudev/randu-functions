@@ -146,3 +146,31 @@ amz_register_address <- function(amz_order){
     return(NULL)
   }
 }
+
+amz_enviar_guia <- function(order_id,paqueteria,numero_guia){
+  amz_token <- amz_get_active_token()
+  amz_items <- get_amzorderitem_byid(order_id,amz_token)
+  resp <- request(paste0("https://sellingpartnerapi-na.amazon.com/orders/v0/orders/", order_id, "/shipmentConfirmation")) %>%
+    req_method("POST") %>%
+    req_headers(
+      Authorization = paste("Bearer ", amz_token),
+      "x-amz-access-token" = amz_token
+    ) %>%
+    req_body_json(list(
+      marketplaceId = "A1AM78C64UM0Y8",
+      packageDetail = list(
+        packageReferenceId = "1",  # Debe ser un string numérico
+        carrierCode = paqueteria,
+        orderItems = list(
+          list(
+            orderItemId = amz_items$payload$OrderItems[[1]]$OrderItemId,  # <--- Lo sacas de /orderItems
+            quantity = amz_items$payload$OrderItems[[1]]$QuantityOrdered                     # <--- La cantidad enviada de ese item
+          )
+        ),
+        trackingNumber = numero_guia,
+        shipDate = format(as.POSIXct(format(Sys.Date(), "%Y-%m-%d"), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ")
+      )
+    )) %>% 
+    req_perform() %>%
+    resp_body_json()
+}
