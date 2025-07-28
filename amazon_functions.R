@@ -171,6 +171,5 @@ amz_enviar_guia <- function(order_id,paqueteria,numero_guia){
         shipDate = format(as.POSIXct(format(Sys.Date(), "%Y-%m-%d"), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ")
       )
     )) %>% 
-    req_perform() %>%
-    resp_body_json()
+    req_perform() 
 }
