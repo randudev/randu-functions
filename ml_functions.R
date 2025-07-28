@@ -760,7 +760,7 @@ pausar_publicaciones_ml <- function(){
         }else{0}
       },simplify = T)
       contar_productos <- quitar_null(contar_productos)
-      if(sum(contar_productos)>6){
+      if(sum(contar_productos)>10){
         
         ml_status_publicacion_agencia(ml_token,"paused")
         productos[[1]] <- "pausa"
@@ -773,7 +773,7 @@ pausar_publicaciones_ml <- function(){
 
 ml_agencia_sin_partes <- function(){
   publicaciones_agencia <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),
-                                                   "AND({canal}='mercadolibre randu',{tipo_envio}='Agencia')")
+                                                   "AND({canal}='mercadolibre randu',{tipo_envio}='Agencia',NOT({status}='Inactivo'))")
   productos <- sapply(publicaciones_agencia,function(x){
     producto <- airtable_getrecorddata_byid(x$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
     if(length(producto$fields$partes_producto)<=1 && !is.null(producto$fields$item_produccion)){
