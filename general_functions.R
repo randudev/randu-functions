@@ -179,8 +179,11 @@ registrar_producto <- function(producto,venta_producto){
           if(parte_producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
             if(!is.null(parte_producto$fields$item_produccion)){
               tipo_empaque <- "estándar"
-              if(venta_producto$fields$cantidad >= 5 || !is.null(orden_venta$fields$entrega_local)){
+              if(venta_producto$fields$cantidad >= 5 ){
                 tipo_empaque <- "tarima"
+              }
+              if(!is.null(orden_venta$fields$entrega_local)){
+                tipo_empaque <- "ligero"
               }
               ov <- ""
               if(is.null(orden_venta$fields$id_origen)){
@@ -329,8 +332,11 @@ registrar_producto <- function(producto,venta_producto){
       if(venta_producto$fields$cantidad > producto$fields$cantidad_disponible_navex93){
         if(!is.null(producto$fields$item_produccion)){
           tipo_empaque <- "estándar"
-          if(venta_producto$fields$cantidad >= 5 || !is.null(orden_venta$fields$entrega_local)){
+          if(venta_producto$fields$cantidad >= 5){
             tipo_empaque <- "tarima"
+          }
+          if(!is.null(orden_venta$fields$entrega_local)){
+            tipo_empaque <- "ligero"
           }
           ov <- ""
           if(is.null(orden_venta$fields$id_origen)){
@@ -485,4 +491,22 @@ crear_pdf <- function(html){
   if(last_response()$status_code %in% c(199:299)){
     return(resp$data$url)
   }
+}
+
+buscar_primera_por_valor <- function(lst, valor_buscado = "SKU") {
+  resultado <- NULL
+  
+  recorrer <- function(x) {
+    if (!is.null(resultado)) return()  # ya encontramos
+    if (is.list(x)) {
+      if (any(map_lgl(x, ~ identical(.x, valor_buscado)))) {
+        resultado <<- x
+      } else {
+        walk(x, recorrer)
+      }
+    }
+  }
+  
+  recorrer(lst)
+  resultado
 }

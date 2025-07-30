@@ -420,6 +420,17 @@ ml_obtener_item <- function(item_id, ml_token) {
   return(resp)
 }
 
+ml_obtener_variante <- function(user_product,ml_token){
+  varianturl <- paste0("https://api.mercadolibre.com/user-products/",user_product)
+  mlvariant <- request(varianturl) %>%
+    req_auth_bearer_token(ml_token) %>%
+    req_headers(accept= "application/json") %>%
+    req_headers("x-format-new"=TRUE) %>% 
+    req_headers('content-type' = 'application/x-www-form-urlencoded') %>%
+    req_perform() %>%
+    resp_body_json()
+}
+
 ml_obtener_user <- function(user_id, ml_token) {
   url <- paste0("https://api.mercadolibre.com/users/", user_id)
   resp <- request(url) %>% 
