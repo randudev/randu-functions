@@ -200,9 +200,9 @@ airtable_tibblewithfields <- function(recordlist){
     return(campos)}) %>% 
     bind_rows() %>% 
     mutate(across(where(is.list), ~ sapply(., function(x) {
-    if (is.null(x)) return("")
-    else return(jsonlite::toJSON(x, auto_unbox = TRUE))
-  })))
+      if (is.null(x)) return("")
+      else return(jsonlite::toJSON(x, auto_unbox = TRUE))
+    })))
 }
 
 airtable_subir_pdf <- function(record,ruta_pdf,columna,base_id,tipo){
@@ -257,4 +257,25 @@ delete_airtable_records <- function(api_key, base_id, table_name, record_ids) {
    
   
   return(resp)
+}
+
+airtable_to_table <- function(lista) {
+  registros <- lapply(lista, function(reg) {
+    campos <- reg$fields
+    campos$id <- reg$id
+    campos <- lapply(campos, function(x) {
+      if (is.list(x)) toJSON(x) else x
+    })
+    as.data.frame(campos, stringsAsFactors = FALSE)
+  })
+  
+  # Rellena columnas faltantes con NA
+  todas_columnas <- unique(unlist(lapply(registros, names)))
+  registros_completos <- lapply(registros, function(df) {
+    faltan <- setdiff(todas_columnas, names(df))
+    for (col in faltan) df[[col]] <- NA
+    df[todas_columnas]
+  })
+  
+  do.call(rbind, registros_completos)
 }

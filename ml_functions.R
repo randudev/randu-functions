@@ -1,5 +1,6 @@
 library(lubridate)
 library(httr2)
+cargar_paquetes("purrr")
 #source("~/airtable_utils.R")
 
 get_active_token <- function(recordid=""){
@@ -24,6 +25,7 @@ get_active_token <- function(recordid=""){
                          'client_id'=Sys.getenv('ML_APP_CLIENTID'),
                          'client_secret'=Sys.getenv('ML_APP_CLIENTSECRET'),
                          'refresh_token'=refresh_token)) %>% 
+      req_error(is_error = function(resp) FALSE) %>%
       req_perform()
     
     newtokendata <- last_response() %>% resp_body_json()
@@ -46,6 +48,7 @@ get_mlorder_byid <- function(orderid, mltoken){
     req_auth_bearer_token(mltoken) %>% 
     req_headers(accept= "application/json") %>% 
     req_headers('content-type' = 'application/x-www-form-urlencoded') %>% 
+    req_error(is_error = function(resp) FALSE) %>%
     req_perform() %>% 
     resp_body_json()
 }
@@ -600,6 +603,32 @@ ml_cerrar_item <- function(ml_token){
 
 ml_subir_publicaciones_air <- function(item){
   subtitle <- ""
+  if(item$shipping$mode == "me2"){
+    if(!is.null(item$shipping$logistic_type)){
+      if(item$shipping$logistic_type == "fulfillment"){
+        envio <- "Fulfillment by marketplace"
+      }else{
+        envio <- "Agencia"
+      }
+    }else{
+      envio <- "Agencia"
+    }
+  }else{
+    envio <- "Fulfillment by Randu"
+  }
+  if(item$status == "paused"){
+    status <- "Pausada"
+  }else{
+    if(item$status == "active"){
+      status <- "Activo"
+    }else{
+      if(item$status == "closed"){
+        status <- "Cerrado"
+      }else{
+        status <- "Inactivo"
+      }
+    }
+  }
   # for(k in 1:length(id_img_var[[j]]$selectedoptions)){
   #   if(k==1){
   #     subtitle <- paste0(id_img_var[[j]]$selectedoptions[[k]]$name,": ",id_img_var[[j]]$selectedoptions[[k]]$value)
@@ -607,92 +636,84 @@ ml_subir_publicaciones_air <- function(item){
   #   
   # }
   # 
-  for(i in seq_along(item$attributes)){
-    subtitle <- paste0(subtitle,item$attributes[[i]]$name,": ",item$attributes[[i]]$value_name,"/")
-    
-    if(str_detect(tolower(item$attributes[[i]]$name),"sku")){
-      sku <- item$attributes[[i]]$value_name
-    }
-  }
-  producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
-  if(item$status == "paused"){
-    status <- "Pausada"
-  }else{
-    if(item$status == "active"){
-      status <- "Activo"
-    }else{
-      if(item$status == "closed"){
-        status <- "Cerrado"
-      }else{
-        status <- "Inactivo"
+  if(length(item$variations)!=0){
+    for(variante in item$variations){
+      user_product <- ml_obtener_variante(variante$user_product_id,ml_token)
+      if(variante$available_quantity == 0){
+        status <- "Pausada"
+      }
+      for(i in seq_along(user_product$attributes)){
+        subtitle <- paste0(subtitle,user_product$attributes[[i]]$name,": ",user_product$attributes[[i]]$values[[1]]$name,"/")
+        
+        if(str_detect(tolower(user_product$attributes[[i]]$name),"sku")){
+          sku <- user_product$attributes[[i]]$values[[1]]$name
+        }
+      }
+      producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
+      fields <- list(
+        "canal"= "mercadolibre randu",
+        "id_canal" = item$id,
+        "titulo" = item$title,
+        "product_id"= variante$user_product_id,
+        "subtitulo"=subtitle,
+        "status"=status,
+        "tipo_envio"=envio,
+        "stock_publicacion"=variante$available_quantity
+      )
+      if(length(producto)!=0){
+        fields <- append(fields,list("producto"=list(producto[[1]]$id)))
+      }
+      if(!is.null(variante$inventory_id)){
+        url_etiqueta <- paste0("https://processmediacesrir.s3.us-west-2.amazonaws.com/publicaciones/etiqueta_marketplace/",variante$inventory_id,".pdf")
+        fields <- append(fields,list("id_inventario_marketplace"=variante$inventory_id ,"etiqueta_marketplace"=list(list("url"=url_etiqueta))))
+      }
+      airtable_createrecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"))
+      if(!last_response()$status_code %in% c(199:299)){
+        mensaje <- paste0("No se pudo subir una nueva publicacion con variantes: ",item$title,"\nlast_response:",
+                          toJSON(last_response() %>% resp_body_json()),"\nlast_request:",
+                          toJSON(last_request()$body))
+        print(mensaje)
+        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
       }
     }
-  }
-  
-  
-  if(item$shipping$mode == "me2"){
-    if(!is.null(item$shipping$logistic_type)){
-      if(item$shipping$logistic_type == "fulfillment"){
-        envio <- "Fulfillment by marketplace"
-      }else{
-        envio <- "Agencia"
-      }
-    }else{
-      envio <- "Agencia"
-    }
   }else{
-    envio <- "Fulfillment by Randu"
-  }
-  
-  fields <- list(
-    "canal"= "mercadolibre randu",
-    "id_canal" = item$id,
-    "titulo" = item$title,
-    "subtitulo"=subtitle,
-    "status"=status,
-    "tipo_envio"=envio,
-    "stock_publicacion"=item$available_quantity
-  )
-  if(length(producto)!=0){
-    fields <- append(fields,list("producto"=list(producto[[1]]$id)))
-  }
-  if(!is.null(item$inventory_id)){
-    url_etiqueta <- paste0("https://processmediacesrir.s3.us-west-2.amazonaws.com/publicaciones/etiqueta_marketplace/",item$inventory_id,".pdf")
-    fields <- append(fields,list("id_inventario_marketplace"=item$inventory_id ,"etiqueta_marketplace"=list(list("url"=url_etiqueta))))
-  }
-  airtable_createrecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"))
-  if(!last_response()$status_code %in% c(199:299)){
-    print(item$title)
+    for(i in seq_along(item$attributes)){
+      subtitle <- paste0(subtitle,item$attributes[[i]]$name,": ",item$attributes[[i]]$value_name,"/")
+      
+      if(str_detect(tolower(item$attributes[[i]]$name),"sku")){
+        sku <- item$attributes[[i]]$value_name
+      }
+    }
+    producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
+    fields <- list(
+      "canal"= "mercadolibre randu",
+      "id_canal" = item$id,
+      "titulo" = item$title,
+      "subtitulo"=subtitle,
+      "status"=status,
+      "tipo_envio"=envio,
+      "stock_publicacion"=item$available_quantity
+    )
+    if(length(producto)!=0){
+      fields <- append(fields,list("producto"=list(producto[[1]]$id)))
+    }
+    if(!is.null(item$inventory_id)){
+      #url_etiqueta <- paste0("https://processmediacesrir.s3.us-west-2.amazonaws.com/publicaciones/etiqueta_marketplace/",item$inventory_id,".pdf")
+      fields <- append(fields,list("id_inventario_marketplace"=item$inventory_id ))#,"etiqueta_marketplace"=list(list("url"=url_etiqueta))))
+    }
+    airtable_createrecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"))
+    if(!last_response()$status_code %in% c(199:299)){
+      mensaje <- paste0("No se pudo subir una nueva publicacion: ",item$title,"\nlast_response:",
+                        toJSON(last_response() %>% resp_body_json()),"\nlast_request:",
+                        toJSON(last_request()$body))
+      print(mensaje)
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+    }
   }
 }
 
 ml_actualizar_publicaciones_air <- function(item,publicacion){
-  
   subtitle <- ""
-  sku <- 0
-  for(i in seq_along(item$attributes)){
-    subtitle <- paste0(subtitle,item$attributes[[i]]$name,": ",item$attributes[[i]]$value_name,"/")
-    
-    if(str_detect(tolower(item$attributes[[i]]$name),"sku")){
-      sku <- item$attributes[[i]]$value_name
-    }
-  }
-  
-  producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE1"),paste0("sku=",sku))
-  if(item$status == "paused"){
-    status <- "Pausada"
-  }else{
-    if(item$status == "active"){
-      status <- "Activo"
-    }else{
-      if(item$status == "closed"){
-        status <- "Cerrado"
-      }else{
-        status <- "Inactivo"
-      }
-    }
-  }
-  
   if(item$shipping$mode == "me2"){
     if(!is.null(item$shipping$logistic_type)){
       if(item$shipping$logistic_type == "fulfillment"){
@@ -706,26 +727,107 @@ ml_actualizar_publicaciones_air <- function(item,publicacion){
   }else{
     envio <- "Fulfillment by Randu"
   }
-  
-  fields <- list(
-    "titulo" = item$title,
-    "subtitulo"=subtitle,
-    "status"=status,
-    "tipo_envio"=envio,
-    "stock_publicacion"=item$available_quantity
-  )
-  if(length(producto)!=0){
-    fields <- append(fields,list("producto"=list(producto[[1]]$id)))
+  sku <- 0
+  if(item$status == "paused"){
+    status <- "Pausada"
+  }else{
+    if(item$status == "active"){
+      status <- "Activo"
+    }else{
+      if(item$status == "closed"){
+        status <- "Cerrado"
+      }else{
+        status <- "Inactivo"
+      }
+    }
   }
-  if(!is.null(item$inventory_id)){
-    #url_etiqueta <- paste0("https://processmediacesrir.s3.us-west-2.amazonaws.com/publicaciones/etiqueta_marketplace/",item$inventory_id,".pdf")
-    fields <- append(fields,list("id_inventario_marketplace"=item$inventory_id ))
-  }
-  #airtable_createrecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"))
-  airtable_updatesinglerecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),publicacion$id)
-  if(!last_response()$status_code %in% c(199:299)){
-    print("Al actualizar")
-    print(item$title)
+  if(length(item$variations)==0){
+    publicacion <- publicacion[[1]]
+    for(i in seq_along(item$attributes)){
+      subtitle <- paste0(subtitle,item$attributes[[i]]$name,": ",item$attributes[[i]]$value_name,"/")
+      
+      if(str_detect(tolower(item$attributes[[i]]$name),"sku")){
+        sku <- item$attributes[[i]]$value_name
+      }
+    }
+    
+    producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
+    
+    fields <- list(
+      "titulo" = item$title,
+      "subtitulo"=subtitle,
+      "status"=status,
+      "tipo_envio"=envio,
+      "stock_publicacion"=item$available_quantity
+    )
+    if(length(producto)!=0){
+      fields <- append(fields,list("producto"=list(producto[[1]]$id)))
+    }
+    if(!is.null(item$inventory_id)){
+      #url_etiqueta <- paste0("https://processmediacesrir.s3.us-west-2.amazonaws.com/publicaciones/etiqueta_marketplace/",item$inventory_id,".pdf")
+      fields <- append(fields,list("id_inventario_marketplace"=item$inventory_id ))
+    }
+    #airtable_createrecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"))
+    airtable_updatesinglerecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),publicacion$id)
+    if(!last_response()$status_code %in% c(199:299)){
+      print("Al actualizar")
+      print(item$title)
+    }
+  }else{
+    for(variante in item$variations){
+      publicacion_variante <- buscar_primera_por_valor(publicacion,variante$user_product_id)
+      user_product <- ml_obtener_variante(variante$user_product_id,ml_token)
+      if(variante$available_quantity == 0){
+        status <- "Pausada"
+      }
+      for(i in seq_along(user_product$attributes)){
+        subtitle <- paste0(subtitle,user_product$attributes[[i]]$name,": ",user_product$attributes[[i]]$values[[1]]$name,"/")
+        
+        if(str_detect(tolower(user_product$attributes[[i]]$name),"sku")){
+          sku <- user_product$attributes[[i]]$values[[1]]$name
+        }
+      }
+      producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
+      fields <- list(
+        "titulo" = item$title,
+        "product_id"= variante$user_product_id,
+        "subtitulo"=subtitle,
+        "tipo_envio"=envio,
+        "stock_publicacion"=variante$available_quantity
+      )
+      if(length(producto)!=0){
+        fields <- append(fields,list("producto"=list(producto[[1]]$id)))
+      }
+      if(!is.null(variante$inventory_id)){
+        url_etiqueta <- paste0("https://processmediacesrir.s3.us-west-2.amazonaws.com/publicaciones/etiqueta_marketplace/",variante$inventory_id,".pdf")
+        fields <- append(fields,list("id_inventario_marketplace"=variante$inventory_id ,"etiqueta_marketplace"=list(list("url"=url_etiqueta))))
+      }
+      if(!is.null(publicacion_variante)){
+        airtable_updatesinglerecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),publicacion_variante$record_id)
+        if(!last_response()$status_code %in% c(199:299)){
+          mensaje <- paste0("No se pudo actualizar una publicacion: ",item$title,"\nlast_response:",
+                            toJSON(last_response() %>% resp_body_json()),"\nlast_request:",
+                            toJSON(last_request()$body))
+          print(mensaje)
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+        }
+      }else{
+        fields <- append(fields,list("canal"= "mercadolibre randu","id_canal" = item$id))
+        airtable_createrecord(fields,"publciaciones",Sys.getenv("AIRTABLE_CES_BASE"))
+        if(!last_response()$status_code %in% c(199:299)){
+          mensaje <- paste0("No se pudo subir una publicacion: ",item$title,"\nlast_response:",
+                            toJSON(last_response() %>% resp_body_json()),"\nlast_request:",
+                            toJSON(last_request()$body))
+          print(mensaje)
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+        }
+      }
+      
+      # airtable_createrecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"))
+      # if(!last_response()$status_code %in% c(199:299)){
+      #   print(item$title)
+      # }
+    }
   }
 }
 
@@ -1013,7 +1115,7 @@ ml_mensaje_slack <- function(mensaje_body){
         mensaje_ml <- ml_obtener_mensaje(id_mensaje[[i]],ml_token)
         
         if(mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_RANDU") && mensaje_ml$messages[[1]]$from$user_id != Sys.getenv("SELLERID_ML_ASM")){
-          Sys.sleep(2.5)
+          Sys.sleep(5)
           mensajes_slack_aux <- buscar_mensajes_slack(mensaje_ml$messages[[1]]$id,slack_user_token)
           if(length(mensajes_slack_aux)!=0){
             next 
