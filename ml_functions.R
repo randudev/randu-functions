@@ -777,6 +777,7 @@ ml_actualizar_publicaciones_air <- function(item,publicacion){
     }
   }else{
     for(variante in item$variations){
+      subtitle <- ""
       publicacion_variante <- buscar_primera_por_valor(publicacion,variante$user_product_id)
       user_product <- ml_obtener_variante(variante$user_product_id,ml_token)
       if(variante$available_quantity == 0){
@@ -814,8 +815,9 @@ ml_actualizar_publicaciones_air <- function(item,publicacion){
           enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
         }
       }else{
+        
         fields <- append(fields,list("canal"= "mercadolibre randu","id_canal" = item$id))
-        airtable_createrecord(fields,"publciaciones",Sys.getenv("AIRTABLE_CES_BASE"))
+        airtable_createrecord(fields,"publicaciones",Sys.getenv("AIRTABLE_CES_BASE"))
         if(!last_response()$status_code %in% c(199:299)){
           mensaje <- paste0("No se pudo subir una publicacion: ",item$title,"\nlast_response:",
                             toJSON(last_response() %>% resp_body_json()),"\nlast_request:",
