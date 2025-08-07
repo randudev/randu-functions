@@ -603,6 +603,7 @@ ml_cerrar_item <- function(ml_token){
 
 ml_subir_publicaciones_air <- function(item){
   subtitle <- ""
+  sku <- 0
   if(item$shipping$mode == "me2"){
     if(!is.null(item$shipping$logistic_type)){
       if(item$shipping$logistic_type == "fulfillment"){
@@ -714,6 +715,7 @@ ml_subir_publicaciones_air <- function(item){
 
 ml_actualizar_publicaciones_air <- function(item,publicacion){
   subtitle <- ""
+  sku <- 0
   if(item$shipping$mode == "me2"){
     if(!is.null(item$shipping$logistic_type)){
       if(item$shipping$logistic_type == "fulfillment"){
@@ -727,7 +729,7 @@ ml_actualizar_publicaciones_air <- function(item,publicacion){
   }else{
     envio <- "Fulfillment by Randu"
   }
-  sku <- 0
+  
   if(item$status == "paused"){
     status <- "Pausada"
   }else{
