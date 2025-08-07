@@ -796,6 +796,7 @@ ml_actualizar_publicaciones_air <- function(item,publicacion){
         "product_id"= variante$user_product_id,
         "subtitulo"=subtitle,
         "tipo_envio"=envio,
+        "status"=status,
         "stock_publicacion"=variante$available_quantity
       )
       if(length(producto)!=0){
