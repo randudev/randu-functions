@@ -601,7 +601,7 @@ ml_cerrar_item <- function(ml_token){
   }
 }
 
-ml_subir_publicaciones_air <- function(item){
+ml_subir_publicaciones_air <- function(item,ml_token){
   subtitle <- ""
   sku <- 0
   if(item$shipping$mode == "me2"){
@@ -639,6 +639,7 @@ ml_subir_publicaciones_air <- function(item){
   # 
   if(length(item$variations)!=0){
     for(variante in item$variations){
+      subtitle <- ""
       user_product <- ml_obtener_variante(variante$user_product_id,ml_token)
       if(variante$available_quantity == 0){
         status <- "Pausada"
@@ -678,6 +679,7 @@ ml_subir_publicaciones_air <- function(item){
       }
     }
   }else{
+    subtitle <- ""
     for(i in seq_along(item$attributes)){
       subtitle <- paste0(subtitle,item$attributes[[i]]$name,": ",item$attributes[[i]]$value_name,"/")
       
@@ -713,7 +715,7 @@ ml_subir_publicaciones_air <- function(item){
   }
 }
 
-ml_actualizar_publicaciones_air <- function(item,publicacion){
+ml_actualizar_publicaciones_air <- function(item,publicacion,ml_token){
   subtitle <- ""
   sku <- 0
   if(item$shipping$mode == "me2"){
