@@ -141,12 +141,14 @@ datos_recibo <- function(canal_venta,orden,id_orden){
   if(canal_venta == "shp"){
     for(i in 1:length(orden$line_items$id)){
       descuento <- orden$line_items$discount_allocations[[i]]$amount
+      discount <- as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0.1, descuento))/orden$line_items$quantity[[i]]
+      precio <- as.numeric(orden$line_items$price[[i]]) - discount 
       items_orden[[length(items_orden) + 1]] <- list(
         "nombre" = orden$line_items$name[[i]],
-        "precio"= as.numeric(orden$line_items$price[[i]]) - as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento))/orden$line_items$quantity[[i]],
+        "precio"= ifelse(precio>0,precio,1),
         "sku"=orden$line_items$sku[[i]],
         "cantidad" = orden$line_items$quantity[[i]],
-        "descuento" = NULL
+        "descuento" = ifelse(precio>0,NULL,1)
       )  
       
       
