@@ -146,11 +146,11 @@ datos_recibo <- function(canal_venta,orden,id_orden){
       if(precio>0){
         descuento_real <- NULL
       }else{
-        descuento_real <- 1
+        descuento_real <- 1.16 *orden$line_items$quantity[[i]]
       }
       items_orden[[length(items_orden) + 1]] <- list(
         "nombre" = orden$line_items$name[[i]],
-        "precio"= ifelse(precio>0,precio,1),
+        "precio"= ifelse(precio>0,precio,1.16),
         "sku"=orden$line_items$sku[[i]],
         "cantidad" = orden$line_items$quantity[[i]],
         "descuento" = descuento_real
@@ -174,12 +174,20 @@ datos_recibo <- function(canal_venta,orden,id_orden){
     ventas_producto <- airtable_getrecordslist("ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",id_orden,"',{ordenes_venta})"))
     for(i in 1:length(ventas_producto)){
       producto <- airtable_getrecorddata_byid(ventas_producto[[i]]$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+      precio <- ventas_producto[[i]]$fields$precio_unitario_con_descuento
+      if(is.null(precio) || precio <= 0){
+        precio <- 1.16
+        descuento_real <- 1.16 * ventas_producto[[i]]$fields$cantidad
+      }else{
+        descuento_real <- NULL
+      }
       items_orden[[length(items_orden) + 1]] <- list(
         "nombre" = ventas_producto[[i]]$fields$helper_productname,
-        "precio"= ventas_producto[[i]]$fields$precio_unitario_con_descuento,
+        "precio"= ,
         "sku"=paste0(producto$fields$sku),
         "cantidad" = ventas_producto[[i]]$fields$cantidad,
-        "producto_key"=producto$fields$clave_sat
+        "producto_key"=producto$fields$clave_sat,
+        "descuento" = descuento_real
       )  
     }
   }
