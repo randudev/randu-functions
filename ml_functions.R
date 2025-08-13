@@ -121,7 +121,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
                                     " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
                                     "\n¿Deseas cambiar el tipo de envio a paqueteria?")
             enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
-            airtable_updatesinglerecord(list("entrega_local"=TRUE),"ordenes_venta",Sys.getenv('AIRTABLE_CES_BASE'),newov_content$id)
+            airtable_updatesinglerecord(list("entrega_qro"=TRUE),"ordenes_venta",Sys.getenv('AIRTABLE_CES_BASE'),newov_content$id)
           }
         }
       }else{

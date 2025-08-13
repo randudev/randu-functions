@@ -333,7 +333,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                             " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
                             "\n¿Deseas cambiar el tipo de envio a paqueteria?")
     enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
-    fieldslist <- append(fieldslist,list("entrega_local"=TRUE))
+    fieldslist <- append(fieldslist,list("entrega_qro"=TRUE))
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
   return(newov_content)
