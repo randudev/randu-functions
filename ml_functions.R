@@ -922,6 +922,7 @@ ml_agencia_sin_partes <- function(){
     status <- "activo"
     productos <- quitar_null(productos)
     productos <- append(status,productos)
+    productos <- unique(productos)
     saveRDS(productos,"publicaciones_a_pausar.RDS")
     return(productos)
   }
@@ -988,6 +989,7 @@ ml_status_publicacion_agencia <- function(ml_token,status){
   if(length(productos)>1 ){
     productos <- productos[-1]
     for(i in 1:length(productos)){
+      Sys.sleep(1)
       item_no_cambio <- ml_obtener_item(productos[[i]],ml_token)
       if(item_no_cambio$status == "under_review"){
         next
