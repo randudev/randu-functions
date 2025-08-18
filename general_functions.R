@@ -510,3 +510,9 @@ buscar_primera_por_valor <- function(lst, valor_buscado = "SKU") {
   recorrer(lst)
   resultado
 }
+
+safe_abs_numeric <- function(x) {
+  num <- suppressWarnings(as.numeric(x))
+  if (is.na(num)) num <- 0
+  abs(num)
+}
