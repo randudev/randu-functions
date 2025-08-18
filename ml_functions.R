@@ -294,7 +294,7 @@ transaccion_mlfull <- function(ml_order,orden_venta){
     "producto"=venta_producto$fields$producto,
     "ventas_producto"=orden_venta$fields$ventas_producto,
     "comentarios"= paste0(orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
-    "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
+    "cantidad"=venta_producto$fields$cantidad,
     "ubicacion"= ubicacion
   )
   airtable_createrecord(fields, "transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
