@@ -327,22 +327,24 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
     fieldslist <- append(fieldslist,list("cliente"=list(client_recordid$id)))
   }
   codigospostalesQRO <- readRDS("~/codigospostalesQRO.RDS")
-  if(shopifyorder$shipping_address$zip %in% codigospostalesQRO){
-    mensaje_envio <- paste0(shopifyorder$name,"\nLa orden de venta se envia en el área cercana: \n",
-                            "CP: ",shopifyorder$shipping_address$zip, " Calle: ",shopifyorder$shipping_address$address1,
-                            " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
-                            "\n¿Deseas cambiar el tipo de envio a paqueteria?")
-    enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
-    fieldslist <- append(fieldslist,list("entrega_qro"=TRUE))
-  }else{
-    codigospostalesCDMX <- readRDS("~/codigospostalesCDMX.RDS")
-    if(shopifyorder$shipping_address$zip %in% codigospostalesCDMX){
+  if(!is.null(shopifyorder$shipping_address$zip)){
+    if(shopifyorder$shipping_address$zip %in% codigospostalesQRO){
       mensaje_envio <- paste0(shopifyorder$name,"\nLa orden de venta se envia en el área cercana: \n",
                               "CP: ",shopifyorder$shipping_address$zip, " Calle: ",shopifyorder$shipping_address$address1,
                               " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
                               "\n¿Deseas cambiar el tipo de envio a paqueteria?")
-      enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
-      fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE))
+      enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
+      fieldslist <- append(fieldslist,list("entrega_qro"=TRUE))
+    }else{
+      codigospostalesCDMX <- readRDS("~/codigospostalesCDMX.RDS")
+      if(shopifyorder$shipping_address$zip %in% codigospostalesCDMX){
+        mensaje_envio <- paste0(shopifyorder$name,"\nLa orden de venta se envia en el área cercana: \n",
+                                "CP: ",shopifyorder$shipping_address$zip, " Calle: ",shopifyorder$shipping_address$address1,
+                                " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
+                                "\n¿Deseas cambiar el tipo de envio a paqueteria?")
+        enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
+        fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE))
+      }
     }
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))

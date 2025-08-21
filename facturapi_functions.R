@@ -83,7 +83,9 @@ facturapi_cancelar_recibo <- function(id,auth_facturapi){
 
 facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago="31"){
   items <- datos_recibo(canal_venta,orden,id_orden)
-  
+  if(tipo_de_pago == "31"){
+    tipo_de_pago <- tipo_pago_real(orden,canal_venta)
+  }
   items_json <- sapply(items, function(producto) {
     generar_json(producto$cantidad, producto$nombre, producto$producto_key, producto$precio, producto$sku,producto$descuento)
   })
@@ -515,4 +517,20 @@ cambiar_recibo <- function(id_origen,forma_pago){
     }
   }
   return(recibo)
+}
+
+tipo_pago_real <- function(orden,canal_venta){
+  if(canal_venta == "ml"){
+    if(orden$payments[[1]]$payment_type == "credit_card"){
+      return("04")
+    }else{
+      if(orden$payments[[1]]$payment_type == "debit_card"){
+        return("28")
+      }else{
+        return("31")
+      }
+    }
+  }else{
+    return("31")
+  }
 }
