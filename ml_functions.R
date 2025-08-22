@@ -1121,6 +1121,7 @@ ml_obtener_mensaje <- function(id_mensaje,ml_token){
 ml_mensaje_slack <- function(mensaje_body){
   tryCatch(
     expr = {
+      hilo_enviados <- list()
       id_mensaje <- mensaje_body$id_resource
       for(i in seq_along(id_mensaje)){
         
@@ -1134,10 +1135,12 @@ ml_mensaje_slack <- function(mensaje_body){
         if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
           recordid_token <- "recQLtjnMhd4ZCiJq"
           canal <- "mercadolibreasm"
+          canal_slack <- ""
           next
         }else{
           recordid_token <- ""
           canal <- NULL
+          canal_slack <- "C096XTJ6T25"
         }
         ml_token <- get_active_token(recordid_token)
         slack_user_token <- Sys.getenv("SLACK_USER_TOKEN")
@@ -1167,10 +1170,30 @@ ml_mensaje_slack <- function(mensaje_body){
               #puede fallar por el id del canal
               slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),mensajes_slack_canal$canal[[length(mensajes_slack_canal$ts)]],mensajes_slack_canal$ts[[length(mensajes_slack_canal$ts)]],mensaje_hilo)
             }else{
-              enviar_mensaje_slack(Sys.getenv("SLACK_MENSAJES_ML_URL"),mensaje_hilo)
+              ts_mensaje <- purrr::pluck(hilo_enviados,mensaje_ml$messages[[1]]$message_resources[[1]]$id)
+              if(is.null(ts_mensaje)){
+                msj_hilo <- enviar_a_slack(Sys.getenv("SLACK_BOT_TOKEN"),canal_slack,mensaje_hilo)
+                if(msj_hilo$ok){
+                  hilo_enviados[[length(hilo_enviados) + 1]] <- list("ts"=msj_hilo$ts,"canal"=msj_hilo$channel)
+                  names(hilo_enviados)[[length(hilo_enviados)]] <- mensaje_ml$messages[[1]]$message_resources[[1]]$id
+                }
+              }else{
+                slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),ts_mensaje$canal,ts_mensaje$ts,mensaje_hilo)
+                
+              }
+              #enviar_mensaje_slack(Sys.getenv("SLACK_MENSAJES_ML_URL"),mensaje_hilo)
             }
           }else{
-            enviar_mensaje_slack(Sys.getenv("SLACK_MENSAJES_ML_URL"),mensaje_hilo)
+            ts_mensaje <- purrr::pluck(hilo_enviados,mensaje_ml$messages[[1]]$message_resources[[1]]$id)
+            if(is.null(ts_mensaje)){
+              msj_hilo <- enviar_a_slack(Sys.getenv("SLACK_BOT_TOKEN"),canal_slack,mensaje_hilo)
+              if(msj_hilo$ok){
+                hilo_enviados[[length(hilo_enviados) + 1]] <- list("ts"=msj_hilo$ts,"canal"=msj_hilo$channel)
+                names(hilo_enviados)[[length(hilo_enviados)]] <- mensaje_ml$messages[[1]]$message_resources[[1]]$id
+              }
+            }else{
+              slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),ts_mensaje$canal,ts_mensaje$ts,mensaje_hilo)
+            }
           }
         }
       }
