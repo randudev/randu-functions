@@ -185,7 +185,7 @@ datos_recibo <- function(canal_venta,orden,id_orden){
       }
       items_orden[[length(items_orden) + 1]] <- list(
         "nombre" = ventas_producto[[i]]$fields$helper_productname,
-        "precio"= ,
+        "precio"= precio,
         "sku"=paste0(producto$fields$sku),
         "cantidad" = ventas_producto[[i]]$fields$cantidad,
         "producto_key"=producto$fields$clave_sat,
