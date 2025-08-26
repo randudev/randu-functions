@@ -81,7 +81,7 @@ facturapi_cancelar_recibo <- function(id,auth_facturapi){
     req_perform() 
 }
 
-facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago="31"){
+facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago="31",omitir=""){
   items <- datos_recibo(canal_venta,orden,id_orden)
   if(tipo_de_pago == "31"){
     tipo_de_pago <- tipo_pago_real(orden,canal_venta)
