@@ -102,11 +102,14 @@ facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta,tip
     resp_body_json()
 }
 
-datos_recibo <- function(canal_venta,orden,id_orden){
+datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
   items_orden <- list()
   
   if(canal_venta=="ml"){
     for(i in 1:length(orden$order_item)){
+      if(orden$lineItems$edges[[i]]$node$name %in% omitir){
+        next
+      }
       items_orden[[length(items_orden) + 1]] <- list(
         "nombre" = orden$order_items[[i]]$item$title,
         "precio"= orden$order_items[[i]]$unit_price,
@@ -119,6 +122,9 @@ datos_recibo <- function(canal_venta,orden,id_orden){
   if(canal_venta=="amz"){
     for(item in orden$payload$OrderItems){
       descuento <- NULL
+      if(item$Title %in% omitir){
+        next
+      }
       precio <- as.numeric(item$ItemPrice$Amount)
       if(!is.null(item$PromotionDiscount$Amount)){
         if(as.numeric(item$PromotionDiscount$Amount)!=0){
@@ -192,6 +198,46 @@ datos_recibo <- function(canal_venta,orden,id_orden){
         "descuento" = descuento_real
       )  
     }
+  }
+  if(canal_venta == "shp1"){
+    orden <- orden$data$orders$edges[[1]]$node
+    if(!is.null(orden)){
+      for(i in 1:length(orden$lineItems$edges)){
+        if(orden$lineItems$edges[[i]]$node$name %in% omitir){
+          next
+        }
+        #descuento <- orden$line_items$discount_allocations[[i]]$amount
+        #discount <- as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento))/orden$line_items$quantity[[i]]
+        precio <- orden$lineItems$edges[[i]]$node$discountedTotalSet$shopMoney$amount
+        precio <- as.numeric(ifelse(is.null(precio)||is.na(precio), 0, precio))
+        if(precio>0){
+          descuento_real <- NULL
+        }else{
+          descuento_real <- 1.16 *orden$line_items$quantity[[i]]
+        }
+        items_orden[[length(items_orden) + 1]] <- list(
+          "nombre" = orden$lineItems$edges[[i]]$node$name,
+          "precio"= ifelse(precio>0,precio,1.16),
+          "sku"=orden$lineItems$edges[[i]]$node$sku,
+          "cantidad" = orden$lineItems$edges[[i]]$node$quantity,
+          "descuento" = descuento_real
+        )  
+        
+        
+        if(length(orden$shippingLines$edges)!=0){
+          if(i == length(orden$shippingLines$edges$id) && as.numeric(orden$shippingLines$edges$price[[1]])!=0){
+            items_orden[[length(items_orden) + 1]] <- list(
+              "nombre" = orden$shippingLines$edges$title[[1]],
+              "precio"= sum(as.numeric(orden$shippingLines$edges$price),na.rm=TRUE),
+              "sku"=1000,
+              "cantidad" = 1,
+              "descuento" = NULL
+            )  
+          }
+        }
+      }
+    }
+    
   }
   if(canal_venta != "directa"){
     for(i in 1:length(items_orden)){
