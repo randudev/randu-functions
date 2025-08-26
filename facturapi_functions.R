@@ -209,7 +209,7 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
         #descuento <- orden$line_items$discount_allocations[[i]]$amount
         #discount <- as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento))/orden$line_items$quantity[[i]]
         precio <- orden$lineItems$edges[[i]]$node$discountedTotalSet$shopMoney$amount
-        precio <- as.numeric(ifelse(is.null(precio)||is.na(precio), 0, precio))
+        precio <- as.numeric(ifelse(is.null(precio)||is.na(precio), 0, precio))/as.numeric(orden$lineItems$edges[[i]]$node$quantity)
         if(precio>0){
           descuento_real <- NULL
         }else{
