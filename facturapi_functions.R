@@ -82,7 +82,7 @@ facturapi_cancelar_recibo <- function(id,auth_facturapi){
 }
 
 facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago="31",omitir=""){
-  items <- datos_recibo(canal_venta,orden,id_orden)
+  items <- datos_recibo(canal_venta,orden,id_orden,omitir)
   if(tipo_de_pago == "31"){
     tipo_de_pago <- tipo_pago_real(orden,canal_venta)
   }
@@ -107,7 +107,7 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
   
   if(canal_venta=="ml"){
     for(i in 1:length(orden$order_item)){
-      if(orden$lineItems$edges[[i]]$node$name %in% omitir){
+      if(orden$order_items[[i]]$item$title %in% omitir){
         next
       }
       items_orden[[length(items_orden) + 1]] <- list(
