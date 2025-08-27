@@ -381,6 +381,141 @@ consulta_por_nombre <- function(order_name,access_token) {
   shopify_url <- "https://randumexico.myshopify.com/admin/api/2025-01/graphql.json"
   # Consulta GraphQL para obtener los detalles de la orden por nombre usando paste0
   
+#   query <- paste0('
+# {
+#   orders(first: 10, query: "name:', order_name, '") {
+#     edges {
+#       node {
+#         id
+#         name
+#         note
+#         customAttributes {
+#           key
+#           value
+#         }
+#         email
+#         phone
+#         createdAt
+#         confirmed
+#         cancelledAt
+#         currencyCode
+#         currentSubtotalPriceSet {
+#           shopMoney { amount currencyCode }
+#           presentmentMoney { amount currencyCode }
+#         }
+#         currentTotalPriceSet {
+#           shopMoney { amount currencyCode }
+#           presentmentMoney { amount currencyCode }
+#         }
+#         currentTotalTaxSet {
+#           shopMoney { amount currencyCode }
+#           presentmentMoney { amount currencyCode }
+#         }
+#         tags
+#         customer {
+#           id
+#           email
+#           firstName
+#           lastName
+#           phone
+#           createdAt
+#           defaultAddress {
+#             firstName
+#             lastName
+#             address1
+#             address2
+#             city
+#             province
+#             country
+#             zip
+#             phone
+#           }
+#         }
+#         billingAddress {
+#           firstName
+#           lastName
+#           address1
+#           address2
+#           city
+#           province
+#           country
+#           zip
+#           phone
+#         }
+#         shippingAddress {
+#           firstName
+#           lastName
+#           address1
+#           address2
+#           city
+#           province
+#           country
+#           zip
+#           phone
+#         }
+#         lineItems(first: 10) {
+#           edges {
+#             node {
+#               id
+#               name
+#               sku
+#               quantity
+#               variantTitle
+#               vendor
+#               discountedTotalSet {
+#                 shopMoney { amount currencyCode }
+#               }
+#               originalTotalSet {
+#                 shopMoney { amount currencyCode }
+#               }
+#             }
+#           }
+#         }
+#         shippingLines(first: 10) {
+#           edges {
+#             node {
+#               title
+#               originalPriceSet {
+#                 shopMoney { amount currencyCode }
+#               }
+#               discountedPriceSet {
+#                 shopMoney { amount currencyCode }
+#               }
+#             }
+#           }
+#         }
+#         transactions {
+#           kind
+#           gateway
+#           status
+#           amountSet {
+#             shopMoney { amount currencyCode }
+#           }
+#         }
+#         fulfillmentOrders(first: 10) {
+#           edges {
+#             node {
+#               id
+#               status
+#               lineItems(first: 10) {
+#                 edges {
+#                   node {
+#                     id
+#                     lineItem {
+#                       name
+#                       quantity
+#                     }
+#                   }
+#                 }
+#               }
+#             }
+#           }
+#         }
+#       }
+#     }
+#   }
+# }
+# ')
   query <- paste0('
 {
   orders(first: 10, query: "name:', order_name, '") {
@@ -459,14 +594,38 @@ consulta_por_nombre <- function(order_name,access_token) {
               id
               name
               sku
+              originalUnitPriceSet {
+                shopMoney { amount currencyCode }
+                presentmentMoney { amount currencyCode }
+              }
               quantity
               variantTitle
               vendor
+              originalTotalSet {
+                shopMoney { amount currencyCode }
+              }
               discountedTotalSet {
                 shopMoney { amount currencyCode }
               }
-              originalTotalSet {
-                shopMoney { amount currencyCode }
+              discountAllocations {
+                allocatedAmountSet {
+                  shopMoney { amount currencyCode }
+                  presentmentMoney { amount currencyCode }
+                }
+                discountApplication {
+                  targetSelection
+                  targetType
+                  allocationMethod
+                  ... on DiscountCodeApplication {
+                    code
+                  }
+                  ... on AutomaticDiscountApplication {
+                    title
+                  }
+                  ... on ManualDiscountApplication {
+                    title
+                  }
+                }
               }
             }
           }
@@ -516,6 +675,7 @@ consulta_por_nombre <- function(order_name,access_token) {
   }
 }
 ')
+  
 
   
   # Realizar la solicitud GraphQL

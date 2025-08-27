@@ -206,14 +206,15 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
         if(orden$lineItems$edges[[i]]$node$name %in% omitir){
           next
         }
-        #descuento <- orden$line_items$discount_allocations[[i]]$amount
-        #discount <- as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento))/orden$line_items$quantity[[i]]
-        precio <- orden$lineItems$edges[[i]]$node$discountedTotalSet$shopMoney$amount
-        precio <- as.numeric(ifelse(is.null(precio)||is.na(precio), 0, precio))/as.numeric(orden$lineItems$edges[[i]]$node$quantity)
+        descuento <- orden$lineItems$edges[[i]]$node$discountAllocations[[1]]$allocatedAmountSet$shopMoney$amount
+        discount <- as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento))/orden$lineItems$edges[[i]]$node$quantity
+        precio <- orden$lineItems$edges[[i]]$node$originalUnitPriceSet$shopMoney$amount
+        precio <- as.numeric(ifelse(is.null(precio)||is.na(precio), 0, precio)) - discount 
+        
         if(precio>0){
           descuento_real <- NULL
         }else{
-          descuento_real <- 1.16 *orden$line_items$quantity[[i]]
+          descuento_real <- 1.16 *orden$lineItems$edges[[i]]$node$quantity
         }
         items_orden[[length(items_orden) + 1]] <- list(
           "nombre" = orden$lineItems$edges[[i]]$node$name,
