@@ -206,8 +206,13 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
         if(orden$lineItems$edges[[i]]$node$name %in% omitir){
           next
         }
-        descuento <- orden$lineItems$edges[[i]]$node$discountAllocations[[1]]$allocatedAmountSet$shopMoney$amount
-        discount <- as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento))/orden$lineItems$edges[[i]]$node$quantity
+        if(length(orden$lineItems$edges[[i]]$node$discountAllocations)!=0){
+          descuento <- orden$lineItems$edges[[i]]$node$discountAllocations[[1]]$allocatedAmountSet$shopMoney$amount
+          discount <- as.numeric(ifelse(is.null(descuento)||is.na(descuento), 0, descuento))/orden$lineItems$edges[[i]]$node$quantity
+        }else{
+          discount <- 0
+        }
+        
         precio <- orden$lineItems$edges[[i]]$node$originalUnitPriceSet$shopMoney$amount
         precio <- as.numeric(ifelse(is.null(precio)||is.na(precio), 0, precio)) - discount 
         
