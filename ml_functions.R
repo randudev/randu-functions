@@ -1009,7 +1009,7 @@ ml_status_publicacion_agencia <- function(ml_token,status){
   if(length(productos)>1 ){
     productos <- productos[-1]
     for(i in 1:length(productos)){
-      Sys.sleep(1)
+      Sys.sleep(1.5)
       item_no_cambio <- ml_obtener_item(productos[[i]],ml_token)
       if(item_no_cambio$status == "under_review"){
         next

@@ -484,7 +484,9 @@ crear_pdf <- function(html){
                        "margin_bottom"= "0.5cm",
                        "margin_right"= "0.5cm",
                        "margin_left"= "0.5cm",
-                       "no_backgrounds"= T)) %>% 
+                       "no_backgrounds"= T,
+                       "orientation"= "vertical",
+                       "no_blank_pages"=T)) %>% 
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() %>% 
     resp_body_json()
