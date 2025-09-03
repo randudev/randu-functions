@@ -643,6 +643,14 @@ consulta_por_nombre <- function(order_name,access_token) {
             }
           }
         }
+        refunds {
+          id
+          createdAt
+          note
+          totalRefundedSet {
+            shopMoney { amount currencyCode }
+          }
+        }
         transactions {
           kind
           gateway

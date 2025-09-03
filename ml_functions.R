@@ -936,6 +936,7 @@ ml_agencia_sin_partes <- function(){
       }
     }
     productos <- append(status,productos)
+    productos <- unique(productos)
     saveRDS(productos,"publicaciones_a_pausar.RDS")
     return(productos)
   } else {
