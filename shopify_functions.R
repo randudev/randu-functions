@@ -530,6 +530,11 @@ consulta_por_nombre <- function(order_name,access_token) {
         }
         email
         phone
+        totalPriceSet {
+            shopMoney{
+              amount
+          }
+        }
         createdAt
         confirmed
         cancelledAt
