@@ -1206,108 +1206,145 @@ ml_mensaje_slack <- function(mensaje_body){
 }
 
 ml_full_register_op <- function(operaciones){
-  operacion_id <- operaciones$id_resource
-  for(i in seq_along(operacion_id)){
-    cuerpo <- fromJSON(operaciones$body[[i]])
-    if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
-      recordid_token <- "recQLtjnMhd4ZCiJq"
-      canal <- "mercadolibreasm"
-      ubicacion <- "ml_full_asm"
-    }else{
-      recordid_token <- ""
-      canal <- NULL
-      ubicacion <- "ml_full_rnd"
+  tryCatch(
+    expr={
+      operaciones <- operaciones %>% distinct(id_resource, .keep_all = TRUE)
+      operacion_id <- operaciones$id_resource
+      for(i in seq_along(operacion_id)){
+        fields <- list()
+        cuerpo <- fromJSON(operaciones$body[[i]])
+        if(cuerpo$user_id == Sys.getenv("SELLERID_ML_ASM")){
+          recordid_token <- "recQLtjnMhd4ZCiJq"
+          canal <- "mercadolibreasm"
+          ubicacion <- "ml_full_asm"
+        }else{
+          recordid_token <- ""
+          canal <- NULL
+          ubicacion <- "ml_full_rnd"
+        }
+        ml_token <- get_active_token(recordid_token)
+        operacion <- ml_operaciones_fulfillment(operacion_id[[i]],ml_token)
+        
+        if(last_response()$status_code %in% c(199:299)){
+          # if(!operacion$type %in% c("SALE_CONFIRMATION", "ADJUSTMENT")){
+          #   print(paste0(i, ": ",operacion$type))
+          # }
+          if(operacion$type %in% c("SALE_CANCELATION","INBOUND_RECEPTION","TRANSFER_DELIVERY","SALE_DELIVERY_CANCELATION")){
+            publicacion <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_inventario_marketplace='",operacion$inventory_id,"'"))
+            if(length(publicacion)==0){
+              print(paste0("No se pudo: ",operacion$inventory_id))
+              next
+            }
+            id_item <- ""
+            permalink <- ""
+            nombre <- ""
+            if(last_response()$status_code %in% c(199:299) && length(publicacion)!=0){
+              id_item <- publicacion[[1]]$fields$id_canal
+              nombre <- publicacion[[1]]$fields$titulo
+              permalink <-   publicacion[[1]]$fields$link_ml$url      
+            }
+            refs <- operacion$external_references
+            
+            # Construir texto tipo "type - value" para cada uno
+            refs_text <- sapply(refs, function(ref) {
+              paste0(ref$type, " - ", ref$value)
+            })
+            comentarios <- paste0("Tipo: ",operacion$type,": ",paste(refs_text, collapse = ", ")," ID:",operacion$id )
+            cantidad <- operacion[["detail"]][["available_quantity"]]
+            if(is.null(cantidad)){
+              cantidad <- 1
+              comentarios <- paste0(comentarios," ",toJSON(operacion[["detail"]]))
+            }
+            
+            fields <- list(
+              "tipo"="alta",
+              "cantidad"= cantidad,
+              "comentarios"=comentarios,
+              "ubicacion" = ubicacion,
+              "producto" = publicacion[[1]]$fields$producto
+              
+            )
+            
+          }
+          if(operacion$type %in% c("TRANSFER_RESERVATION","WITHDRAWAL_RESERVATION","SALE_DELIVERY_CANCELATION")){
+            publicacion <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_inventario_marketplace='",operacion$inventory_id,"'"))
+            if(length(publicacion)==0){
+              next
+            }
+            id_item <- ""
+            permalink <- ""
+            nombre <- ""
+            if(last_response()$status_code %in% c(199:299) && length(publicacion)!=0){
+              id_item <- publicacion[[1]]$fields$id_canal
+              nombre <- publicacion[[1]]$fields$titulo
+              permalink <-   publicacion[[1]]$fields$link_ml$url      
+            }
+            refs <- operacion$external_references
+            
+            # Construir texto tipo "type - value" para cada uno
+            refs_text <- sapply(refs, function(ref) {
+              paste0(ref$type, " - ", ref$value)
+            })
+            comentarios <- paste0("Tipo: ",operacion$type,": ",paste(refs_text, collapse = ", ")," ID:",operacion$id )
+            cantidad <- operacion[["detail"]][["available_quantity"]]
+            if(is.null(cantidad)){
+              cantidad <- pluck(operacion, "detail", "not_available_quantity", .default = 0)
+              comentarios <- paste0(comentarios," ",toJSON(operacion[["detail"]]))
+            }
+            
+            fields <- list(
+              "tipo"="baja",
+              "cantidad"= safe_abs_numeric(cantidad),
+              "comentarios"=comentarios,
+              "ubicacion" = ubicacion,
+              "producto" = publicacion[[1]]$fields$producto
+            )
+          }
+          if(operacion$result$available_quantity==0 && operacion$result$total == 0){
+            id_item <- ""
+            permalink <- ""
+            nombre <- ""
+            publicacion <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_inventario_marketplace='",operacion$inventory_id,"'"))
+            if(last_response()$status_code %in% c(199:299) && length(publicacion)!=0){
+              id_item <- publicacion[[1]]$fields$id_canal
+              nombre <- publicacion[[1]]$fields$titulo
+              permalink <-   publicacion[[1]]$fields$link_ml$url
+            }
+            mensaje_operacion <- paste0("El stock de la publicacion: ", id_item, "  ", nombre,"\n",permalink
+                                        ,"\nID del inventario de fulfillment: ",operacion$inventory_id,"\n"
+                                        ,"Se quedo sin stock en full por la operacion: ",operacion$type," ",operacion$detail$available_quantity)
+            enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_FULL_ML_URL"),mensaje_operacion)
+          }
+          if(length(fields)!=0){
+            fields$comentarios <- paste0(fields$comentarios," FECHA:",Sys.Date())
+            airtable_createrecord(fields,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
+          }
+          
+        }else{
+          mensaje <- paste0("No se pudo registrar transaccion de almacen de full por:\n ",
+                            "ERROR: ",last_response()$status_code,
+                            "ID Mercado libre: ",operacion_id[[i]], "ID Supabase: ",
+                            operaciones$id[[i]],"\n",last_response() %>% resp_body_string(),
+                            "\nRevise y compruebe que sucedio")
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+        }
+      }
+    },error=function(e){
+      if(!is.null(last_response() %>% resp_body_string())){
+        mensaje <- paste0("Ocurrio un error al registrar transaccion de almacen de full:\n ",
+                          "ERROR: ",e,"  STATUS:", last_response()$status_code,
+                          " ID Mercado libre: ",operacion_id[[i]], " ID Supabase: ",
+                          operaciones$id[[i]],"\n",last_response() %>% resp_body_string(),
+                          "\nRevise y compruebe que sucedio")
+      }else{
+        mensaje <- paste0("Ocurrio un error al registrar transaccion de almacen de full:\n ",
+                          "ERROR: ",e)
+      }
+      
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
     }
-    ml_token <- get_active_token(recordid_token)
-    operacion <- ml_operaciones_fulfillment(operacion_id[[i]],ml_token)
-    
-    if(last_response()$status_code %in% c(199:299)){
-      if(operacion$type %in% c("SALE_CANCELATION","INBOUND_RECEPTION","TRANSFER_DELIVERY","SALE_DELIVERY_CANCELATION")){
-        publicacion <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_inventario_marketplace='",operacion$inventory_id,"'"))
-        if(length(publicacion)!=0){
-          next
-        }
-        id_item <- ""
-        permalink <- ""
-        nombre <- ""
-        if(last_response()$status_code %in% c(199:299) && length(publicacion)!=0){
-          id_item <- publicacion[[1]]$fields$id_canal
-          nombre <- publicacion[[1]]$fields$titulo
-          permalink <-   publicacion[[1]]$fields$link_ml$url      
-        }
-        refs <- operacion$external_references
-        
-        # Construir texto tipo "type - value" para cada uno
-        refs_text <- sapply(refs, function(ref) {
-          paste0(ref$type, " - ", ref$value)
-        })
-        comentarios <- paste0("Tipo: ",operacion$type,": ",paste(refs_text, collapse = ", ")," ID:",operacion$id )
-        cantidad <- operacion[["detail"]][["available_quantity"]]
-        if(is.null(cantidad)){
-          cantidad <- 1
-          comentarios <- paste0(comentarios," ",toJSON(operacion[["detail"]]))
-        }
-        
-        fields <- list(
-          "tipo"="alta",
-          "cantidad"= cantidad,
-          "comentarios"=,
-          "ubicacion" = ubicacion,
-          "producto" = publicacion$fields$producto
-           
-        )
-      }
-      if(operacion$type %in% c("TRANSFER_RESERVATION","WITHDRAWAL_RESERVATION","TRANSFER_DELIVERY","SALE_DELIVERY_CANCELATION")){
-        publicacion <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_inventario_marketplace='",operacion$inventory_id,"'"))
-        if(length(publicacion)!=0){
-          next
-        }
-        id_item <- ""
-        permalink <- ""
-        nombre <- ""
-        if(last_response()$status_code %in% c(199:299) && length(publicacion)!=0){
-          id_item <- publicacion[[1]]$fields$id_canal
-          nombre <- publicacion[[1]]$fields$titulo
-          permalink <-   publicacion[[1]]$fields$link_ml$url      
-        }
-        refs <- operacion$external_references
-        
-        # Construir texto tipo "type - value" para cada uno
-        refs_text <- sapply(refs, function(ref) {
-          paste0(ref$type, " - ", ref$value)
-        })
-        comentarios <- paste0("Tipo: ",operacion$type,": ",paste(refs_text, collapse = ", ")," ID:",operacion$id )
-        cantidad <- operacion[["detail"]][["available_quantity"]]
-        if(is.null(cantidad)){
-          cantidad <- pluck(operacion, "detail", "not_available_quantity", .default = 0)
-          comentarios <- paste0(comentarios," ",toJSON(operacion[["detail"]]))
-        }
-        
-        fields <- list(
-          "tipo"="baja",
-          "cantidad"= safe_abs_numeric(cantidad),
-          "comentarios"=comentarios,
-          "ubicacion" = ubicacion,
-          "producto" = publicacion[[1]]$fields$producto
-        )
-      }
-      if(operacion$result$available_quantity==0 && operacion$result$total == 0){
-        id_item <- ""
-        permalink <- ""
-        nombre <- ""
-        publicacion <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_inventario_marketplace='",operacion$inventory_id,"'"))
-        if(last_response()$status_code %in% c(199:299) && length(publicacion)!=0){
-          id_item <- publicacion[[1]]$fields$id_canal
-          nombre <- publicacion[[1]]$fields$titulo
-          permalink <-   publicacion[[1]]$fields$link_ml$url      
-        }
-        mensaje_operacion <- paste0("El stock de la publicacion: ", id_item, "  ", nombre,"\n",permalink
-                                    ,"\nID del inventario de fulfillment: ",operacion$inventory_id,"\n"
-                                    ,"Se quedo sin stock en full por la operacion: ",operacion$type," ",operacion$detail$available_quantity)
-        enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_FULL_ML_URL"),mensaje_operacion)
-      }
-    }
-  }
+  )
+  
 }
 
 ml_full_saldo_inicial <- function(){
