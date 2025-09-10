@@ -93,6 +93,18 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
     fieldslist <- append(fieldslist,list('ml_id_envio'=paste0(mlorder$shipping$id)))
     ml_shipping <- get_dir_mlorder(mlorder,ml_token)
   }
+  records <- list()
+  for(i in seq_along(mlorder$payments)){
+    movimiento_dinero <- airtable_getrecordslist("movimientos_dinero",Sys.getenv("AIRTABLE_CES_BASE"),
+                                                 paste0("id_origen='",mlorder$payments[[i]]$id,"'"))
+    if(length(movimiento_dinero)!=0){
+      records[[length(records)+1]] <- movimiento_dinero[[1]]$id
+    }
+  }
+  if(length(records)!=0){
+    fieldslist <- append(fieldslist,list("movimientos_dinero"=records))
+  }
+  
   
   if("splitted_order" %in% mlorder$tags){
     ov_padre <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("ml_id_envio='",ml_shipping$sibling$sibling_id,"'"))
@@ -108,6 +120,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
     fieldslist <- append(fieldslist,list('ml_pack_id'=as.character(mlorder$pack_id)))
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
+  
   if(!is.null(newov_content)){
     if(!is.null(mlorder$shipping$id)){
       dir_id <- register_shippingadd_ml_atb(mlorder, ml_token, newov_content$id)
