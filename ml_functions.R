@@ -508,70 +508,99 @@ ml_eliminar_item <- function(id_item,ml_token){
 }
 
 ml_crear_publicacion <- function(titulo,precio,ml_token){
-  json <- paste0('{
-  "title":"',titulo,'",
-  "category_id":"MLM437179",
-  "price":',precio,',
-  "currency_id":"MXN",
-  "available_quantity":1,  
-  "buying_mode":"buy_it_now",
-  "condition":"new",
-  "listing_type_id":"gold_special",
-  "status":"active",
-  "sale_terms":[
-     {
-        "id":"WARRANTY_TYPE",
-        "value_name":"Garantía del vendedor"
-     },
-     {
-        "id":"WARRANTY_TIME",
-        "value_name":"60 días"
-     }
-  ],
-  "pictures":[
-     {
-        "source":"https://processmediacesrir.s3.us-west-2.amazonaws.com/media-productos/D_831387-MLM50622789114_072022-O.jpg"
-     }
-  ],
-  "attributes":[
-     {
-        "id":"BRAND",
-        "value_name":"Randu"
-     },
-     {
-        "id":"MANUFACTURER",
-        "name":"Fabricante",
-        "value_name":"Randu"
-     },{
-        "id":"SELLER_SKU",
-        "name":"SKU",
-        "value_name":"10700"
-     },{
-        "id":"MODEL",
-        "name":"Modelo",
-        "value_name":"Personalizado"
-     },{
-        "id":"HEIGHT",
-        "name":"Altura",
-        "value_name":"1 cm"
-     },{
-        "id":"LENGTH",
-        "name":"Largo",
-        "value_name":"1 cm"
-     },{
-        "id":"WIDTH",
-        "name":"Ancho",
-        "value_name":"1 cm"
-     }
-  ]
-  }')
+  # json <- paste0('{
+  # "title":"',titulo,'",
+  # "category_id":"MLM437179",
+  # "price":',precio,',
+  # "currency_id":"MXN",
+  # "available_quantity":1,  
+  # "buying_mode":"buy_it_now",
+  # "condition":"new",
+  # "listing_type_id":"gold_special",
+  # "status":"active",
+  # "sale_terms":[
+  #    {
+  #       "id":"WARRANTY_TYPE",
+  #       "value_name":"Garantía del vendedor"
+  #    },
+  #    {
+  #       "id":"WARRANTY_TIME",
+  #       "value_name":"60 días"
+  #    }
+  # ],
+  # "pictures":[
+  #    {
+  #       "source":"https://processmediacesrir.s3.us-west-2.amazonaws.com/media-productos/D_831387-MLM50622789114_072022-O.jpg"
+  #    }
+  # ],
+  # "attributes":[
+  #    {
+  #       "id":"BRAND",
+  #       "value_name":"Randu"
+  #    },
+  #    {
+  #       "id":"MANUFACTURER",
+  #       "name":"Fabricante",
+  #       "value_name":"Randu"
+  #    },{
+  #       "id":"SELLER_SKU",
+  #       "name":"SKU",
+  #       "value_name":"10700"
+  #    },{
+  #       "id":"MODEL",
+  #       "name":"Modelo",
+  #       "value_name":"Personalizado"
+  #    },{
+  #       "id":"HEIGHT",
+  #       "name":"Altura",
+  #       "value_name":"1 cm"
+  #    },{
+  #       "id":"LENGTH",
+  #       "name":"Largo",
+  #       "value_name":"1 cm"
+  #    },{
+  #       "id":"WIDTH",
+  #       "name":"Ancho",
+  #       "value_name":"1 cm"
+  #    }
+  # ]
+  # }')
+  titulo <- substr(titulo, 1, 60)
+  data <- list(
+    title = titulo,
+    category_id = "MLM437179",
+    price = precio,
+    currency_id = "MXN",
+    available_quantity = 1,
+    buying_mode = "buy_it_now",
+    condition = "new",
+    listing_type_id = "gold_special",
+    status = "active",
+    sale_terms = list(
+      list(id = "WARRANTY_TYPE", value_name = "Garantía del vendedor"),
+      list(id = "WARRANTY_TIME", value_name = "60 días")
+    ),
+    pictures = list(
+      list(source = "https://processmediacesrir.s3.us-west-2.amazonaws.com/media-productos/D_831387-MLM50622789114_072022-O.jpg")
+    ),
+    attributes = list(
+      list(id = "BRAND", value_name = "Randu"),
+      list(id = "MANUFACTURER", name = "Fabricante", value_name = "Randu"),
+      list(id = "SELLER_SKU", name = "SKU", value_name = "10700"),
+      list(id = "MODEL", name = "Modelo", value_name = "Personalizado"),
+      list(id = "HEIGHT", name = "Altura", value_name = "1 cm"),
+      list(id = "LENGTH", name = "Largo", value_name = "1 cm"),
+      list(id = "WIDTH", name = "Ancho", value_name = "1 cm"),
+      list(id = "INCLUDES_ASSEMBLY_MANUAL",value_name = "Sí"  # o "No", según aplique
+      )
+    )
+  )
   url <- paste0("https://api.mercadolibre.com/items/")
   resp <- request(url) %>% 
     req_method("POST") %>% 
     req_auth_bearer_token(ml_token) %>% 
     req_headers(accept= "application/json") %>% 
-    req_headers('content-type' = 'application/x-www-form-urlencoded') %>% 
-    req_body_json(fromJSON(json)) %>% 
+    req_body_json(data) %>% 
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() %>% 
     resp_body_json()
@@ -584,7 +613,6 @@ ml_crear_descripcion <- function(id_item,descripcion,ml_token){
     req_method("POST") %>% 
     req_auth_bearer_token(ml_token) %>% 
     req_headers(accept= "application/json") %>% 
-    req_headers('content-type' = 'application/x-www-form-urlencoded') %>% 
     req_body_json(list("plain_text"=paste0("Producto personalizado: ", descripcion))) %>% 
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() %>% 
