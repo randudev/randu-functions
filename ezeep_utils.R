@@ -120,13 +120,18 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
   if(!is.null(rango)){
     body$properties <- append(body$properties,list("pageRanges"=rango))
   }
-  request("https://printapi.ezeep.com/sfapi/Print/") %>% 
+  resp <- request("https://printapi.ezeep.com/sfapi/Print/") %>% 
     req_method("POST") %>% 
     # req_headers('Content-type'='application/x-www-form-urlencoded') %>% 
     req_headers('Content-type'='application/json') %>% 
     req_headers('Authorization'=paste0('Bearer ',ezeep_at)) %>% 
     req_body_json(body) %>% 
     req_error(is_error = function(resp) FALSE) %>%
-    req_perform() %>% 
-    resp_body_json()
+    req_perform() 
+  if(last_response()$status_code %in% c(199:299)){
+    return(resp %>% resp_body_json())
+  }else{
+    return(list())
+  }
+    
 }
