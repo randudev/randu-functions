@@ -126,6 +126,7 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
     req_headers('Content-type'='application/json') %>% 
     req_headers('Authorization'=paste0('Bearer ',ezeep_at)) %>% 
     req_body_json(body) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
     req_perform() %>% 
     resp_body_json()
 }
