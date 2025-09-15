@@ -142,7 +142,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
                                       "CP: ",ml_shipping$destination$shipping_address$zip_code, " Calle: ",ml_shipping$destination$shipping_address$street_name,
                                       " Colonia: ",ml_shipping$destination$shipping_address$neighborhood$name," Ciudad: ",ml_shipping$destination$shipping_address$city$name,
                                       "\n¿Deseas cambiar el tipo de envio a paqueteria?")
-              enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
+              #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
               airtable_updatesinglerecord(list("entrega_cdmx"=TRUE),"ordenes_venta",Sys.getenv('AIRTABLE_CES_BASE'),newov_content$id)
             }
           }
@@ -161,7 +161,7 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
                                     "CP: ",ml_shipping$destination$shipping_address$zip_code, " Calle: ",ml_shipping$destination$shipping_address$street_name,
                                     " Colonia: ",ml_shipping$destination$shipping_address$neighborhood$name," Ciudad: ",ml_shipping$destination$shipping_address$city$name,
                                     "\n¿Deseas cambiar el tipo de envio a paqueteria?")
-            enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
+            #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
             airtable_updatesinglerecord(list("entrega_cdmx"=TRUE),"ordenes_venta",Sys.getenv('AIRTABLE_CES_BASE'),newov_content$id)
           }
         }

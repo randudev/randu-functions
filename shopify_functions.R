@@ -342,7 +342,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                                 "CP: ",shopifyorder$shipping_address$zip, " Calle: ",shopifyorder$shipping_address$address1,
                                 " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
                                 "\n¿Deseas cambiar el tipo de envio a paqueteria?")
-        enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
+        #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
         fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE))
       }
     }

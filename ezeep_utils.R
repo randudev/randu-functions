@@ -56,7 +56,7 @@ ezeep_getactivetoken <- function(){
   validat
 }
 
-ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=NULL){
+ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=NULL,orientacion=1){
   switch(printername,
          'impresora_rosa'={
            #printer_id <- "1f0763ce-3112-4c5d-929c-800354d6ca83"
@@ -80,7 +80,7 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            #printer_id <- "7843711d-3674-496b-a245-4bea92bdd3f0"
            paper_id <- 1
            paper_name <- "carta"
-           orientation <- 1
+           orientation <- orientacion
          },
          'impresora_paqueteria'={
            #printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"
@@ -94,8 +94,8 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            #printer_id <- "1ea10e2d-9264-4392-90be-2a8a09bb3f3d"
            #printer_id <- "3e574e62-2e3c-4845-b6b8-f8da1582bf17"
            printer_id <- "ae8f8915-92da-4aa3-b097-c408ff74c3cf"
-           paper_id <- 257
-           paper_name <- "4x8"
+           paper_id <- 1
+           paper_name <- "carta"
            orientation <- 1
          }
          )
