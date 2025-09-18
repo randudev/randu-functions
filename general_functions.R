@@ -242,7 +242,6 @@ registrar_producto <- function(producto,venta_producto){
               if(orden_venta$fields$canal_venta=="directa"){
                 fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="1 - Media"))
               }
-              #airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
               
             }
             else{
@@ -372,13 +371,13 @@ registrar_producto <- function(producto,venta_producto){
             fields <- append(fields,list('prioridad'="7 - Extrema"))
           }
           if(orden_venta$fields$canal_venta=="walmartrnd"){
-            fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
+            fields <- append(fields,list('prioridad'="7 - Extrema"))
           }
           if(orden_venta$fields$canal_venta=="dstrnd"){
-            fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="3 - Alta"))
+            fields <- append(fields,list('prioridad'="3 - Alta"))
           }
           if(orden_venta$fields$canal_venta=="directa"){
-            fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="1 - Media"))
+            fields <- append(fields,list('prioridad'="1 - Media"))
           }
           aux <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
           
@@ -517,4 +516,56 @@ safe_abs_numeric <- function(x) {
   num <- suppressWarnings(as.numeric(x))
   if (is.na(num)) num <- 0
   abs(num)
+}
+
+imprimir_etiqueta_pernos <- function(){
+  ezeep_at <- ezeep_getactivetoken()
+  while(T){
+    respuesta <- readline("Escanea la etiqueta que deseas imprimir o escribe terminar: ")
+    if(str_detect(respuesta,"\\|") && !str_detect(respuesta,"SP")){
+      texto_escaneado <- strsplit(respuesta,"\\|") 
+      id_producto <- texto_escaneado[[1]][1]
+      record_producto <- detectar_bloq_mayus(texto_escaneado[[1]][2],"rec")
+      producto <- airtable_getrecorddata_byid(record_producto,"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+      if(length(producto)!=0){
+        if(length(producto$fields$qr_image)!=0){
+          ezeep_printbyurl(producto$fields$qr_image$url,ezeep_at,"impresora_azul",copies=50)
+          if(!is.null(ezeep_resp$jobid)){
+            print(paste0('Se solicitó correctamente la impresión del producto ', producto$fields$id_productos))
+          }
+        }
+      }
+    }
+  }
+}
+
+
+invertir_may_min <- function(x) {
+  # Cambiar mayúsculas a minúsculas y viceversa
+  sapply(strsplit(x, NULL), function(chars) {
+    paste(sapply(chars, function(char) {
+      if (char == tolower(char)) {
+        return(toupper(char)) 
+      } else {
+        return(tolower(char))  
+      }
+    }), collapse = "")
+  })
+}
+
+detectar_bloq_mayus <- function(char,patron, inicio=1){
+  rec <- substr(char,inicio,nchar(patron)+inicio-1)
+  if(rec != patron){
+    char<- invertir_may_min(char)
+  }
+  return(char)
+}
+
+first_letter <- function(char){
+  first_char <- substr(char, 1, 1)
+  is_upper <- grepl("^[A-Z]$", first_char)
+  if(!is_upper){
+    char <- invertir_may_min(char)
+  }
+  return(char)
 }

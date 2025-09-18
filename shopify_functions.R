@@ -658,10 +658,22 @@ consulta_por_nombre <- function(order_name,access_token) {
         }
         transactions {
           kind
+          id
           gateway
           status
+          processedAt
+          paymentId
+          receiptJson
           amountSet {
             shopMoney { amount currencyCode }
+          }
+          paymentDetails {
+            ... on CardPaymentDetails {
+              company
+              paymentMethodName
+              # otros campos específicos de tarjeta
+            }
+            # puedes agregar otros tipos si usas diferentes métodos de pago
           }
         }
         fulfillmentOrders(first: 10) {

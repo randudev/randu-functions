@@ -1461,3 +1461,15 @@ ml_full_saldo_inicial <- function(){
   }
   return(list("fields"=fields_todos,"skus"=skus_repetidos))
 }
+
+mp_pagos <- function(id_pago,ml_token){
+  url_mp <- paste0("https://api.mercadopago.com/v1/payments/",id_pago)
+  resp <- request(url_mp) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers("accept"= "application/json") %>% 
+    req_headers('content-type' = 'application/json') %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform()%>% 
+    resp_body_json()
+}
