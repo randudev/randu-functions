@@ -334,7 +334,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                               " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
                               "\n¿Deseas cambiar el tipo de envio a paqueteria?")
       enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
-      fieldslist <- append(fieldslist,list("entrega_qro"=TRUE))
+      fieldslist <- append(fieldslist,list("entrega_qro"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
     }else{
       codigospostalesCDMX <- readRDS("~/codigospostalesCDMX.RDS")
       if(shopifyorder$shipping_address$zip %in% codigospostalesCDMX){
@@ -343,7 +343,17 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                                 " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
                                 "\n¿Deseas cambiar el tipo de envio a paqueteria?")
         #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
-        fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE))
+        fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
+      }else{
+        codigospostalesInstalacion <- readRDS("~/codigospostalesInstalacion.RDS")
+        if(shopifyorder$shipping_address$zip %in% codigospostalesInstalacion){
+          mensaje_envio <- paste0(shopifyorder$name,"\nLa orden de venta se envia en el área cercana: \n",
+                                  "CP: ",shopifyorder$shipping_address$zip, " Calle: ",shopifyorder$shipping_address$address1,
+                                  " Colonia: ",shopifyorder$shipping_address$address2," Ciudad: ",shopifyorder$shipping_address$city,
+                                  "\n¿Deseas cambiar el tipo de envio a paqueteria?")
+          #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
+          fieldslist <- append(fieldslist,list("cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
+        }
       }
     }
   }
