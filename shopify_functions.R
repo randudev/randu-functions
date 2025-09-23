@@ -357,6 +357,20 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
       }
     }
   }
+  shopi_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
+  shp_order<- consulta_por_nombre(shopifyorder$name,shopi_token)
+  records <- list()
+  for(i in seq_along(shp_order$data$orders$edges[[1]]$node$transactions)){
+    payment_id <- shp_order$data$orders$edges[[1]]$node$transactions[[i]]$paymentId
+    movimiento_dinero <- airtable_getrecordslist("movimientos_dinero",Sys.getenv("AIRTABLE_CES_BASE"),
+                                                 paste0("external_reference='",payment_id,"'"))
+    if(length(movimiento_dinero)!=0){
+      records[[length(records)+1]] <- movimiento_dinero[[1]]$id
+    }
+  }
+  if(length(records)!=0){
+    fieldslist <- append(fieldslist,list("movimientos_dinero"=records))
+  }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", Sys.getenv('AIRTABLE_CES_BASE'))
   return(newov_content)
 }
