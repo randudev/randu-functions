@@ -529,12 +529,14 @@ imprimir_etiqueta_pernos <- function(){
       producto <- airtable_getrecorddata_byid(record_producto,"productos",Sys.getenv("AIRTABLE_CES_BASE"))
       if(length(producto)!=0){
         if(length(producto$fields$qr_image)!=0){
-          ezeep_printbyurl(producto$fields$qr_image$url,ezeep_at,"impresora_azul",copies=50)
+          ezeep_resp <- ezeep_printbyurl(producto$fields$qr_image[[1]]$url,ezeep_at,"impresora_azul",copies=50)
           if(!is.null(ezeep_resp$jobid)){
             print(paste0('Se solicitó correctamente la impresión del producto ', producto$fields$id_productos))
           }
         }
       }
+    }else{
+      break
     }
   }
 }
@@ -568,4 +570,120 @@ first_letter <- function(char){
     char <- invertir_may_min(char)
   }
   return(char)
+}
+
+actualizar_o_sumar <- function(tabla, nuevo_sku, nueva_cantidad,nombre,record_id='') {
+  if (nuevo_sku %in% tabla$sku) {
+    
+    tabla$cantidad[tabla$sku == nuevo_sku] <- tabla$cantidad[tabla$sku == nuevo_sku] + nueva_cantidad
+  } else {
+    
+    nueva_fila <- data.frame(sku = nuevo_sku, cantidad = nueva_cantidad,nombre=nombre,recordid=record_id, stringsAsFactors = FALSE)
+    tabla <- rbind(tabla, nueva_fila)
+  }
+  return(tabla)
+}
+
+obtener_tabla_resumen <- function(){
+  archivo <- "~/resumen_guias.RDS"
+  if (file.exists(archivo)) {
+    tabla_resumen <- readRDS(archivo)
+    if(tabla_resumen$fecha!=Sys.Date()){
+      tabla_resumen <- list("fecha"=Sys.Date(),"tabla_resumen"=data.frame(
+        sku = character(),
+        nombre=character(),
+        cantidad = numeric(),
+        recordid = character(),
+        stringsAsFactors = FALSE
+      ))
+    }
+  } else {
+    tabla_resumen <- list("fecha"=Sys.Date(),"tabla_resumen"=data.frame(
+      sku = character(),
+      nombre=character(),
+      cantidad = numeric(),
+      recordid = character(),
+      stringsAsFactors = FALSE
+    ))
+    saveRDS(tabla_resumen, archivo)
+  }
+  return(tabla_resumen)
+}
+
+resumen_productos <- function(tabla,lista_paquete){
+  for(paquete in lista_paquete){
+    sku <- as.numeric(sub("^(\\d+).*", "\\1",paquete$nombre))
+    tabla <- actualizar_o_sumar(tabla,sku,paquete$cantidad,paquete$nombre)
+  }
+  return(tabla)
+}
+
+
+resumen_guias <- function(){
+  archivo <- "~/resumen_guias.RDS"
+  if (file.exists(archivo)) {
+    tabla_resumen <- readRDS(archivo)
+  }else{
+    print("NO SE PUDO CREAR EL ARCHIVO")
+  }
+  tabla_list <- unname(split(tabla_resumen$tabla_resumen, seq(nrow(tabla_resumen$tabla_resumen))))
+  
+  # Creamos la lista para el template
+  data_template <- list(
+    fecha = tabla_resumen$fecha,
+    tiene_filas = length(tabla_list) > 0,
+    filas = tabla_list
+  )
+  
+  # Template Mustache (whisker)
+  template <- "
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='UTF-8'>
+  <title>Resumen de tabla_resumen</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h1>Resumen de tabla_resumen</h1>
+  <p><strong>Fecha:</strong> {{fecha}}</p>
+  <h2>Tabla</h2>
+  <table>
+    <tr>
+      <th>sku</th>
+      <th>nombre</th>
+      <th>cantidad</th>
+      <th>recordid</th>
+    </tr>
+    {{#tiene_filas}}
+      {{#filas}}
+        <tr>
+          <td>{{sku}}</td>
+          <td>{{nombre}}</td>
+          <td>{{cantidad}}</td>
+          <td>{{recordid}}</td>
+        </tr>
+      {{/filas}}
+    {{/tiene_filas}}
+    {{^tiene_filas}}
+      <tr>
+        <td colspan='4' style='text-align:center; color:gray;'>Tabla vacía</td>
+      </tr>
+    {{/tiene_filas}}
+  </table>
+</body>
+</html>
+"
+  
+  # Renderizar el HTML con whisker
+  html_rendered <- whisker.render(template, data_template)
+  
+  # Guardar en archivo
+  writeLines(html_rendered, "resumen_tabla.html")
+  message("✅ HTML generado correctamente: resumen_tabla_html")
 }
