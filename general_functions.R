@@ -685,5 +685,6 @@ resumen_guias <- function(){
   
   # Guardar en archivo
   writeLines(html_rendered, "resumen_tabla.html")
-  message("✅ HTML generado correctamente: resumen_tabla_html")
+  message("HTML generado correctamente: resumen_tabla_html")
+  browseURL(normalizePath("resumen_tabla.html"))
 }
