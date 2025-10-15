@@ -613,7 +613,9 @@ obtener_tabla_resumen <- function(){
 resumen_productos <- function(tabla,lista_paquete){
   for(paquete in lista_paquete){
     sku <- as.numeric(sub("^(\\d+).*", "\\1",paquete$nombre))
-    tabla <- actualizar_o_sumar(tabla,sku,paquete$cantidad,paquete$nombre)
+    if(!is.na(sku)){
+      tabla <- actualizar_o_sumar(tabla,sku,paquete$cantidad,paquete$nombre)
+    }
   }
   return(tabla)
 }
