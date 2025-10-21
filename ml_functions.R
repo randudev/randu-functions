@@ -32,7 +32,12 @@ get_active_token <- function(recordid=""){
     newaccess_token <- newtokendata$access_token
     newrefreshtoken <- newtokendata$refresh_token
     newexpire <- last_response() %>% resp_date() + 21300 
-    
+    if(is.null(newrefreshtoken) || !last_response()$status_code %in% c(199:299)){
+      mensaje <- paste0("Tuvimos un error: ",last_response() %>% resp_body_string(), "\n",
+                        toJSON(tkdata))
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+      return(NULL)
+    }
     airtable_updatesinglerecord(fieldslist = list('access_token'=newaccess_token,
                                                   'refresh_token'=newrefreshtoken,
                                                   'token_expires'=newexpire), 
