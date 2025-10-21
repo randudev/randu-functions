@@ -233,7 +233,7 @@ registrar_producto <- function(producto,venta_producto){
               if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
                 fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
               }
-              if(orden_venta$fields$canal_venta=="walmartrnd"){
+              if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
                 fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
               }
               if(orden_venta$fields$canal_venta=="dstrnd"){
@@ -370,7 +370,7 @@ registrar_producto <- function(producto,venta_producto){
           if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
             fields <- append(fields,list('prioridad'="7 - Extrema"))
           }
-          if(orden_venta$fields$canal_venta=="walmartrnd"){
+          if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
             fields <- append(fields,list('prioridad'="7 - Extrema"))
           }
           if(orden_venta$fields$canal_venta=="dstrnd"){
