@@ -131,3 +131,16 @@ supabase_updates <- function(id,fieldslist, tablename="", base_id="",apikey=Sys.
     supabase_update(id,fieldslist, tablename, base_id,apikey)
   }
 }
+
+supabase_update_sql <- function(sql,service_role_key){
+  res <- request(paste0("https://", base_id, ".supabase.co/rest/v1/rpc/execute_sql")) %>%
+    req_method("POST") %>%
+    req_headers(
+      "Authorization" = paste("Bearer", service_role_key),
+      "apikey" = service_role_key,
+      "Content-Type" = "application/json"
+    ) %>%
+    req_body_json(list(sql = sql)) %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform()
+} 
