@@ -547,7 +547,12 @@ consulta_por_nombre <- function(order_name,access_token) {
       node {
         id
         name
+        edited
         note
+        merchantOfRecordApp{
+          id
+          name
+        }
         customAttributes {
           key
           value
@@ -879,3 +884,22 @@ shopify_api_resquest <- function(shop_url,shopi_token, graphql_query,variables=N
     resp_body_json()
   return(response)
 }
+
+shopify_doc_api <- function(shop_url,shopi_token,nombre){
+  graphql_query <- paste0('{
+  __type(name: "',nombre,'") {
+    name
+    fields {
+      name
+      type {
+        name
+        kind
+        ofType {
+          name
+        }
+      }
+    }
+  }
+}')
+  res <- shopify_api(shop_url,shopi_token,graphql_query)
+} 

@@ -690,3 +690,72 @@ resumen_guias <- function(){
   message("HTML generado correctamente: resumen_tabla_html")
   browseURL(normalizePath("resumen_tabla.html"))
 }
+
+resumen_guias_shiny <- function() {
+  archivo <- "~/resumen_guias.RDS"
+  if (!file.exists(archivo)) {
+    print("NO SE PUDO CREAR EL ARCHIVO")
+    return(NULL)
+  }
+  
+  tabla_resumen <- readRDS(archivo)
+  tabla_list <- unname(split(tabla_resumen$tabla_resumen, seq(nrow(tabla_resumen$tabla_resumen))))
+  
+  data_template <- list(
+    fecha = tabla_resumen$fecha,
+    tiene_filas = length(tabla_list) > 0,
+    filas = tabla_list
+  )
+  
+  template <- "
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='UTF-8'>
+  <title>Resumen de </title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h1>Resumen de tabla_resumen</h1>
+  <p><strong>Fecha:</strong> {{fecha}}</p>
+  <h2>Tabla</h2>
+  <table>
+    <tr>
+      <th>sku</th>
+      <th>nombre</th>
+      <th>cantidad</th>
+      <th>recordid</th>
+    </tr>
+    {{#tiene_filas}}
+      {{#filas}}
+        <tr>
+          <td>{{sku}}</td>
+          <td>{{nombre}}</td>
+          <td>{{cantidad}}</td>
+          <td>{{recordid}}</td>
+        </tr>
+      {{/filas}}
+    {{/tiene_filas}}
+    {{^tiene_filas}}
+      <tr>
+        <td colspan='4' style='text-align:center; color:gray;'>Tabla vacía</td>
+      </tr>
+    {{/tiene_filas}}
+  </table>
+</body>
+</html>
+"
+  
+  html_rendered <- whisker.render(template, data_template)
+  output_file <- "resumen_tabla.html"
+  #dir.create("www", showWarnings = FALSE)
+  writeLines(html_rendered, output_file)
+  message("✅ HTML generado correctamente: ", normalizePath(output_file))
+  
+  return(output_file)
+}
