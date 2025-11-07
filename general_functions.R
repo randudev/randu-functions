@@ -168,115 +168,191 @@ registrar_producto <- function(producto,venta_producto){
   # }
   if(!str_detect(tolower(producto$fields$id_productos),"10700")  & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"personalizado")){
     if(length(producto$fields$partes_producto) != 0){
-      for(parte in producto$fields$partes_producto){
-        #print(parte)
-        aux_parte <- airtable_getrecorddata_byid(parte,"partes_producto",Sys.getenv("AIRTABLE_CES_BASE")) 
-        #aux_parte <- airtable_getrecorddata_byid(parte,"partes_producto",Sys.getenv("AIRTABLE_RIR_BASE"))
-        if(!is.null(aux_parte$fields$parte)){
-          
-          parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
-          #parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_RIR_BASE"))
-          if(parte_producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
-            if(!is.null(parte_producto$fields$item_produccion)){
-              tipo_empaque <- "estándar"
-              if(venta_producto$fields$cantidad >= 5 ){
-                tipo_empaque <- "tarima"
+      if(length(producto$fields$item_produccion)!=0){
+        tipo_empaque <- "estándar"
+        if(venta_producto$fields$cantidad >= 5){
+          tipo_empaque <- "tarima"
+        }
+        if(!is.null(orden_venta$fields$entrega_local)){
+          tipo_empaque <- "ligero"
+        }
+        ov <- ""
+        if(is.null(orden_venta$fields$id_origen)){
+          ov <- orden_venta$fields$id_ordenes_venta
+        }
+        fields <- list(
+          "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+          "cantidad"=venta_producto$fields$cantidad,
+          "producto"=list(producto$id),
+          "venta_producto"=list(venta_producto$id),
+          "tipo_empaque"=tipo_empaque,
+          "origen"="pedido"
+        )
+        
+        if(orden_venta$fields$canal_venta=="mercadolibrernd"){
+          ml_token <- get_active_token()
+          ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
+          if(!is.null(ml_order$shipping$id)){
+            ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+            if(ml_shipping$logistic$mode == "me2"){
+              fields <- append(fields,list('prioridad'="8 - Antes de la 1"))
+            } else{
+              fields <- append(fields,list('prioridad'="2 - Media Alta"))
+            }
+          }else{
+            fields <- append(fields,list('prioridad'="2 - Media Alta"))
+          }
+        }
+        if(orden_venta$fields$canal_venta=="shprndmx"){
+          fields <- append(fields,list('prioridad'="1 - Media"))
+        }
+        if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
+          fields <- append(fields,list('prioridad'="7 - Extrema"))
+        }
+        if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
+          fields <- append(fields,list('prioridad'="7 - Extrema"))
+        }
+        if(orden_venta$fields$canal_venta=="dstrnd"){
+          fields <- append(fields,list('prioridad'="3 - Alta"))
+        }
+        if(orden_venta$fields$canal_venta=="directa"){
+          fields <- append(fields,list('prioridad'="1 - Media"))
+        }
+        aux <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+        
+        print(paste0("-Las solicitudes de la venta producto : ", venta_producto$fields$id_ventas_producto, " se registro exitosamente"))
+        if(!is.null(aux)){
+          link_qr <- aux$fields$barcode_link
+          if(is.null(link_qr)){
+            link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
+          }
+          sp <- aux$fields$id_solicitud
+          nombre_producto <- paste0(aux$fields$producto_solicitado,".")
+          # url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
+          # airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
+          #                             'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
+          # if(!last_response()$status_code %in% c(199:299)){
+          #   mensaje <- paste0("No se subio la etiqueta: ",sp,
+          #                     "\nlast_response() %>% resp_body_json():\n",
+          #                     toJSON(last_response() %>% resp_body_json()),
+          #                     "last_request()$body:\n",
+          #                     toJSON(last_request()$body) )
+          #   enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+          # }
+          airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
+        }
+        
+      }else{
+        for(parte in producto$fields$partes_producto){
+          #print(parte)
+          aux_parte <- airtable_getrecorddata_byid(parte,"partes_producto",Sys.getenv("AIRTABLE_CES_BASE")) 
+          #aux_parte <- airtable_getrecorddata_byid(parte,"partes_producto",Sys.getenv("AIRTABLE_RIR_BASE"))
+          if(!is.null(aux_parte$fields$parte)){
+            
+            parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+            #parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_RIR_BASE"))
+            if(parte_producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
+              if(!is.null(parte_producto$fields$item_produccion)){
+                tipo_empaque <- "estándar"
+                if(venta_producto$fields$cantidad >= 5 ){
+                  tipo_empaque <- "tarima"
+                }
+                if(!is.null(orden_venta$fields$entrega_local)){
+                  tipo_empaque <- "ligero"
+                }
+                ov <- ""
+                if(is.null(orden_venta$fields$id_origen)){
+                  ov <- orden_venta$fields$id_ordenes_venta
+                }
+                if(str_detect(tolower(producto$fields$id_productos),"juego") && !str_detect(tolower(parte_producto$fields$id_productos),"caja bulto")){
+                  fields[[length(fields) + 1]] <- list(
+                    "tabla"="solicitudes",
+                    "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+                    "cantidad"=venta_producto$fields$cantidad,
+                    "producto"=list(producto$id),
+                    "venta_producto"=list(venta_producto$id),
+                    "tipo_empaque"=tipo_empaque,
+                    "origen"="pedido"
+                  )
+                }else{
+                  fields[[length(fields) + 1]] <- list(
+                    "tabla"="solicitudes",
+                    "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+                    "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
+                    "producto"=list(parte_producto$id),
+                    "venta_producto"=list(venta_producto$id),
+                    "tipo_empaque"=tipo_empaque,
+                    "origen"="pedido"
+                  )
+                }
+                if(parte_producto$fields$categoria == "Empaque"){
+                  fields[[length(fields)]]$origen <- "empaque CNC"
+                }
+                if(orden_venta$fields$canal_venta=="mercadolibrernd"){
+                  ml_token <- get_active_token()
+                  ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
+                  if(!is.null(ml_order$shipping$id)){
+                    ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+                    if(ml_shipping$logistic$mode == "me2"){
+                      fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de la 1"))
+                    } else{
+                      fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
+                    }
+                  }else{
+                    fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
+                  }
+                }
+                if(orden_venta$fields$canal_venta=="shprndmx"){
+                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="1 - Media"))
+                }
+                if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
+                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
+                }
+                if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
+                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
+                }
+                if(orden_venta$fields$canal_venta=="dstrnd"){
+                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="3 - Alta"))
+                }
+                if(orden_venta$fields$canal_venta=="directa"){
+                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="1 - Media"))
+                }
+                
               }
-              if(!is.null(orden_venta$fields$entrega_local)){
-                tipo_empaque <- "ligero"
+              else{
+                print("No se registro la solicitud de produccion porque una parte de stock no esta disponible")
+                print(venta_producto$fields$id_ventas_producto)
+                break
               }
+            }
+            else{
               ov <- ""
               if(is.null(orden_venta$fields$id_origen)){
                 ov <- orden_venta$fields$id_ordenes_venta
               }
-              if(str_detect(tolower(producto$fields$id_productos),"juego") && !str_detect(tolower(parte_producto$fields$id_productos),"caja bulto")){
-                fields[[length(fields) + 1]] <- list(
-                  "tabla"="solicitudes",
-                  "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
-                  "cantidad"=venta_producto$fields$cantidad,
-                  "producto"=list(producto$id),
-                  "venta_producto"=list(venta_producto$id),
-                  "tipo_empaque"=tipo_empaque,
-                  "origen"="pedido"
-                )
-              }else{
-                fields[[length(fields) + 1]] <- list(
-                  "tabla"="solicitudes",
-                  "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
-                  "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
-                  "producto"=list(parte_producto$id),
-                  "venta_producto"=list(venta_producto$id),
-                  "tipo_empaque"=tipo_empaque,
-                  "origen"="pedido"
-                )
-              }
-              if(parte_producto$fields$categoria == "Empaque"){
-                fields[[length(fields)]]$origen <- "empaque CNC"
-              }
-              if(orden_venta$fields$canal_venta=="mercadolibrernd"){
-                ml_token <- get_active_token()
-                ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
-                if(!is.null(ml_order$shipping$id)){
-                  ml_shipping <- get_dir_mlorder(ml_order,ml_token)
-                  if(ml_shipping$logistic$mode == "me2"){
-                    fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de la 1"))
-                  } else{
-                    fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
-                  }
-                }else{
-                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
+              fields[[length(fields) + 1]] <- list(
+                "tabla"="transacciones",
+                'tipo'='reserva',
+                "producto"=list(parte_producto$id),
+                "ventas_producto"=list(venta_producto$id),
+                "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+                "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
+                "ubicacion"="navex93"
+              )
+              
+              if(is.null(parte_producto$fields$item_produccion) ){
+                cantidad_restante <- parte_producto$fields$cantidad_disponible_navex93 - venta_producto$fields$cantidad
+                if(cantidad_restante<=6){
+                  mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
+                                    cantidad_restante, " unidades\nRevisa")
+                  enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
+                  #enviar_email(mensaje,"mauricio@randu.mx")
+                  #enviar_email(mensaje,"yatzel@randu.mx")
                 }
               }
-              if(orden_venta$fields$canal_venta=="shprndmx"){
-                fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="1 - Media"))
-              }
-              if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
-                fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
-              }
-              if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
-                fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
-              }
-              if(orden_venta$fields$canal_venta=="dstrnd"){
-                fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="3 - Alta"))
-              }
-              if(orden_venta$fields$canal_venta=="directa"){
-                fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="1 - Media"))
-              }
-              
             }
-            else{
-              print("No se registro la solicitud de produccion porque una parte de stock no esta disponible")
-              print(venta_producto$fields$id_ventas_producto)
-              break
-            }
-          }
-          else{
-            ov <- ""
-            if(is.null(orden_venta$fields$id_origen)){
-              ov <- orden_venta$fields$id_ordenes_venta
-            }
-            fields[[length(fields) + 1]] <- list(
-              "tabla"="transacciones",
-              'tipo'='reserva',
-              "producto"=list(parte_producto$id),
-              "ventas_producto"=list(venta_producto$id),
-              "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
-              "cantidad"=venta_producto$fields$cantidad*aux_parte$fields$cantidad,
-              "ubicacion"="navex93"
-            )
             
-            if(is.null(parte_producto$fields$item_produccion) ){
-              cantidad_restante <- parte_producto$fields$cantidad_disponible_navex93 - venta_producto$fields$cantidad
-              if(cantidad_restante<=6){
-                mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
-                                  cantidad_restante, " unidades\nRevisa")
-                enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
-                #enviar_email(mensaje,"mauricio@randu.mx")
-                #enviar_email(mensaje,"yatzel@randu.mx")
-              }
-            }
           }
-          
         }
       }
       if(length(fields) == length(producto$fields$partes_producto)){
@@ -752,7 +828,7 @@ resumen_guias_shiny <- function() {
 "
   
   html_rendered <- whisker.render(template, data_template)
-  output_file <- "resumen_tabla.html"
+  output_file <- "~/resumen_tabla.html"
   #dir.create("www", showWarnings = FALSE)
   writeLines(html_rendered, output_file)
   message("✅ HTML generado correctamente: ", normalizePath(output_file))
