@@ -162,6 +162,7 @@ guardar <- function(origen="", resp, req, con, func, tabla){
 
 registrar_producto <- function(producto,venta_producto){
   mensajes_enviar <- list()
+  pausar <- list()
   orden_venta <- airtable_getrecorddata_byid(venta_producto$fields$ordenes_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
   fields <- list()
   # if(orden_venta$fields$canal_venta == "shprndmx" && str_detect(tolower(producto$fields$id_productos),"escritorio de altura ajustable en escuadra base negro")){
@@ -347,7 +348,13 @@ registrar_producto <- function(producto,venta_producto){
                   mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
                                     cantidad_restante, " unidades\nRevisa")
                   #enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
+                  
                   mensajes_enviar[[length(mensajes_enviar) + 1]] <- mensaje
+                  
+                  if(cantidad_restante==0){
+                    pausar[[length(pausar)+1]] <-  parte_producto
+                    mensajes_enviar[[length(mensajes_enviar)]] <- paste0(mensajes_enviar[[length(mensajes_enviar)]],"\nSE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON")
+                  }
                   #enviar_email(mensaje,"mauricio@randu.mx")
                   #enviar_email(mensaje,"yatzel@randu.mx")
                 }
@@ -396,6 +403,12 @@ registrar_producto <- function(producto,venta_producto){
             if(length(mensajes_enviar)!=0){
               for(mensaje_stock in mensajes_enviar){
                 enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_stock)
+              }
+              
+            }
+            if(length(pausar) != 0){
+              for(producto_pausar in pausar){
+                pausar_todas_publicaciones(producto_pausar)
               }
             }
           }else{
@@ -511,6 +524,10 @@ registrar_producto <- function(producto,venta_producto){
             mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, "solo cuenta con ", 
                               cantidad_restante, " unidades\nRevisa")
             enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
+            if(cantidad_restante==0){
+              pausar_todas_publicaciones(producto)
+            }
+
             #enviar_email(mensaje,"mauricio@randu.mx")
             #enviar_email(mensaje,"yatzel@randu.mx")
           }
@@ -843,11 +860,88 @@ resumen_guias_shiny <- function() {
 }
 
 pausar_todas_publicaciones <- function(producto){
-  producto_partes <- airtable_getrecordslist("partes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{pieza})"))
-  aux_productos_parte <- sapply(producto_partes,function(x){
-    res <- airtable_getrecorddata_byid(x$fields$productos[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
-  },simplify = F)
-  
-  
-  
+  tryCatch(expr={
+    if(length(producto$fields$pieza)!=0){
+      producto_partes <- airtable_getrecordslist("partes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{parte})"))
+      if(length(producto_partes)!=0){
+        aux_productos_parte <- sapply(producto_partes,function(x){
+          res <- airtable_getrecorddata_byid(x$fields$productos[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+        },simplify = F) %>% compact()
+        
+        publicaciones_amazon <- lapply(aux_productos_parte, function(x) {
+          res <- airtable_getrecordslist(
+            "publicaciones",
+            Sys.getenv("AIRTABLE_CES_BASE"),
+            paste0("AND(canal='amazon randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+                   x$fields$id_productos, "',{producto}))")
+          )
+          if (length(res) == 0 || is.null(res)) return(NULL)
+          return(res)
+        })
+        
+        publicaciones_amazon <- Filter(Negate(is.null), publicaciones_amazon)
+        
+        publicaciones_amazon <- unlist(publicaciones_amazon, recursive = FALSE)
+        
+        amz_token <- amz_get_active_token()
+        for(publi_amz in publicaciones_amazon){
+          item_amz <- amz_getitems(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),publi_amz$fields$product_id)
+          if(length(item_amz$fulfillmentAvailability)!=0){
+            if(length(item_amz$fulfillmentAvailability[[1]]$quantity)!=0){
+              if(item_amz$fulfillmentAvailability[[1]]$quantity>0){
+                amazon_update_listing(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),item_amz$sku,"0")
+                if(!last_response()$status_code %in% c(199:299)){
+                  mensaje_amz <- paste0("Ocurrio un error al pausar el item: ",item_amz$sku,"\nError: ",
+                                        last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                  enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_amz)
+                }
+              }
+            }
+          }
+        }
+        
+        publicaciones_ml <- lapply(aux_productos_parte, function(x) {
+          res <- airtable_getrecordslist(
+            "publicaciones",
+            Sys.getenv("AIRTABLE_CES_BASE"),
+            paste0("AND(canal='mercadolibre randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+                   x$fields$id_productos, "',{producto}))")
+          )
+          if (length(res) == 0 || is.null(res)) return(NULL)
+          return(res)
+        })
+        
+        publicaciones_ml <- Filter(Negate(is.null), publicaciones_ml)
+        
+        publicaciones_ml <- unlist(publicaciones_ml, recursive = FALSE)
+        
+        ml_token <- get_active_token()
+        for(publi_ml in publicaciones_ml){
+          item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
+          if(!is.null(item_ml$status)){
+            if(item_ml$status=="active"){
+              ml_status_item(item_ml$id,ml_token,"paused")
+              if(!last_response()$status_code %in% c(199:299)){
+                mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
+                                     last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_ml)
+              }
+            }
+          }
+        }
+        
+      }
+      
+    }else{
+      
+    }
+
+  },error=function(e){
+    mensaje_error <- paste0("Ocurrio un error general al intentar pausar las publicaciones de un producto: ",e)
+    if(length(producto)!=0){
+      mensaje_error <- paste0(producto$fields$id_productos,"\n",mensaje_error)
+    }
+    enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+  })
+ 
 }

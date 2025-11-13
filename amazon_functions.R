@@ -173,3 +173,81 @@ amz_enviar_guia <- function(order_id,paqueteria,numero_guia){
     )) %>% 
     req_perform() 
 }
+
+amz_getitems <- function(amz_token,seller_id,sku){
+  req <- request(paste0(
+    "https://sellingpartnerapi-na.amazon.com/listings/2021-08-01/items/",seller_id, "/", sku)) %>%
+    req_method("GET") %>%
+    req_headers('x-amz-access-token' = amz_token) %>%
+    req_url_query(
+      marketplaceIds = "A1AM78C64UM0Y8",
+      includedData = "summaries,attributes,fulfillmentAvailability,productTypes",
+    )   %>% 
+    req_perform() %>%
+    resp_body_json()
+}
+
+amazon_update_listing <- function(
+    access_token,
+    seller_id,
+    sku,
+    quantity = NULL,     # Si NULL, no cambia inventario
+    pause = FALSE,
+    region = "na"
+) {
+ 
+  base_url <- switch(
+    region,
+    "na" = "https://sellingpartnerapi-na.amazon.com",
+    "eu" = "https://sellingpartnerapi-eu.amazon.com",
+    "fe" = "https://sellingpartnerapi-fe.amazon.com"
+  )
+  
+  url <- sprintf("%s/listings/2021-08-01/items/%s/%s", base_url, seller_id, sku)
+ 
+  patches <- list()
+  
+  if (!is.null(quantity)) {
+    patches <- append(patches, list(list(
+      op = "replace",
+      path = "/attributes/fulfillment_availability",
+      value = list(list(
+        fulfillment_channel_code = "DEFAULT",
+        quantity = quantity
+      ))
+    )))
+  }
+  
+  if (pause) {
+    patches <- append(patches, list(list(
+      op = "replace",
+      path = "/attributes/status",
+      value = list("INACTIVE")
+    )))
+  }
+  
+  body <- list(
+    productType = "PRODUCT",
+    patches = patches
+  )
+
+  req <- request(url) |>
+    req_method("PATCH") |>
+    req_url_query("marketplaceIds" = "A1AM78C64UM0Y8") %>% 
+    req_headers(
+      Authorization = paste("Bearer", access_token),
+      `Content-Type` = "application/json",
+      `x-amz-access-token` = access_token
+    ) |>
+    req_body_json(body) |>
+    req_perform()
+  
+  status <- resp_status(req)
+  resp_txt <- resp_body_string(req)
+  
+  if (status == 200) {
+    cat("Publicación actualizada correctamente\n")
+  } else {
+    cat("Error:", status, "\n", resp_txt, "\n")
+  }
+}
