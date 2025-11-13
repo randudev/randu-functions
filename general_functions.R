@@ -933,6 +933,50 @@ pausar_todas_publicaciones <- function(producto){
       }
       
     }else{
+      publicaciones_amazon <- airtable_getrecordslist(
+        "publicaciones",
+        Sys.getenv("AIRTABLE_CES_BASE"),
+        paste0("AND(canal='amazon randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+               producto$fields$id_productos, "',{producto}))"))
+      if(length(publicaciones_amazon)!=0){
+        for(publi_amz in publicaciones_amazon){
+          item_amz <- amz_getitems(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),publi_amz$fields$product_id)
+          if(length(item_amz$fulfillmentAvailability)!=0){
+            if(length(item_amz$fulfillmentAvailability[[1]]$quantity)!=0){
+              if(item_amz$fulfillmentAvailability[[1]]$quantity>0){
+                amazon_update_listing(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),item_amz$sku,"0")
+                if(!last_response()$status_code %in% c(199:299)){
+                  mensaje_amz <- paste0("Ocurrio un error al pausar el item: ",item_amz$sku,"\nError: ",
+                                        last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                  enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_amz)
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      publicaciones_ml <- airtable_getrecordslist(
+        "publicaciones",
+        Sys.getenv("AIRTABLE_CES_BASE"),
+        paste0("AND(canal='mercadolibre randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+               producto$fields$id_productos, "',{producto}))"))
+      if(length(publicaciones_ml)!=0){
+        for(publi_ml in publicaciones_ml){
+          item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
+          if(!is.null(item_ml$status)){
+            if(item_ml$status=="active"){
+              ml_status_item(item_ml$id,ml_token,"paused")
+              if(!last_response()$status_code %in% c(199:299)){
+                mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
+                                     last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_ml)
+              }
+            }
+          }
+        }
+      }
+      
       
     }
 
