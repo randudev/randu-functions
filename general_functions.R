@@ -353,7 +353,7 @@ registrar_producto <- function(producto,venta_producto){
                   
                   if(cantidad_restante==0){
                     pausar[[length(pausar)+1]] <-  parte_producto
-                    mensajes_enviar[[length(mensajes_enviar)]] <- paste0(mensajes_enviar[[length(mensajes_enviar)]],"\nSE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON")
+                    mensajes_enviar[[length(mensajes_enviar)]] <- paste0(mensajes_enviar[[length(mensajes_enviar)]],"\n*SE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON*")
                   }
                   #enviar_email(mensaje,"mauricio@randu.mx")
                   #enviar_email(mensaje,"yatzel@randu.mx")
@@ -523,11 +523,11 @@ registrar_producto <- function(producto,venta_producto){
           if(cantidad_restante<=6){
             mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, "solo cuenta con ", 
                               cantidad_restante, " unidades\nRevisa")
-            enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
             if(cantidad_restante==0){
               pausar_todas_publicaciones(producto)
+              mensaje <- paste0(mensaje,"\n*SE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON*")
             }
-
+            enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
             #enviar_email(mensaje,"mauricio@randu.mx")
             #enviar_email(mensaje,"yatzel@randu.mx")
           }
