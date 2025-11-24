@@ -337,7 +337,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
       enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
       fieldslist <- append(fieldslist,list("entrega_qro"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
       notas <- paste0("ESTA EN COBERTURA DE ENVIO LOCAL EN QUERETARO")
-      nota <- enviar_nota(orders$data$orders$edges[[1]]$node$id,NULL,NULL,access_token,notas)
+      nota <- enviar_nota(shopifyorder$id,NULL,NULL,access_token,notas)
     }else{
       codigospostalesCDMX <- readRDS("~/codigospostalesCDMX.RDS")
       if(shopifyorder$shipping_address$zip %in% codigospostalesCDMX){
@@ -348,7 +348,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
         #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
         fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
         notas <- paste0("ESTA EN COBERTURA DE ENVIO LOCAL E INSTALACION EN CDMX")
-        nota <- enviar_nota(orders$data$orders$edges[[1]]$node$id,NULL,NULL,access_token,notas)
+        nota <- enviar_nota(shopifyorder$id,NULL,NULL,access_token,notas)
       }else{
         codigospostalesInstalacion <- readRDS("~/codigospostalesInstalacion.RDS")
         if(shopifyorder$shipping_address$zip %in% codigospostalesInstalacion){
@@ -359,7 +359,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
           #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
           fieldslist <- append(fieldslist,list("cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
           notas <- paste0("ESTA EN COBERTURA DE INSTALACION EN CDMX")
-          nota <- enviar_nota(orders$data$orders$edges[[1]]$node$id,NULL,NULL,access_token,notas)
+          nota <- enviar_nota(shopifyorder$id,NULL,NULL,access_token,notas)
         }
       }
     }
