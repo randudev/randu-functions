@@ -252,6 +252,12 @@ registrar_producto <- function(producto,venta_producto){
           if(!is.null(aux_parte$fields$parte)){
             
             parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+            if(parte_producto$fields$sku==10698){
+              parte_producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",10006 ))[[1]]
+            }
+            if(parte_producto$fields$sku==10697){
+              parte_producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",10005 ))[[1]]
+            }
             #parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_RIR_BASE"))
             if(parte_producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
               if(!is.null(parte_producto$fields$item_produccion)){
