@@ -336,8 +336,8 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                               "\n¿Deseas cambiar el tipo de envio a paqueteria?")
       enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
       fieldslist <- append(fieldslist,list("entrega_qro"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
-      notas <- paste0("ESTA EN COBERTURA DE ENVIO LOCAL EN QUERETARO")
-      nota <- enviar_nota(shopifyorder$id,NULL,NULL,access_token,notas)
+      notas <- toupper(paste0("La orden entra dentro de la cobertura de envío local en Querétaro"))
+      nota <- enviar_nota(shopifyorden$admin_graphql_api_id,NULL,NULL,access_token,notas)
     }else{
       codigospostalesCDMX <- readRDS("~/codigospostalesCDMX.RDS")
       if(shopifyorder$shipping_address$zip %in% codigospostalesCDMX){
@@ -347,8 +347,8 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                                 "\n¿Deseas cambiar el tipo de envio a paqueteria?")
         #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
         fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
-        notas <- paste0("ESTA EN COBERTURA DE ENVIO LOCAL E INSTALACION EN CDMX")
-        nota <- enviar_nota(shopifyorder$id,NULL,NULL,access_token,notas)
+        notas <- toupper(paste0("La orden entra dentro de la cobertura de envío local e instalación en CDMX"))
+        nota <- enviar_nota(shopifyorden$admin_graphql_api_id,NULL,NULL,access_token,notas)
       }else{
         codigospostalesInstalacion <- readRDS("~/codigospostalesInstalacion.RDS")
         if(shopifyorder$shipping_address$zip %in% codigospostalesInstalacion){
@@ -358,8 +358,8 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                                   "\n¿Deseas cambiar el tipo de envio a paqueteria?")
           #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
           fieldslist <- append(fieldslist,list("cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
-          notas <- paste0("ESTA EN COBERTURA DE INSTALACION EN CDMX")
-          nota <- enviar_nota(shopifyorder$id,NULL,NULL,access_token,notas)
+          notas <- toupper(paste0("La orden entra dentro de la cobertura de instalación en CDMX y alrededores"))
+          nota <- enviar_nota(shopifyorden$admin_graphql_api_id,NULL,NULL,access_token,notas)
         }
       }
     }
