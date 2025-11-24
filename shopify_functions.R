@@ -326,6 +326,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
   if(!is.null(client_recordid)){
     fieldslist <- append(fieldslist,list("cliente"=list(client_recordid$id)))
   }
+  access_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
   codigospostalesQRO <- readRDS("~/codigospostalesQRO.RDS")
   if(!is.null(shopifyorder$shipping_address$zip)){
     if(shopifyorder$shipping_address$zip %in% codigospostalesQRO){
@@ -335,6 +336,8 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                               "\n¿Deseas cambiar el tipo de envio a paqueteria?")
       enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
       fieldslist <- append(fieldslist,list("entrega_qro"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
+      notas <- paste0("ESTA EN COBERTURA DE ENVIO LOCAL EN QUERETARO")
+      nota <- enviar_nota(orders$data$orders$edges[[1]]$node$id,NULL,NULL,access_token,notas)
     }else{
       codigospostalesCDMX <- readRDS("~/codigospostalesCDMX.RDS")
       if(shopifyorder$shipping_address$zip %in% codigospostalesCDMX){
@@ -344,6 +347,8 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                                 "\n¿Deseas cambiar el tipo de envio a paqueteria?")
         #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
         fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
+        notas <- paste0("ESTA EN COBERTURA DE ENVIO LOCAL E INSTALACION EN CDMX")
+        nota <- enviar_nota(orders$data$orders$edges[[1]]$node$id,NULL,NULL,access_token,notas)
       }else{
         codigospostalesInstalacion <- readRDS("~/codigospostalesInstalacion.RDS")
         if(shopifyorder$shipping_address$zip %in% codigospostalesInstalacion){
@@ -353,6 +358,8 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
                                   "\n¿Deseas cambiar el tipo de envio a paqueteria?")
           #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
           fieldslist <- append(fieldslist,list("cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
+          notas <- paste0("ESTA EN COBERTURA DE INSTALACION EN CDMX")
+          nota <- enviar_nota(orders$data$orders$edges[[1]]$node$id,NULL,NULL,access_token,notas)
         }
       }
     }
@@ -802,17 +809,19 @@ mandar_numero_rastreo <- function(numeros_rastreo,paqueteria,fulfill_id,access_t
   return(response)
 }
 
-enviar_nota <- function(order_id,numeros_rastreo,paqueteria,access_token){
-  if(paqueteria[[2]]=="PQX"){
-    notes <- paste("Paqueteria:",paqueteria[[1]],"\nMulti-guia:\n", paste(numeros_rastreo, collapse = "\n"))
-  }else{
-    if(paqueteria[[2]]=="Interna"){
-      notes <- paste("Paqueteria:","intera","\nNúmeros de rastreo adicionales:\n", paste(numeros_rastreo, collapse = "\n"))
+enviar_nota <- function(order_id,numeros_rastreo=NULL,paqueteria=NULL,access_token,notes=NULL){
+  if(is.null(notes)){
+    if(paqueteria[[2]]=="PQX"){
+      notes <- paste("Paqueteria:",paqueteria[[1]],"\nMulti-guia:\n", paste(numeros_rastreo, collapse = "\n"))
     }else{
-      notes <- paste("Paqueteria:",paqueteria[[1]],"\nNúmeros de rastreo adicionales:\n", paste(numeros_rastreo, collapse = "\n"))
+      if(paqueteria[[2]]=="Interna"){
+        notes <- paste("Paqueteria:","intera","\nNúmeros de rastreo adicionales:\n", paste(numeros_rastreo, collapse = "\n"))
+      }else{
+        notes <- paste("Paqueteria:",paqueteria[[1]],"\nNúmeros de rastreo adicionales:\n", paste(numeros_rastreo, collapse = "\n"))
+      }
     }
-    
   }
+  
   shopify_url <- "https://randumexico.myshopify.com/admin/api/2025-01/graphql.json"
   query_get_notes <- paste0('
       query {

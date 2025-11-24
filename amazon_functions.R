@@ -120,6 +120,11 @@ amz_register_lineitems <- function(amz_order){
     }else{
       print(paste0("hubo un problema al registrar la el line_item 
                    (venta_producto #",i))
+      mensaje <- paste0(amz_order$payload$AmazonOrderId,"\nHubo un error al registrar (venta_producto #",i,
+                        "\nError:",last_response()$status_code,"\nBody: ",
+                        last_response() %>% resp_body_json(),
+                        "\nBody request: ",toJSON(last_request()$body))
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
     }
   }
   vp_recordids
