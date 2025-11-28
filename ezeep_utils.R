@@ -83,8 +83,13 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            orientation <- orientacion
          },
          'impresora_paqueteria'={
-           #printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"
-           printer_id <- "3fbacfc5-73b5-4f12-8e4c-614d66e8a238" 
+           if(str_detect(getwd(),"yatzel")){
+             printer_id <- "98f04445-f9f4-461f-bd78-16d0717f7b0e"#impresora 93
+           }else{
+             #printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"
+             printer_id <- "3fbacfc5-73b5-4f12-8e4c-614d66e8a238" 
+           }
+
            paper_id <- 257
            paper_name <- "4x8"
            orientation <- 1
