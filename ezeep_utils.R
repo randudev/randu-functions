@@ -9,7 +9,7 @@ library(dotenv)
 ezeep_getactivetoken <- function(){
   atb_dev_base <- Sys.getenv('AIRTABLE_DEV_BASE')
   clientidsec_ezeep_b64 <- Sys.getenv('EZEEP_CLID_B64')
-  
+  validat <- ""
   tkdata <- airtable_getrecorddata_byid("recGnx94XcVEgnpVZ", "tokens", atb_dev_base)
   tkdata <- tkdata$fields
   token_expires <- lubridate::as_datetime(tkdata$token_expires)
@@ -39,19 +39,21 @@ ezeep_getactivetoken <- function(){
           enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
         }
       )
+    }else{
+      newtokendata <- last_response() %>% resp_body_json()
+      newaccess_token <- newtokendata$access_token
+      newrefreshtoken <- newtokendata$refresh_token
+      newexpire <- last_response() %>% resp_date() + 3600 
+      
+      airtable_updatesinglerecord(fieldslist = list('access_token'=newaccess_token,
+                                                    'refresh_token'=newrefreshtoken,
+                                                    'token_expires'=newexpire), 
+                                  tablename = "tokens", base_id = atb_dev_base,
+                                  recordid = "recGnx94XcVEgnpVZ")
+      validat <- newaccess_token
     }
     
-    newtokendata <- last_response() %>% resp_body_json()
-    newaccess_token <- newtokendata$access_token
-    newrefreshtoken <- newtokendata$refresh_token
-    newexpire <- last_response() %>% resp_date() + 3600 
     
-    airtable_updatesinglerecord(fieldslist = list('access_token'=newaccess_token,
-                                                  'refresh_token'=newrefreshtoken,
-                                                  'token_expires'=newexpire), 
-                                tablename = "tokens", base_id = atb_dev_base,
-                                recordid = "recGnx94XcVEgnpVZ")
-    validat <- newaccess_token
   }
   validat
 }
@@ -86,8 +88,11 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            if(str_detect(getwd(),"yatzel")){
              printer_id <- "98f04445-f9f4-461f-bd78-16d0717f7b0e"#impresora 93
            }else{
-             #printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"
-             printer_id <- "3fbacfc5-73b5-4f12-8e4c-614d66e8a238" 
+             if(str_detect(getwd(),"mau")){
+               printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"#impresora 101
+             }else{
+               printer_id <- "3fbacfc5-73b5-4f12-8e4c-614d66e8a238" #impresora 101 pero con wifi
+             }
            }
 
            paper_id <- 257
