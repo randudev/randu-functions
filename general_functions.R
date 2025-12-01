@@ -680,11 +680,12 @@ first_letter <- function(char){
 
 actualizar_o_sumar <- function(tabla, nuevo_sku, nueva_cantidad,nombre,record_id='') {
   if (nuevo_sku %in% tabla$sku) {
-    
-    tabla$cantidad[tabla$sku == nuevo_sku] <- tabla$cantidad[tabla$sku == nuevo_sku] + nueva_cantidad
+    if(es_numero(tabla$cantidad[tabla$sku == nuevo_sku]) && es_numero(nueva_cantidad)){
+      tabla$cantidad[tabla$sku == nuevo_sku] <- as.numeric(tabla$cantidad[tabla$sku == nuevo_sku]) + as.numeric(nueva_cantidad)
+    }
   } else {
     
-    nueva_fila <- data.frame(sku = nuevo_sku, cantidad = nueva_cantidad,nombre=nombre,recordid=record_id, stringsAsFactors = FALSE)
+    nueva_fila <- data.frame(sku = nuevo_sku, cantidad = as.numeric(nueva_cantidad),nombre=nombre,recordid=record_id, stringsAsFactors = FALSE)
     tabla <- rbind(tabla, nueva_fila)
   }
   return(tabla)
@@ -719,8 +720,10 @@ obtener_tabla_resumen <- function(){
 resumen_productos <- function(tabla,lista_paquete){
   for(paquete in lista_paquete){
     sku <- as.numeric(sub("^(\\d+).*", "\\1",paquete$nombre))
-    if(!is.na(sku)){
-      tabla <- actualizar_o_sumar(tabla,sku,paquete$cantidad,paquete$nombre)
+    if(!is.null(sku)){
+      if(!is.na(sku)){
+        tabla <- actualizar_o_sumar(tabla,sku,paquete$cantidad,paquete$nombre)
+      }
     }
   }
   return(tabla)
