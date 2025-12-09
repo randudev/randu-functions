@@ -169,7 +169,7 @@ registrar_producto <- function(producto,venta_producto){
   #   return(0)
   # }
   if(!str_detect(tolower(producto$fields$id_productos),"10700")  & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"personalizado")){
-    if(length(producto$fields$partes_producto) != 0){
+    if(length(producto$fields$paquetes) != 0){
       if(length(producto$fields$item_produccion)!=0){
         tipo_empaque <- "estándar"
         if(venta_producto$fields$cantidad >= 5){
@@ -245,13 +245,13 @@ registrar_producto <- function(producto,venta_producto){
         }
         
       }else{
-        for(parte in producto$fields$partes_producto){
+        for(parte in producto$fields$paquetes){
           #print(parte)
-          aux_parte <- airtable_getrecorddata_byid(parte,"partes_producto",Sys.getenv("AIRTABLE_CES_BASE")) 
-          #aux_parte <- airtable_getrecorddata_byid(parte,"partes_producto",Sys.getenv("AIRTABLE_RIR_BASE"))
-          if(!is.null(aux_parte$fields$parte)){
+          aux_parte <- airtable_getrecorddata_byid(parte,"tblugSFaPSzMDlITS",Sys.getenv("AIRTABLE_CES_BASE")) 
+          #aux_parte <- airtable_getrecorddata_byid(parte,"tblugSFaPSzMDlITS",Sys.getenv("AIRTABLE_RIR_BASE"))
+          if(!is.null(aux_parte$fields$paquete)){
             
-            parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+            parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$paquete[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
             if(parte_producto$fields$sku==10698){
               parte_producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",10006 ))[[1]]
             }
@@ -369,7 +369,7 @@ registrar_producto <- function(producto,venta_producto){
             
           }
         }
-        if(length(fields) == length(producto$fields$partes_producto)){
+        if(length(fields) == length(producto$fields$paquetes)){
           for(field in fields){
             if(field$tabla == "transacciones"){
               field$tabla <- NULL
@@ -870,8 +870,8 @@ resumen_guias_shiny <- function() {
 
 pausar_todas_publicaciones <- function(producto){
   tryCatch(expr={
-    if(length(producto$fields$pieza)!=0){
-      producto_partes <- airtable_getrecordslist("partes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{parte})"))
+    if(length(producto$fields$pertennece_paquetes)!=0){
+      producto_partes <- airtable_getrecordslist("tblugSFaPSzMDlITS",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{paquete})"))
       if(length(producto_partes)!=0){
         aux_productos_parte <- sapply(producto_partes,function(x){
           res <- airtable_getrecorddata_byid(x$fields$productos[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))

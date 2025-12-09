@@ -471,8 +471,8 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
       }
       
       if(str_detect(tolower(cuerpo$event$text),"activar")){
-        if(length(producto$fields$pieza)!=0){
-          producto_partes <- airtable_getrecordslist("partes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{parte})"))
+        if(length(producto$fields$pertence_paquetes)!=0){
+          producto_partes <- airtable_getrecordslist("paquetes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{parte})"))
           if(length(producto_partes)!=0){
             aux_productos_parte <- sapply(producto_partes,function(x){
               res <- airtable_getrecorddata_byid(x$fields$productos[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
@@ -622,8 +622,8 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
         }
       }
       if(str_detect(tolower(cuerpo$event$text),"pausar")){
-        if(length(producto$fields$pieza)!=0){
-          producto_partes <- airtable_getrecordslist("partes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{parte})"))
+        if(length(producto$fields$pertenece_paquetes)!=0){
+          producto_partes <- airtable_getrecordslist("paquetes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{parte})"))
           if(length(producto_partes)!=0){
             aux_productos_parte <- sapply(producto_partes,function(x){
               res <- airtable_getrecorddata_byid(x$fields$productos[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))

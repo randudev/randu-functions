@@ -917,10 +917,10 @@ pausar_publicaciones_ml <- function(){
 
 ml_agencia_sin_partes <- function(){
   publicaciones_agencia <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),
-                                                   "AND({canal}='mercadolibre randu',{tipo_envio}='Agencia',NOT({status}='Inactivo'))")
+                                                   "AND({canal}='mercadolibre randu',{tipo_envio}='Agencia',NOT({status}='Inactivo'),NOT({status}='Cerrado'))")
   productos <- sapply(publicaciones_agencia,function(x){
     producto <- airtable_getrecorddata_byid(x$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
-    if(length(producto$fields$partes_producto)<=1 && !is.null(producto$fields$item_produccion)){
+    if(length(producto$fields$paquetes)<=1 && !is.null(producto$fields$item_produccion)){
       return(x$fields$id_canal)
     }
   })
@@ -1434,5 +1434,29 @@ mp_pagos <- function(id_pago,ml_token){
     req_headers('content-type' = 'application/json') %>% 
     req_error(is_error = function(resp) FALSE) %>%
     req_perform()%>% 
+    resp_body_json()
+}
+
+mp_getorder <- function(id_order,ml_token){
+  url_mp <- paste0("https://api.mercadopago.com/v1/orders/",id_order)
+  resp <- request(url_mp) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers("accept"= "application/json") %>% 
+    req_headers('content-type' = 'application/json') %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform()%>% 
+    resp_body_json()
+}
+
+mp_get_merchant_order_byid <- function(order_id, mp_token) {
+  request(paste0("https://api.mercadopago.com/merchant_orders/", order_id)) %>% 
+    req_auth_bearer_token(mp_token) %>% 
+    req_headers(
+      Accept = "application/json",
+      `Content-Type` = "application/x-www-form-urlencoded"
+    ) %>% 
+    req_error(is_error = function(resp) FALSE) %>% 
+    req_perform() %>% 
     resp_body_json()
 }

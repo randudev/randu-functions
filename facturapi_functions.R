@@ -9,7 +9,8 @@ facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL,filters=NULL) {
       url <- paste0("https://www.facturapi.io/v2/invoices", "?page=", page)  # 'page_size' es el número de resultados por página
     }
     else{
-      url <- paste0("https://www.facturapi.io/v2/invoices","?date[gte]=",fecha, "&page=", page)  # 'page_size' es el número de resultados por página
+      url <- paste0("https://www.facturapi.io/v2/invoices","?date[gt]=",fecha, "&date[lte]=",
+                    as.character(Sys.Date()),"&page=", page)  
     }
     if(!is.null(filters)){
       url <- paste0(url,"&",filters)
@@ -91,6 +92,9 @@ facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta,tip
   })
   recibo <- paste0('{"payment_form": "',tipo_de_pago,'", "items": [', paste(items_json, collapse = ","), ']}')
   recibo_lista <- fromJSON(recibo)
+  if(length(id_orden)>1){
+    id_orden <- id_orden[[1]]
+  }
   recibo_lista <- append(recibo_lista,list("external_id"=id_orden))
   
   res1<-request("https://www.facturapi.io/v2/receipts") %>% 
@@ -199,6 +203,33 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
       )  
     }
   }
+  if(canal_venta == "directaunir"){
+    if(length(id_orden)>1){
+      for(j in seq_along(id_orden)){
+        ventas_producto <- airtable_getrecordslist("ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",id_orden[[j]],"',{ordenes_venta})"))
+        for(i in 1:length(ventas_producto)){
+          producto <- airtable_getrecorddata_byid(ventas_producto[[i]]$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+          precio <- ventas_producto[[i]]$fields$precio_unitario_con_descuento
+          if(is.null(precio) || precio <= 0){
+            precio <- 1.16
+            descuento_real <- 1.16 * ventas_producto[[i]]$fields$cantidad
+          }else{
+            descuento_real <- NULL
+          }
+          
+          items_orden[[length(items_orden) + 1]] <- list(
+            "nombre" = ventas_producto[[i]]$fields$helper_productname,
+            "precio"= precio,
+            "sku"=paste0(producto$fields$sku),
+            "cantidad" = ventas_producto[[i]]$fields$cantidad,
+            "producto_key"=producto$fields$clave_sat,
+            "descuento" = descuento_real
+          )  
+        }
+      }
+    }
+    
+  }
   if(canal_venta == "shp1"){
     orden <- orden$data$orders$edges[[1]]$node
     if(!is.null(orden)){
@@ -245,7 +276,7 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
     }
     
   }
-  if(canal_venta != "directa"){
+  if(canal_venta != "directa" && canal_venta !="directaunir"){
     for(i in 1:length(items_orden)){
       if(!is.null(items_orden[[i]]$sku)){
         if(!is.na(items_orden[[i]]$sku) && str_detect(items_orden[[i]]$sku,"^\\d\\d\\d\\d\\d$") ){
@@ -288,6 +319,13 @@ generar_json <- function(cantidad, descripcion, product_key, precio, sku,descuen
   }else{
     if(is.na(sku)){
       sku <- 10700
+    }
+  }
+  if(is.null(product_key)){
+    product_key <- 56101703
+  }else{
+    if(is.na(product_key)){
+      product_key <- 56101703
     }
   }
   if(sku !=1000){
@@ -459,14 +497,15 @@ revisar_recibo <- function(recibos){
   for(i in seq_along(recibos)){
     if(i%%5==0){
       print(i)
+      Sys.sleep(.8)
     }
     fecha_final <- as.Date(format(Sys.Date(), "%Y-%m-01"))-1
     if(is.null(recibos[[i]]$fields$canal_venta)){print(recibos[[i]]$fields)}
     
-    if(recibos[[i]]$fields$canal_venta=="shprndmx"){
-      fecha_final <- as.Date(format(fecha_final,"%Y-%m-28"))
-    }
-    if(recibos[[i]]$fields$fecha_creacion>fecha_inicio && recibos[[i]]$fields$fecha_creacion<fecha_final){
+    # if(recibos[[i]]$fields$canal_venta=="shprndmx"){
+    #   fecha_final <- as.Date(format(fecha_final,"%Y-%m-28"))
+    # }
+    if(recibos[[i]]$fields$fecha_creacion>=fecha_inicio && recibos[[i]]$fields$fecha_creacion<=fecha_final){
       if(recibos[[i]]$fields$canal_venta=="mercadolibrernd"){
         orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
         ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
