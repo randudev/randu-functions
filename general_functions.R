@@ -171,77 +171,104 @@ registrar_producto <- function(producto,venta_producto){
   if(!str_detect(tolower(producto$fields$id_productos),"10700")  & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"personalizado")){
     if(length(producto$fields$paquetes) != 0){
       if(length(producto$fields$item_produccion)!=0){
-        tipo_empaque <- "estándar"
-        if(venta_producto$fields$cantidad >= 5){
-          tipo_empaque <- "tarima"
-        }
-        if(!is.null(orden_venta$fields$entrega_local)){
-          tipo_empaque <- "ligero"
-        }
-        ov <- ""
-        if(is.null(orden_venta$fields$id_origen)){
-          ov <- orden_venta$fields$id_ordenes_venta
-        }
-        fields <- list(
-          "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
-          "cantidad"=venta_producto$fields$cantidad,
-          "producto"=list(producto$id),
-          "venta_producto"=list(venta_producto$id),
-          "tipo_empaque"=tipo_empaque,
-          "origen"="pedido"
-        )
-        
-        if(orden_venta$fields$canal_venta=="mercadolibrernd"){
-          ml_token <- get_active_token()
-          ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
-          if(!is.null(ml_order$shipping$id)){
-            ml_shipping <- get_dir_mlorder(ml_order,ml_token)
-            if(ml_shipping$logistic$mode == "me2"){
-              fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
-            } else{
+        if(producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
+          tipo_empaque <- "estándar"
+          if(venta_producto$fields$cantidad >= 5){
+            tipo_empaque <- "tarima"
+          }
+          if(!is.null(orden_venta$fields$entrega_local)){
+            tipo_empaque <- "ligero"
+          }
+          ov <- ""
+          if(is.null(orden_venta$fields$id_origen)){
+            ov <- orden_venta$fields$id_ordenes_venta
+          }
+          fields <- list(
+            "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+            "cantidad"=venta_producto$fields$cantidad,
+            "producto"=list(producto$id),
+            "venta_producto"=list(venta_producto$id),
+            "tipo_empaque"=tipo_empaque,
+            "origen"="pedido"
+          )
+          
+          if(orden_venta$fields$canal_venta=="mercadolibrernd"){
+            ml_token <- get_active_token()
+            ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
+            if(!is.null(ml_order$shipping$id)){
+              ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+              if(ml_shipping$logistic$mode == "me2"){
+                fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
+              } else{
+                fields <- append(fields,list('prioridad'="2 - Media Alta"))
+              }
+            }else{
               fields <- append(fields,list('prioridad'="2 - Media Alta"))
             }
+          }
+          if(orden_venta$fields$canal_venta=="shprndmx"){
+            fields <- append(fields,list('prioridad'="1 - Media"))
+          }
+          if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
+            fields <- append(fields,list('prioridad'="7 - Extrema"))
+          }
+          if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
+            fields <- append(fields,list('prioridad'="7 - Extrema"))
+          }
+          if(orden_venta$fields$canal_venta=="dstrnd"){
+            fields <- append(fields,list('prioridad'="3 - Alta"))
+          }
+          if(orden_venta$fields$canal_venta=="directa"){
+            fields <- append(fields,list('prioridad'="1 - Media"))
+          }
+          aux <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+          
+          print(paste0("-Las solicitudes de la venta producto : ", venta_producto$fields$id_ventas_producto, " se registro exitosamente"))
+          if(!is.null(aux)){
+            pedir_piezas(aux)
+            link_qr <- aux$fields$barcode_link
+            if(is.null(link_qr)){
+              link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
+            }
+            sp <- aux$fields$id_solicitud
+            nombre_producto <- paste0(aux$fields$producto_solicitado,".")
+            # url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
+            # airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
+            #                             'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
+            # if(!last_response()$status_code %in% c(199:299)){
+            #   mensaje <- paste0("No se subio la etiqueta: ",sp,
+            #                     "\nlast_response() %>% resp_body_json():\n",
+            #                     toJSON(last_response() %>% resp_body_json()),
+            #                     "last_request()$body:\n",
+            #                     toJSON(last_request()$body) )
+            #   enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+            # }
+            airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
+          }
+          
+        }else{
+          ov <- ""
+          if(is.null(orden_venta$fields$id_origen)){
+            ov <- orden_venta$fields$id_ordenes_venta
+          }
+          fields <- list(
+            'tipo'='reserva',
+            "producto"=list(producto$id),
+            "ventas_producto"=list(venta_producto$id),
+            "comentarios"= paste0(ov,orden_venta$fields$id_origen," creada mediante R ", orden_venta$field$ml_pack_id),
+            "ubicacion"="navex93",
+            "cantidad"=venta_producto$fields$cantidad
+          )
+          aux <- airtable_createrecord(fields,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
+          print(paste0("-Se registro exitosamente el proceso necesario para el producto"))
+          print(paste0("-",venta_producto$fields$id_ventas_producto))
+          if(!is.null(aux)){
+            airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
           }else{
-            fields <- append(fields,list('prioridad'="2 - Media Alta"))
+            print(paste0("-Revisar la venta producto: ",venta_producto$fields$id_ventas_producto))
+            print(154)
+            return(1)
           }
-        }
-        if(orden_venta$fields$canal_venta=="shprndmx"){
-          fields <- append(fields,list('prioridad'="1 - Media"))
-        }
-        if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
-          fields <- append(fields,list('prioridad'="7 - Extrema"))
-        }
-        if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
-          fields <- append(fields,list('prioridad'="7 - Extrema"))
-        }
-        if(orden_venta$fields$canal_venta=="dstrnd"){
-          fields <- append(fields,list('prioridad'="3 - Alta"))
-        }
-        if(orden_venta$fields$canal_venta=="directa"){
-          fields <- append(fields,list('prioridad'="1 - Media"))
-        }
-        aux <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
-        
-        print(paste0("-Las solicitudes de la venta producto : ", venta_producto$fields$id_ventas_producto, " se registro exitosamente"))
-        if(!is.null(aux)){
-          link_qr <- aux$fields$barcode_link
-          if(is.null(link_qr)){
-            link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
-          }
-          sp <- aux$fields$id_solicitud
-          nombre_producto <- paste0(aux$fields$producto_solicitado,".")
-          # url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
-          # airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
-          #                             'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
-          # if(!last_response()$status_code %in% c(199:299)){
-          #   mensaje <- paste0("No se subio la etiqueta: ",sp,
-          #                     "\nlast_response() %>% resp_body_json():\n",
-          #                     toJSON(last_response() %>% resp_body_json()),
-          #                     "last_request()$body:\n",
-          #                     toJSON(last_request()$body) )
-          #   enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
-          # }
-          airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
         }
         
       }else{
@@ -377,7 +404,9 @@ registrar_producto <- function(producto,venta_producto){
             }else{
               field$tabla <- NULL
               aux <- airtable_createrecord(field,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+              
               if(!is.null(aux)){
+                pedir_piezas(aux)
                 link_qr <- aux$fields$barcode_link
                 if(is.null(link_qr)){
                   link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
@@ -485,6 +514,7 @@ registrar_producto <- function(producto,venta_producto){
           
           print(paste0("-Las solicitudes de la venta producto : ", venta_producto$fields$id_ventas_producto, " se registro exitosamente"))
           if(!is.null(aux)){
+            pedir_piezas(aux)
             link_qr <- aux$fields$barcode_link
             if(is.null(link_qr)){
               link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
@@ -646,7 +676,6 @@ imprimir_etiqueta_pernos <- function(){
     }
   }
 }
-
 
 invertir_may_min <- function(x) {
   # Cambiar mayúsculas a minúsculas y viceversa
@@ -870,7 +899,7 @@ resumen_guias_shiny <- function() {
 
 pausar_todas_publicaciones <- function(producto){
   tryCatch(expr={
-    if(length(producto$fields$pertennece_paquetes)!=0){
+    if(length(producto$fields$pertenece_paquetes)!=0){
       producto_partes <- airtable_getrecordslist("tblugSFaPSzMDlITS",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{paquete})"))
       if(length(producto_partes)!=0){
         aux_productos_parte <- sapply(producto_partes,function(x){
@@ -998,3 +1027,51 @@ pausar_todas_publicaciones <- function(producto){
   })
  
 }
+
+pedir_piezas <- function(solicitud){
+  producto <- airtable_getrecorddata_byid(solicitud$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+  
+  if(length(producto$fields$piezas_producto)!=0){
+    cantidad_piezas <- length(producto$fields$piezas_producto)
+    airtable_updatesinglerecord(list("cantidad_piezas"=cantidad_piezas),"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),solicitud$id)
+    i <- 1
+    for(pieza in producto$fields$piezas_producto){
+      aux_pieza <- airtable_getrecorddata_byid(pieza,"piezas_producto",Sys.getenv("AIRTABLE_CES_BASE"))
+      pz_producto <- airtable_getrecorddata_byid(aux_pieza$fields$pieza[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+      
+      fields <- list("origen"="pieza",
+                     "comentarios"=paste0("Pieza de ",solicitud$fields$id_solicitud," ",solicitud$fields$comentarios),
+                     "cantidad"=solicitud$fields$cantidad*aux_pieza$fields$cantidad,
+                     "prioridad"=solicitud$fields$prioridad,
+                     "producto"=list(pz_producto$id),
+                     "indice_pieza"=i,
+                     "indice_padre"=solicitud$fields$autonumber_upd+1000,
+                     "sp_padre"=solicitud$id
+                     )
+      pz <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+      
+      if(!is.null(pz)){
+        i <- i+1
+        link_qr <- pz$fields$barcode_link
+        if(is.null(link_qr)){
+          link_qr <- paste0("https://barcodeapi.org/api/qr/",pz$fields$id_solicitud,"%7C",pz$id)
+        }
+        sp <- paste0("PZ",solicitud$fields$autonumber_upd+1000)
+        nombre_producto <- paste0(pz_producto$fields$nombre_instructivo," ",pz$fields$indice_pieza,"/",cantidad_piezas,
+                                  pz$fields$producto_solicitado,".")
+        url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
+        airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
+                                    'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),pz$id)
+        if(!last_response()$status_code %in% c(199:299)){
+          mensaje <- paste0("No se subio la etiqueta: ",sp,
+                            "\nlast_response() %>% resp_body_json():\n",
+                            toJSON(last_response() %>% resp_body_json()),
+                            "last_request()$body:\n",
+                            toJSON(last_request()$body) )
+          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+        }
+        #airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
+      }
+    }
+  }
+} 
