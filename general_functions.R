@@ -1046,7 +1046,8 @@ pedir_piezas <- function(solicitud){
                      "producto"=list(pz_producto$id),
                      "indice_pieza"=i,
                      "indice_padre"=solicitud$fields$autonumber_upd+1000,
-                     "sp_padre"=solicitud$id
+                     "cantidad_piezas"=cantidad_piezas,
+                     "sp_padre"=list(solicitud$id)
                      )
       pz <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
       
@@ -1058,7 +1059,7 @@ pedir_piezas <- function(solicitud){
         }
         sp <- paste0("PZ",solicitud$fields$autonumber_upd+1000)
         nombre_producto <- paste0(pz_producto$fields$nombre_instructivo," ",pz$fields$indice_pieza,"/",cantidad_piezas,
-                                  pz$fields$producto_solicitado,".")
+                                  " - ",pz$fields$producto_solicitado,".")
         url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
         airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
                                     'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),pz$id)
