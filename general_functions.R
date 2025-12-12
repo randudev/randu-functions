@@ -1057,8 +1057,8 @@ pedir_piezas <- function(solicitud){
         if(is.null(link_qr)){
           link_qr <- paste0("https://barcodeapi.org/api/qr/",pz$fields$id_solicitud,"%7C",pz$id)
         }
-        sp <- paste0("PZ",solicitud$fields$autonumber_upd+1000)
-        nombre_producto <- paste0(pz_producto$fields$nombre_instructivo," ",pz$fields$indice_pieza,"/",cantidad_piezas,
+        sp <- paste0(pz$fields$id_solicitud)
+        nombre_producto <- paste0(pz_producto$fields$nombre_instructivo," ",
                                   " - ",pz$fields$producto_solicitado,".")
         url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
         airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
