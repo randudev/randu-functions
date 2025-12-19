@@ -177,7 +177,7 @@ registrar_producto <- function(producto,venta_producto){
           if(venta_producto$fields$cantidad >= 5){
             tipo_empaque <- "tarima"
           }
-          if(!is.null(orden_venta$fields$entrega_local)){
+          if(!is.null(orden_venta$fields$entrega_qro) || !is.null(orden_venta$fields$entrega_cdmx)){
             tipo_empaque <- "ligero"
           }
           ov <- ""
@@ -293,7 +293,7 @@ registrar_producto <- function(producto,venta_producto){
                 if(venta_producto$fields$cantidad >= 5 ){
                   tipo_empaque <- "tarima"
                 }
-                if(!is.null(orden_venta$fields$entrega_local)){
+                if(!is.null(orden_venta$fields$entrega_qro) || !is.null(orden_venta$fields$entrega_cdmx)){
                   tipo_empaque <- "ligero"
                 }
                 ov <- ""
@@ -466,7 +466,7 @@ registrar_producto <- function(producto,venta_producto){
           if(venta_producto$fields$cantidad >= 5){
             tipo_empaque <- "tarima"
           }
-          if(!is.null(orden_venta$fields$entrega_local)){
+          if(!is.null(orden_venta$fields$entrega_qro) || !is.null(orden_venta$fields$entrega_cdmx)){
             tipo_empaque <- "ligero"
           }
           ov <- ""
