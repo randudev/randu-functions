@@ -190,7 +190,8 @@ registrar_producto <- function(producto,venta_producto){
             "producto"=list(producto$id),
             "venta_producto"=list(venta_producto$id),
             "tipo_empaque"=tipo_empaque,
-            "origen"="pedido"
+            "origen"="pedido",
+            "fecha_solicitud"=Sys.time()-6*3600
           )
           
           if(orden_venta$fields$canal_venta=="mercadolibrernd"){
@@ -308,7 +309,8 @@ registrar_producto <- function(producto,venta_producto){
                     "producto"=list(producto$id),
                     "venta_producto"=list(venta_producto$id),
                     "tipo_empaque"=tipo_empaque,
-                    "origen"="pedido"
+                    "origen"="pedido",
+                    "fecha_solicitud"=Sys.time()-6*3600
                   )
                 }else{
                   fields[[length(fields) + 1]] <- list(
@@ -318,7 +320,8 @@ registrar_producto <- function(producto,venta_producto){
                     "producto"=list(parte_producto$id),
                     "venta_producto"=list(venta_producto$id),
                     "tipo_empaque"=tipo_empaque,
-                    "origen"="pedido"
+                    "origen"="pedido",
+                    "fecha_solicitud"=Sys.time()-6*3600
                   )
                 }
                 if(parte_producto$fields$categoria == "Empaque"){
@@ -479,7 +482,8 @@ registrar_producto <- function(producto,venta_producto){
             "producto"=list(producto$id),
             "venta_producto"=list(venta_producto$id),
             "tipo_empaque"=tipo_empaque,
-            "origen"="pedido"
+            "origen"="pedido",
+            "fecha_solicitud"=Sys.time()-6*3600
           )
           
           if(orden_venta$fields$canal_venta=="mercadolibrernd"){
@@ -1048,7 +1052,8 @@ pedir_piezas <- function(solicitud){
                      "indice_pieza"=i,
                      "indice_padre"=solicitud$fields$autonumber_upd+1000,
                      "cantidad_piezas"=cantidad_piezas,
-                     "sp_padre"=list(solicitud$id)
+                     "sp_padre"=list(solicitud$id),
+                     "fecha_solicitud"=Sys.time()-6*3600
                      )
       pz <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
       
