@@ -937,7 +937,7 @@ ml_agencia_sin_partes <- function(){
       }
       if(length(dar_de_alta) !=0){
         ml_status_conjunto_publicaciones(dar_de_alta,ml_token,"active")
-      }
+      } 
     }
     productos <- append(status,productos)
     productos <- unique(productos)
