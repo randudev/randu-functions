@@ -909,7 +909,7 @@ pausar_publicaciones_ml <- function(){
         ml_status_publicacion_agencia(ml_token,"paused")
         productos[[1]] <- "pausa"
         saveRDS(productos,"publicaciones_a_pausar.RDS")
-        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),"Se pausaron las publicaciones")
+        #enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),"Se pausaron las publicaciones")
       }
     }
   }
@@ -1010,6 +1010,7 @@ ml_status_conjunto_publicaciones <- function(productos,ml_token,status){
 }
 
 ml_status_publicacion_agencia <- function(ml_token,status){
+  productos_pausados <- list()
   productos  <- readRDS("publicaciones_a_pausar.RDS")
   if(length(productos)>1 ){
     productos <- productos[-1]
@@ -1018,6 +1019,21 @@ ml_status_publicacion_agencia <- function(ml_token,status){
       item_no_cambio <- ml_obtener_item(productos[[i]],ml_token)
       if(item_no_cambio$status == "under_review"){
         next
+      }
+      if(status == "paused"){
+        publicacion <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),
+                                               paste0("id_canal='",productos[[i]],"'"))
+        if(length(publicacion)!=0){
+          produc_air <- airtable_getrecorddata_byid(publicacion[[1]]$fields$producto[[1]],"productos",
+                                                    Sys.getenv("AIRTABLE_CES_BASE"))
+          if(produc_air$fields$cantidad_disponible_navex93>0){
+            next
+          }else{
+            productos_pausados[[length(productos_pausados) + 1]] <-  produc_air$fields$id_productos
+          }
+        }else{
+          productos_pausados[[length(productos_pausados) + 1]] <-  item_no_cambio$title
+        }
       }
       item <- ml_status_item(productos[[i]],ml_token,status)
       if(!last_response()$status_code %in% c(199:299) ){
@@ -1062,6 +1078,15 @@ ml_status_publicacion_agencia <- function(ml_token,status){
         }
       }
     }
+    if(status=="paused"){
+      if(length(productos_pausados)>0){
+        mensaje_resumen <- paste0("Se pausaron las publicaciones de agencia de los productos:\n",
+                                  paste(productos_pausados,collapse = "\n"))
+        #enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_resumen)
+        enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_resumen)
+      }
+    }
+    
   }
 }
 
