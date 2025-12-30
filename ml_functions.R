@@ -1082,7 +1082,7 @@ ml_status_publicacion_agencia <- function(ml_token,status){
       if(length(productos_pausados)>0){
         mensaje_resumen <- paste0("Se pausaron las publicaciones de agencia de los productos:\n",
                                   paste(productos_pausados,collapse = "\n"))
-        #enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_resumen)
+        enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_resumen)
         enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_resumen)
       }
     }
