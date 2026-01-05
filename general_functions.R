@@ -382,15 +382,16 @@ registrar_producto <- function(producto,venta_producto){
               if(is.null(parte_producto$fields$item_produccion) ){
                 cantidad_restante <- parte_producto$fields$cantidad_disponible_navex93 - venta_producto$fields$cantidad
                 if(cantidad_restante<=6){
-                  mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, "solo cuenta con ", 
-                                    cantidad_restante, " unidades\nRevisa")
+                  mensaje <- paste0("Advertencia: El producto ", parte_producto$fields$id_productos, " solo cuenta con ", 
+                                    cantidad_restante, " unidades en Navex\nRevisa")
                   #enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
                   
                   mensajes_enviar[[length(mensajes_enviar) + 1]] <- mensaje
                   cantidad_jiroba <- parte_producto$fields$cantidad_inventario_jiroba
                   if(cantidad_restante+cantidad_jiroba==0){
                     pausar[[length(pausar)+1]] <-  parte_producto
-                    mensajes_enviar[[length(mensajes_enviar)]] <- paste0(mensajes_enviar[[length(mensajes_enviar)]],"\n*SE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON*")
+                    mensajes_enviar[[length(mensajes_enviar)]] <- paste0(mensajes_enviar[[length(mensajes_enviar)]],
+                                                                         "NO HAY INVENTARIO EN NAVEX Y JIROBA\n*SE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON*")
                   }
                   #enviar_email(mensaje,"mauricio@randu.mx")
                   #enviar_email(mensaje,"yatzel@randu.mx")
@@ -563,11 +564,11 @@ registrar_producto <- function(producto,venta_producto){
           cantidad_restante <- producto$fields$cantidad_disponible_navex93 - venta_producto$fields$cantidad
           if(cantidad_restante<=6){
             mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, "solo cuenta con ", 
-                              cantidad_restante, " unidades\nRevisa")
+                              cantidad_restante, " unidades en Navex\nRevisa")
             cantidad_jiroba <- producto$fields$cantidad_inventario_jiroba
             if(cantidad_restante+cantidad_jiroba==0){
               pausar_todas_publicaciones(producto)
-              mensaje <- paste0(mensaje,"\n*SE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON*")
+              mensaje <- paste0(mensaje,"\nNO HAY INVENTARIO EN NAVEX Y JIROBA\n*SE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON*")
             }
             enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje)
             #enviar_email(mensaje,"mauricio@randu.mx")
