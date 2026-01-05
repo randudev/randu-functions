@@ -1009,7 +1009,7 @@ ml_status_conjunto_publicaciones <- function(productos,ml_token,status){
   }
 }
 
-ml_status_publicacion_agencia <- function(ml_token,status){
+ml_status_publicacion_agencia <- function(ml_token,status,flag_msg=T){
   productos_pausados <- list()
   productos  <- readRDS("publicaciones_a_pausar.RDS")
   if(length(productos)>1 ){
@@ -1020,7 +1020,7 @@ ml_status_publicacion_agencia <- function(ml_token,status){
       if(item_no_cambio$status == "under_review"){
         next
       }
-      if(status == "paused"){
+      if(status == "paused" && flag_msg){
         publicacion <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),
                                                paste0("id_canal='",productos[[i]],"'"))
         if(length(publicacion)!=0){
@@ -1078,12 +1078,12 @@ ml_status_publicacion_agencia <- function(ml_token,status){
         }
       }
     }
-    if(status=="paused"){
+    if(status=="paused" && flag_msg){
       if(length(productos_pausados)>0){
         mensaje_resumen <- paste0("Se pausaron las publicaciones de agencia de los productos:\n",
                                   paste(productos_pausados,collapse = "\n"))
         enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_resumen)
-        enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_resumen)
+        #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_resumen)
       }
     }
     
