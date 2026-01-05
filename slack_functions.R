@@ -458,13 +458,28 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
     expr={
       mensaje_confirmacion <- "" 
       if(str_detect(tolower(cuerpo$event$text),"agencia")){
+        productos  <- readRDS("publicaciones_a_pausar.RDS")
         if(str_detect(tolower(cuerpo$event$text),"activar")){
-          ml_status_publicacion_agencia(ml_token,"active",F)
-          mensaje_confirmacion <- paste0("Se activaron exitosamente las publicaciones de agencia")
+          if(producto[[1]]=="activo"){
+            mensaje_confirmacion <-  paste0("Los productos ya han sido dados de alta")
+          }else{
+            ml_status_publicacion_agencia(ml_token,"active",F)
+            mensaje_confirmacion <- paste0("Se activaron exitosamente las publicaciones de agencia")
+            productos[[1]] <- "activo"
+            saveRDS(productos,"publicaciones_a_pausar.RDS")
+          }
+          
         }
         if(str_detect(tolower(cuerpo$event$text),"pausar")){
-          ml_status_publicacion_agencia(ml_token,"paused",F)
-          mensaje_confirmacion <- paste0("Se pausaron exitosamente las publicaciones de agencia")
+          if(producto[[1]]=="pausa"){
+            mensaje_confirmacion <-  paste0("Los productos ya han sido dados de baja")
+          }else{
+            ml_status_publicacion_agencia(ml_token,"paused",F)
+            mensaje_confirmacion <- paste0("Se pausaron exitosamente las publicaciones de agencia")
+            productos[[1]] <- "pausa"
+            saveRDS(productos,"publicaciones_a_pausar.RDS")
+          }
+          
         }
         if(last_response()$status_code %in% c(199:299)){
           slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$thread_ts,mensaje_confirmacion)
