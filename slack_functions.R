@@ -460,7 +460,7 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
       if(str_detect(tolower(cuerpo$event$text),"agencia")){
         productos  <- readRDS("publicaciones_a_pausar.RDS")
         if(str_detect(tolower(cuerpo$event$text),"activar")){
-          if(producto[[1]]=="activo"){
+          if(productos[[1]]=="activo"){
             mensaje_confirmacion <-  paste0("Los productos ya han sido dados de alta")
           }else{
             ml_status_publicacion_agencia(ml_token,"active",F)
@@ -471,8 +471,8 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
           
         }
         if(str_detect(tolower(cuerpo$event$text),"pausar")){
-          if(producto[[1]]=="pausa"){
-            mensaje_confirmacion <-  paste0("Los productos ya han sido dados de baja")
+          if(productos[[1]]=="pausa"){
+            mensaje_confirmacion <-  paste0("Los productos ya han sido dados pausados antes")
           }else{
             ml_status_publicacion_agencia(ml_token,"paused",F)
             mensaje_confirmacion <- paste0("Se pausaron exitosamente las publicaciones de agencia")
