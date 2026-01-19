@@ -640,6 +640,7 @@ consulta_por_nombre <- function(order_name,access_token) {
                 presentmentMoney { amount currencyCode }
               }
               quantity
+              currentQuantity
               variantTitle
               vendor
               originalTotalSet {
