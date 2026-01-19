@@ -834,6 +834,7 @@ enviar_nota <- function(order_id,numeros_rastreo=NULL,paqueteria=NULL,access_tok
   nota <- nota$data$order$note
   notes <- paste0(nota,"\n",notes)
   print(nota)
+  notes <- gsub("\n{2,}", "\n", notes)
   print(notes)
   
   notes_mutation <- paste0('
