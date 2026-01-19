@@ -1110,7 +1110,7 @@ pedir_piezas <- function(solicitud){
 
 prioridad_agencia <- function(fecha){
   fecha_posix <- as.POSIXct(
-    ml_shipping$lead_time$buffering$date,
+    fecha,
     format = "%Y-%m-%dT%H:%M:%OSZ",
     tz = "UTC"
   )
