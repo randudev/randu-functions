@@ -200,7 +200,15 @@ registrar_producto <- function(producto,venta_producto){
             if(!is.null(ml_order$shipping$id)){
               ml_shipping <- get_dir_mlorder(ml_order,ml_token)
               if(ml_shipping$logistic$mode == "me2"){
-                fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
+                fecha <- ml_shipping$lead_time$buffering$date
+                if(is.null(fecha)){
+                  fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
+                  fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                }else{
+                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha)))
+                  fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                }
+                
               } else{
                 fields <- append(fields,list('prioridad'="2 - Media Alta"))
               }
@@ -333,7 +341,15 @@ registrar_producto <- function(producto,venta_producto){
                   if(!is.null(ml_order$shipping$id)){
                     ml_shipping <- get_dir_mlorder(ml_order,ml_token)
                     if(ml_shipping$logistic$mode == "me2"){
-                      fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 12"))
+                      fecha <- ml_shipping$lead_time$buffering$date
+                      if(is.null(fecha)){
+                        fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
+                        fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                      }else{
+                        fields <- append(fields,list('prioridad'=prioridad_agencia(fecha)))
+                        fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                      }
+                      #fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 12"))
                     } else{
                       fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="2 - Media Alta"))
                     }
@@ -493,7 +509,15 @@ registrar_producto <- function(producto,venta_producto){
             if(!is.null(ml_order$shipping$id)){
               ml_shipping <- get_dir_mlorder(ml_order,ml_token)
               if(ml_shipping$logistic$mode == "me2"){
-                fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
+                fecha <- ml_shipping$lead_time$buffering$date
+                if(is.null(fecha)){
+                  fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
+                  fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                }else{
+                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha)))
+                  fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                }
+                #fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
               } else{
                 fields <- append(fields,list('prioridad'="2 - Media Alta"))
               }
@@ -1082,4 +1106,28 @@ pedir_piezas <- function(solicitud){
       }
     }
   }
-} 
+}
+
+prioridad_agencia <- function(fecha){
+  fecha_posix <- as.POSIXct(
+    ml_shipping$lead_time$buffering$date,
+    format = "%Y-%m-%dT%H:%M:%OSZ",
+    tz = "UTC"
+  )
+  
+  fecha_posix <- as.POSIXct(
+    paste0(format(fecha_posix, "%Y-%m-%d"),
+           "14",format(fecha_posix, ":%M:%S")),
+    tz = "UTC"
+  )
+  
+  ahora <- as.POSIXct(Sys.time(), tz = "UTC")
+  
+  dif_horas <- as.numeric(difftime(fecha_posix, ahora,units = "hours"))
+  
+  prioridad <- ifelse(
+    dif_horas <= 24, "8 - Antes de las 12",
+    ifelse(dif_horas <= 36, "6 - Para hoy", "3 - Alta")
+  )
+  return(prioridad)
+}
