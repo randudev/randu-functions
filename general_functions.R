@@ -332,9 +332,12 @@ registrar_producto <- function(producto,venta_producto){
                     "fecha_solicitud"=Sys.time()-6*3600
                   )
                 }
-                if(parte_producto$fields$categoria == "Empaque"){
-                  fields[[length(fields)]]$origen <- "empaque CNC"
+                if(!is.null(parte_producto$fields$categoria)){
+                  if(parte_producto$fields$categoria == "Empaque"){
+                    fields[[length(fields)]]$origen <- "empaque CNC"
+                  }
                 }
+                
                 if(orden_venta$fields$canal_venta=="mercadolibrernd"){
                   ml_token <- get_active_token()
                   ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
