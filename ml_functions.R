@@ -419,6 +419,18 @@ ml_obtener_item <- function(item_id, ml_token) {
   return(resp)
 }
 
+ml_obtener_precio_item <- function(item_id, ml_token) {
+  url <- paste0("https://api.mercadolibre.com/users/222059644/shipping_options/free?item_id=", item_id)
+  resp <- request(url) %>% 
+    req_method("GET") %>% 
+    req_headers(Authorization = paste("Bearer", ml_token)) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_json()
+  # Convertimos la respuesta a JSON
+  return(resp)
+}
+
 ml_obtener_variante <- function(user_product,ml_token){
   varianturl <- paste0("https://api.mercadolibre.com/user-products/",user_product)
   mlvariant <- request(varianturl) %>%
@@ -469,6 +481,55 @@ ml_status_item <- function(id_item,ml_token,status){
     req_perform() %>% 
     resp_body_json()
 } 
+
+ml_update_attributes_item <- function(id_item, ml_token, attributes) {
+  
+  url <- paste0("https://api.mercadolibre.com/items/", id_item)
+  
+  resp <- request(url) %>% 
+    req_method("PUT") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers(
+      "accept" = "application/json",
+      "content-type" = "application/json"
+    ) %>% 
+    req_body_json(
+      list(
+        attributes = attributes
+      )
+    ) %>% 
+    req_error(is_error = function(resp) FALSE) %>% 
+    req_perform() %>% 
+    resp_body_json()
+  
+  return(resp)
+}
+
+ml_shipping_free <- function(id_item, ml_token) {
+  url <- paste0("https://api.mercadolibre.com/items/", id_item)
+  
+  resp <- request(url) %>% 
+    req_method("PUT") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers(
+      "accept" = "application/json",
+      "content-type" = "application/json"
+    ) %>% 
+    req_body_json(list(
+      shipping = list(
+        mode = "not_specified",
+        local_pick_up = FALSE,
+        free_shipping = TRUE,
+        methods = list(),
+        costs = list()
+      )
+    )) %>% 
+    req_error(is_error = function(resp) FALSE) %>% 
+    req_perform() %>% 
+    resp_body_json()
+  
+  return(resp)
+}
 
 ml_eliminar_item <- function(id_item,ml_token){
   url <- paste0("https://api.mercadolibre.com/items/",id_item)
@@ -1484,4 +1545,18 @@ mp_get_merchant_order_byid <- function(order_id, mp_token) {
     req_error(is_error = function(resp) FALSE) %>% 
     req_perform() %>% 
     resp_body_json()
+}
+
+ml_get_category <- function(category_id, ml_token) {
+  url <- paste0("https://api.mercadolibre.com/categories/", category_id)
+  
+  resp <- request(url) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers("accept" = "application/json") %>% 
+    req_error(is_error = function(resp) FALSE) %>% 
+    req_perform() %>% 
+    resp_body_json()
+  
+  return(resp)
 }
