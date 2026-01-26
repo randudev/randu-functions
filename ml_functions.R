@@ -831,6 +831,7 @@ ml_actualizar_publicaciones_air <- function(item,publicacion,ml_token){
     }
   }
   if(length(item$variations)==0){
+    precio <- ml_obtener_precio_item(item$id,ml_token)
     publicacion <- publicacion[[1]]
     for(i in seq_along(item$attributes)){
       subtitle <- paste0(subtitle,item$attributes[[i]]$name,": ",item$attributes[[i]]$value_name,"/")
@@ -849,6 +850,12 @@ ml_actualizar_publicaciones_air <- function(item,publicacion,ml_token){
       "tipo_envio"=envio,
       "stock_publicacion"=item$available_quantity
     )
+    if(!is.null(precio$coverage$all_country$billable_weight)){
+      fields$peso_facturable_publicacion <- precio$coverage$all_country$billable_weight
+    }
+    if(!is.null(precio$coverage$all_country$list_cost)){
+      fields$precio_envio <- precio$coverage$all_country$list_cost
+    }
     if(length(producto)!=0){
       fields <- append(fields,list("producto"=list(producto[[1]]$id)))
     }

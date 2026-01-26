@@ -242,17 +242,17 @@ registrar_producto <- function(producto,venta_producto){
             }
             sp <- aux$fields$id_solicitud
             nombre_producto <- paste0(aux$fields$producto_solicitado,".")
-            # url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
-            # airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
-            #                             'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
-            # if(!last_response()$status_code %in% c(199:299)){
-            #   mensaje <- paste0("No se subio la etiqueta: ",sp,
-            #                     "\nlast_response() %>% resp_body_json():\n",
-            #                     toJSON(last_response() %>% resp_body_json()),
-            #                     "last_request()$body:\n",
-            #                     toJSON(last_request()$body) )
-            #   enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
-            # }
+            url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
+            airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
+                                        'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
+            if(!last_response()$status_code %in% c(199:299)){
+              mensaje <- paste0("No se subio la etiqueta: ",sp,
+                                "\nlast_response() %>% resp_body_json():\n",
+                                toJSON(last_response() %>% resp_body_json()),
+                                "last_request()$body:\n",
+                                toJSON(last_request()$body) )
+              enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+            }
             airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
           }
           
@@ -437,17 +437,17 @@ registrar_producto <- function(producto,venta_producto){
                 }
                 sp <- aux$fields$id_solicitud
                 nombre_producto <- paste0(aux$fields$producto_solicitado,".")
-                # url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
-                # airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
-                #                             'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
-                # if(!last_response()$status_code %in% c(199:299)){
-                #   mensaje <- paste0("No se subio la etiqueta: ",sp,
-                #                     "\nlast_response() %>% resp_body_json():\n",
-                #                     toJSON(last_response() %>% resp_body_json()),
-                #                     "last_request()$body:\n",
-                #                     toJSON(last_request()$body) )
-                #   enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
-                # }
+                url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
+                airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
+                                            'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
+                if(!last_response()$status_code %in% c(199:299)){
+                  mensaje <- paste0("No se subio la etiqueta: ",sp,
+                                    "\nlast_response() %>% resp_body_json():\n",
+                                    toJSON(last_response() %>% resp_body_json()),
+                                    "last_request()$body:\n",
+                                    toJSON(last_request()$body) )
+                  enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+                }
               }
               
             }
@@ -554,17 +554,17 @@ registrar_producto <- function(producto,venta_producto){
             }
             sp <- aux$fields$id_solicitud
             nombre_producto <- paste0(aux$fields$producto_solicitado,".")
-            # url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
-            # airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
-            #                             'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
-            # if(!last_response()$status_code %in% c(199:299)){
-            #   mensaje <- paste0("No se subio la etiqueta: ",sp,
-            #                     "\nlast_response() %>% resp_body_json():\n",
-            #                     toJSON(last_response() %>% resp_body_json()),
-            #                     "last_request()$body:\n",
-            #                     toJSON(last_request()$body) )
-            #   enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
-            # }
+            url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
+            airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
+                                        'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),aux$id)
+            if(!last_response()$status_code %in% c(199:299)){
+              mensaje <- paste0("No se subio la etiqueta: ",sp,
+                                "\nlast_response() %>% resp_body_json():\n",
+                                toJSON(last_response() %>% resp_body_json()),
+                                "last_request()$body:\n",
+                                toJSON(last_request()$body) )
+              enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+            }
             airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
           }
           
