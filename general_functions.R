@@ -216,19 +216,27 @@ registrar_producto <- function(producto,venta_producto){
               fields <- append(fields,list('prioridad'="2 - Media Alta"))
             }
           }
-          if(orden_venta$fields$canal_venta=="shprndmx"){
-            fields <- append(fields,list('prioridad'="1 - Media"))
-          }
-          if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
-            fields <- append(fields,list('prioridad'="7 - Extrema"))
-          }
-          if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
-            fields <- append(fields,list('prioridad'="7 - Extrema"))
-          }
-          if(orden_venta$fields$canal_venta=="dstrnd"){
-            fields <- append(fields,list('prioridad'="3 - Alta"))
-          }
-          if(orden_venta$fields$canal_venta=="directa"){
+          if(length(orden_venta$fields$canal_venta)!=0){
+            if(orden_venta$fields$canal_venta=="shprndmx"){
+              fields <- append(fields,list('prioridad'="1 - Media"))
+            }
+            if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
+              fields <- append(fields,list('prioridad'="7 - Extrema"))
+            }
+            if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
+              fields <- append(fields,list('prioridad'="7 - Extrema"))
+            }
+            if(orden_venta$fields$canal_venta=="dstrnd"){
+              fields <- append(fields,list('prioridad'="3 - Alta"))
+            }
+            if(orden_venta$fields$canal_venta=="directa"){
+              fields <- append(fields,list('prioridad'="1 - Media"))
+            }
+            todas <- c("directa","dstrnd","walmartrnd","mercadolibrernd","amazonrnd","coppel","amazonasm","shprndmx")
+            if(!orden_venta$fields$canal_venta %in% todas){
+              fields <- append(fields,list('prioridad'="1 - Media"))
+            }
+          }else{
             fields <- append(fields,list('prioridad'="1 - Media"))
           }
           aux <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
