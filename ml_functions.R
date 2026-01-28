@@ -871,6 +871,7 @@ ml_actualizar_publicaciones_air <- function(item,publicacion,ml_token){
     }
   }else{
     for(variante in item$variations){
+      print(item$id)
       subtitle <- ""
       publicacion_variante <- buscar_primera_por_valor(publicacion,variante$user_product_id)
       user_product <- ml_obtener_variante(variante$user_product_id,ml_token)
@@ -1567,3 +1568,26 @@ ml_get_category <- function(category_id, ml_token) {
   
   return(resp)
 }
+
+
+calcular_fecha_envio <- function(shipping, cutoff_hour = 8) {
+  
+  now <- Sys.time()
+  today <- as.Date(now)
+  
+  buffering_date <- shipping$buffering$date
+  
+  envio_date <- today
+  
+  if (as.numeric(format(now, "%H")) > cutoff_hour) {
+    envio_date <- envio_date + 1
+  }
+  
+  while (weekdays(envio_date) %in% c("sábado", "domingo")) {
+    envio_date <- envio_date + 1
+  }
+  
+  
+  return(envio_date)
+}
+

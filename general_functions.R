@@ -203,7 +203,8 @@ registrar_producto <- function(producto,venta_producto){
                 fecha <- ml_shipping$lead_time$buffering$date
                 if(is.null(fecha)){
                   fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
-                  fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                  dia_sp <- calcular_fecha_envio(ml_shipping)
+                  fields$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields$comentarios)
                 }else{
                   fields <- append(fields,list('prioridad'=prioridad_agencia(fecha)))
                   fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
@@ -355,7 +356,8 @@ registrar_producto <- function(producto,venta_producto){
                       fecha <- ml_shipping$lead_time$buffering$date
                       if(is.null(fecha)){
                         fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
-                        fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                        dia_sp <- calcular_fecha_envio(ml_shipping)
+                        fields$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields$comentarios)
                       }else{
                         fields <- append(fields,list('prioridad'=prioridad_agencia(fecha)))
                         fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
@@ -523,7 +525,8 @@ registrar_producto <- function(producto,venta_producto){
                 fecha <- ml_shipping$lead_time$buffering$date
                 if(is.null(fecha)){
                   fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
-                  fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                  dia_sp <- calcular_fecha_envio(ml_shipping)
+                  fields$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields$comentarios)
                 }else{
                   fields <- append(fields,list('prioridad'=prioridad_agencia(fecha)))
                   fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
