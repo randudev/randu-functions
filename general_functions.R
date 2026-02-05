@@ -1083,10 +1083,6 @@ pedir_piezas <- function(solicitud){
     for(pieza in producto$fields$piezas_producto){
       aux_pieza <- airtable_getrecorddata_byid(pieza,"piezas_producto",Sys.getenv("AIRTABLE_CES_BASE"))
       pz_producto <- airtable_getrecorddata_byid(aux_pieza$fields$pieza[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
-      if(str_detect(pz_producto$fields$id_productos,"11399")){
-        i <- i+1
-        next
-      }
       fields <- list("origen"="pieza",
                      "comentarios"=paste0("Pieza de ",solicitud$fields$id_solicitud," ",solicitud$fields$comentarios),
                      "cantidad"=solicitud$fields$cantidad*aux_pieza$fields$cantidad,
