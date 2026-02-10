@@ -1042,13 +1042,16 @@ ml_status_conjunto_publicaciones <- function(productos,ml_token,status){
             no_stock <- no_stock || str_detect(item$cause[[i]]$message,"stock") || str_detect(item$cause[[i]]$message,"not possible to activate")
           }
           if(no_stock){
-            aux <- ml_stock_item(productos[[i]],ml_token,10)
-            if(!last_response()$status_code %in% c(199:299) ){
-              
-              mensaje_dar_pausa <- paste0("El item: ",item_no_cambio$id," ",item_no_cambio$title,"\nNo se pudo poner en ",
-                                          status," ni cambiar la cantidad\n",toJSON(last_response() %>% resp_body_json()))
-              enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+            if(productos[[i]]!="MLM3483951916"){
+              aux <- ml_stock_item(productos[[i]],ml_token,10)
+              if(!last_response()$status_code %in% c(199:299) ){
+                
+                mensaje_dar_pausa <- paste0("El item: ",item_no_cambio$id," ",item_no_cambio$title,"\nNo se pudo poner en ",
+                                            status," ni cambiar la cantidad\n",toJSON(last_response() %>% resp_body_json()))
+                enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+              }
             }
+            
           }else{
             mensaje_dar_pausa <- paste0("El item: ",item_no_cambio$id," ",item_no_cambio$title,"\nNo se pudo poner en ",
                                         status,"\n",causa)
@@ -1066,11 +1069,13 @@ ml_status_conjunto_publicaciones <- function(productos,ml_token,status){
           enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
         }
         if(item$available_quantity<2){
-          aux <- ml_stock_item(item$id,ml_token,10)
-          if(!last_response()$status_code %in% c(199:299) ){
-            mensaje_dar_pausa <- paste0("El item: ",item$id," ",item$title,"\nNo se pudo poner cambiar la cantidad\n",
-                                        toJSON(last_response() %>% resp_body_json()))
-            enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+          if(item$id !="MLM3483951916"){
+            aux <- ml_stock_item(item$id,ml_token,10)
+            if(!last_response()$status_code %in% c(199:299) ){
+              mensaje_dar_pausa <- paste0("El item: ",item$id," ",item$title,"\nNo se pudo poner cambiar la cantidad\n",
+                                          toJSON(last_response() %>% resp_body_json()))
+              enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_dar_pausa)
+            }
           }
         }
       }
