@@ -1022,6 +1022,7 @@ pausar_todas_publicaciones <- function(producto){
         paste0("AND(canal='amazon randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
                producto$fields$id_productos, "',{producto}))"))
       if(length(publicaciones_amazon)!=0){
+        amz_token <- amz_get_active_token()
         for(publi_amz in publicaciones_amazon){
           item_amz <- amz_getitems(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),publi_amz$fields$product_id)
           if(length(item_amz$fulfillmentAvailability)!=0){
@@ -1045,6 +1046,7 @@ pausar_todas_publicaciones <- function(producto){
         paste0("AND(canal='mercadolibre randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
                producto$fields$id_productos, "',{producto}))"))
       if(length(publicaciones_ml)!=0){
+        ml_token <- get_active_token()
         for(publi_ml in publicaciones_ml){
           item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
           if(!is.null(item_ml$status)){
