@@ -13,7 +13,7 @@ cargar_paquetes <- function(paquetes) {
 
 cargar_paquetes(paquetes)
 
-generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NULL){
+generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NULL,link_barras=""){
   renderform_api_key  <- Sys.getenv("RENDERFORM_API_KEY")
   renderform_template_id <- "faulty-foxes-sting-lazily-1437"
   renderform_url <- "https://api.renderform.io/api/v2/render"
@@ -26,7 +26,19 @@ generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NU
       "instructivo.text"=instructivo
     )
   )
-  
+  if(!is.null(instructivo)){
+    renderform_template_id <- "silly-dingos-agree-hourly-1531"
+    body <- list(
+      template = renderform_template_id,
+      data = list(
+        "id_solicitud.text" = sp,
+        "descripcion.text"= nombre_producto,
+        "codigo_barras.src"= link_qr,
+        "instructivo.text"=instructivo,
+        "codigo_128.src"=link_barras
+      )
+    )
+  }
   response <- request(renderform_url) %>%
     req_headers("Content-Type" = "application/json") %>%
     req_headers("x-api-key" = renderform_api_key) %>%
@@ -175,10 +187,14 @@ registrar_producto <- function(producto,venta_producto){
         if(producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
           tipo_empaque <- "estándar"
           if(venta_producto$fields$cantidad >= 5){
-            tipo_empaque <- "tarima"
+            if(is.null(producto$fields$no_empaque_ligero)){
+              tipo_empaque <- "tarima"
+            }
           }
           if(!is.null(orden_venta$fields$entrega_qro) || !is.null(orden_venta$fields$entrega_cdmx)){
-            tipo_empaque <- "ligero"
+            if(is.null(producto$fields$no_empaque_ligero)){
+              tipo_empaque <- "ligero"
+            }
           }
           ov <- ""
           if(is.null(orden_venta$fields$id_origen)){
@@ -309,10 +325,14 @@ registrar_producto <- function(producto,venta_producto){
               if(!is.null(parte_producto$fields$item_produccion)){
                 tipo_empaque <- "estándar"
                 if(venta_producto$fields$cantidad >= 5 ){
-                  tipo_empaque <- "tarima"
+                  if(is.null(parte_producto$fields$no_empaque_ligero)){
+                    tipo_empaque <- "tarima"
+                  }
                 }
                 if(!is.null(orden_venta$fields$entrega_qro) || !is.null(orden_venta$fields$entrega_cdmx)){
-                  tipo_empaque <- "ligero"
+                  if(is.null(parte_producto$fields$no_empaque_ligero)){
+                    tipo_empaque <- "ligero"
+                  }
                 }
                 ov <- ""
                 if(is.null(orden_venta$fields$id_origen)){
@@ -497,10 +517,14 @@ registrar_producto <- function(producto,venta_producto){
         if(!is.null(producto$fields$item_produccion)){
           tipo_empaque <- "estándar"
           if(venta_producto$fields$cantidad >= 5){
-            tipo_empaque <- "tarima"
+            if(is.null(producto$fields$no_empaque_ligero)){
+              tipo_empaque <- "tarima"
+            }
           }
           if(!is.null(orden_venta$fields$entrega_qro) || !is.null(orden_venta$fields$entrega_cdmx)){
-            tipo_empaque <- "ligero"
+            if(is.null(producto$fields$no_empaque_ligero)){
+              tipo_empaque <- "ligero"
+            }
           }
           ov <- ""
           if(is.null(orden_venta$fields$id_origen)){
@@ -1105,8 +1129,9 @@ pedir_piezas <- function(solicitud){
           link_qr <- paste0("https://barcodeapi.org/api/qr/",pz$fields$id_solicitud,"%7C",pz$id)
         }
         sp <- paste0(pz$fields$id_solicitud)
+        link_barras <- paste0("https://barcodeapi.org/api/128/",pz_producto$fields$sku)
         nombre_producto <- paste0(pz$fields$producto_solicitado,".")
-        url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,pz$id,pz_producto$fields$nombre_instructivo)
+        url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,pz$id,pz_producto$fields$nombre_instructivo,link_barras)
         airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
                                     'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),pz$id)
         if(!last_response()$status_code %in% c(199:299)){
