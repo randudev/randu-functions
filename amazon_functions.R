@@ -87,12 +87,21 @@ amz_register_lineitems <- function(amz_order){
   amz_token <- amz_get_active_token()
   amz_items <- get_amzorderitem_byid(amz_order$payload$AmazonOrderId,amz_token)
   vp_recordids <- vector(mode="list", length(amz_items$payload$OrderItems))
+  tabla_skus <- data.frame(
+    sku_correcto = c(10113,10108,10095,10110,10106,10101,10097,10109,
+                     10112,10099,10198,10098,10103,10102,10094,10114),
+    sku_consultado = c("10115","10110","10096","10112","10108","10102",
+                       "10098","10111","10114","10100","10295",
+                       "10099","10104","10103","10095","10116"),
+    stringsAsFactors = FALSE
+  )
   for(i in 1:length(amz_items$payload$OrderItems)){
     tax <- amz_items$payload$OrderItems[[i]]$ItemTax$Amount
     cantidad <- amz_items$payload$OrderItems[[i]]$QuantityOrdered
     nombre_producto <- amz_items$payload$OrderItems[[i]]$Title
     precio <- as.numeric(amz_items$payload$OrderItems[[i]]$ItemPrice$Amount) + as.numeric(ifelse(is.null(tax)||is.na(tax), 0, tax))
     sku <- str_extract(amz_items$payload$OrderItems[[i]]$SellerSKU,"\\d+")
+    
     id_lineitem <- as.character(amz_items$payload$OrderItems[[i]]$OrderItemId)
     comentarios <- paste0(nombre_producto,"\n Fecha limite: ",
                           amz_order$payload$EarliestShipDate)
@@ -106,6 +115,15 @@ amz_register_lineitems <- function(amz_order){
     )
     if(!is.null(sku)){
       if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
+        if(sku %in% tabla_skus$sku_consultado){
+          sku_mal <- sku
+          sku <- buscar_sku_correcto(sku_mal,tabla_skus)
+          mensaje_advertencia <- paste0(amz_items$payload$AmazonOrderId, 
+                                        ": Esta venta se detecto que el sku de la plataforma",
+                                        " esta incorrecto","\nSe cambio al registrar, revisar y confirma\n",
+                                        "SKU Publicacion: ",sku_mal,"\nSKU Corregido: ",sku)
+          enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_advertencia)
+        }
         product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
                                                          formula=paste0("sku=",sku))
         if(length(product_recordid_list)!=0){
@@ -254,5 +272,15 @@ amazon_update_listing <- function(
     cat("Publicación actualizada correctamente\n")
   } else {
     cat("Error:", status, "\n", resp_txt, "\n")
+  }
+}
+
+buscar_sku_correcto <- function(sku_input, tabla) {
+  resultado <- tabla$sku_correcto[tabla$sku_consultado == sku_input]
+  
+  if (length(resultado) == 0) {
+    return(NA)  # o puedes regresar el mismo sku_input
+  } else {
+    return(resultado[1])
   }
 }

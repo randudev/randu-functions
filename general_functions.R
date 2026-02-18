@@ -181,15 +181,15 @@ registrar_producto <- function(producto,venta_producto){
   # if(orden_venta$fields$canal_venta == "shprndmx" && str_detect(tolower(producto$fields$id_productos),"escritorio de altura ajustable en escuadra base negro")){
   #   return(0)
   # }
-  if(orden_venta$fields$canal_venta== "amazonrnd"){
-    no_subir <- c(10115, 10110, 10096, 10112, 10108, 10102, 10098, 10111, 
-      10114, 10100, 10295, 10099, 10104, 10103, 10095, 10116)
-    if(producto$fields$id_productos %in% no_subir){
-      mensaje_advertencia <- paste0(orden_venta$fields$id_ordenes_venta, ": Esta venta se registro con un producto erroneo\n",
-                                    "Hay que revisar sus solicitudes")
-      enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_advertencia)
-    }
-  }
+  # if(orden_venta$fields$canal_venta== "amazonrnd"){
+  #   no_subir <- c(10115, 10110, 10096, 10112, 10108, 10102, 10098, 10111, 
+  #     10114, 10100, 10295, 10099, 10104, 10103, 10095, 10116)
+  #   if(producto$fields$id_productos %in% no_subir){
+  #     mensaje_advertencia <- paste0(orden_venta$fields$id_ordenes_venta, ": Esta venta se registro con un producto erroneo\n",
+  #                                   "Hay que revisar sus solicitudes")
+  #     enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_advertencia)
+  #   }
+  # }
   if(!str_detect(tolower(producto$fields$id_productos),"10700")  & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"personalizado")){
     if(length(producto$fields$paquetes) != 0){
       if(length(producto$fields$item_produccion)!=0){
