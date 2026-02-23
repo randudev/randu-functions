@@ -386,7 +386,7 @@ registrar_producto <- function(producto,venta_producto){
                       if(is.null(fecha)){
                         fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 12"))
                         dia_sp <- calcular_fecha_envio(ml_shipping)
-                        fields[[length(fields)]]$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields$comentarios)
+                        fields[[length(fields)]]$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields[[length(fields)]]$comentarios)
                       }else{
                         fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'=prioridad_agencia(fecha)))
                         fields[[length(fields)]]$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields[[length(fields)]]$comentarios)
