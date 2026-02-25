@@ -204,6 +204,9 @@ register_lineitems_ml <- function(mlorder, ml_token){
   nombre_producto <- mlorder$order_items[[1]]$item$title
   precio <- as.double(mlorder$order_items[[1]]$unit_price)
   sku <- mlorder$order_items[[1]]$item$seller_sku
+  if(sku=="07503059542550"){
+    sku <- "11363"
+  }
   comentarios <- ""
   fullfilment_type <- mlorder_checkfullfilment(mlorder, ml_token)
   if(fullfilment_type=="fulfillment" || mlorder$seller$id==Sys.getenv("SELLERID_ML_ASM")){
