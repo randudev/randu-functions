@@ -187,7 +187,7 @@ registrar_producto <- function(producto,venta_producto){
   #   if(producto$fields$id_productos %in% no_subir){
   #     mensaje_advertencia <- paste0(orden_venta$fields$id_ordenes_venta, ": Esta venta se registro con un producto erroneo\n",
   #                                   "Hay que revisar sus solicitudes")
-  #     enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_advertencia)
+  #     enviar_mensaje_slack(Sys.getenNov("SLACK_STOCK_URL"),mensaje_advertencia)
   #   }
   # }
   if(!str_detect(tolower(producto$fields$id_productos),"10700")  & !str_detect(tolower(producto$fields$id_productos),"10011") & !str_detect(tolower(producto$fields$id_productos),"personalizado")){
@@ -786,6 +786,19 @@ first_letter <- function(char){
 }
 
 actualizar_o_sumar <- function(tabla, nuevo_sku, nueva_cantidad,nombre,record_id='') {
+  if (is.na(nuevo_sku) || nuevo_sku == "") {
+    
+    nueva_fila <- data.frame(
+      sku = nuevo_sku,
+      cantidad = as.numeric(nueva_cantidad),
+      nombre = nombre,
+      recordid = record_id,
+      stringsAsFactors = FALSE
+    )
+    
+    tabla <- rbind(tabla, nueva_fila)
+    return(tabla)
+  }
   if (nuevo_sku %in% tabla$sku) {
     if(es_numero(tabla$cantidad[tabla$sku == nuevo_sku]) && es_numero(nueva_cantidad)){
       tabla$cantidad[tabla$sku == nuevo_sku] <- as.numeric(tabla$cantidad[tabla$sku == nuevo_sku]) + as.numeric(nueva_cantidad)
