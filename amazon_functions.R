@@ -91,7 +91,7 @@ amz_register_lineitems <- function(amz_order){
     sku_correcto = c(10113,10108,10095,10110,10106,10101,10097,10109,
                      10112,10099,10198,10098,10103,10102,10094,10114),
     sku_consultado = c("10115","10110","10096","10112","10108","10102",
-                       "10098","10111","10114","10100","10295",
+                       "10098","10111","10114","10100","10295-1",
                        "10099","10104","10103","10095","10116"),
     stringsAsFactors = FALSE
   )
@@ -115,8 +115,8 @@ amz_register_lineitems <- function(amz_order){
     )
     if(!is.null(sku)){
       if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
-        if(sku %in% tabla_skus$sku_consultado){
-          sku_mal <- sku
+        if(amz_items$payload$OrderItems[[i]]$SellerSKU %in% tabla_skus$sku_consultado){
+          sku_mal <- amz_items$payload$OrderItems[[i]]$SellerSKU
           sku <- buscar_sku_correcto(sku_mal,tabla_skus)
           mensaje_advertencia <- paste0(amz_items$payload$AmazonOrderId, 
                                         ": Esta venta se detecto que el sku de la plataforma",
@@ -322,7 +322,7 @@ amz_register_lineitems_v2026 <- function(amz_order){
     sku_correcto = c(10113,10108,10095,10110,10106,10101,10097,10109,
                      10112,10099,10198,10098,10103,10102,10094,10114),
     sku_consultado = c("10115","10110","10096","10112","10108","10102",
-                       "10098","10111","10114","10100","10295",
+                       "10098","10111","10114","10100","10295-1",
                        "10099","10104","10103","10095","10116"),
     stringsAsFactors = FALSE
   )
@@ -346,8 +346,8 @@ amz_register_lineitems_v2026 <- function(amz_order){
     )
     if(!is.null(sku)){
       if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
-        if(sku %in% tabla_skus$sku_consultado){
-          sku_mal <- sku
+        if(amz_items$order$orderItems[[i]]$product$sellerSku %in% tabla_skus$sku_consultado){
+          sku_mal <- amz_items$order$orderItems[[i]]$product$sellerSku
           sku <- buscar_sku_correcto(sku_mal,tabla_skus)
           mensaje_advertencia <- paste0(amz_items$order$orderId, 
                                         ": Esta venta se detecto que el sku de la plataforma",
