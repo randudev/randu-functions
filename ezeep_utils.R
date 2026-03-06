@@ -71,10 +71,17 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            #printer_id <- "e2e15ccf-7674-475b-9a86-9f1e5b1eb495"
            #printer_id <- "f7abe3c0-0623-43e3-bda9-694d69df71dc"
            #printer_id <- "d8e483c8-fc68-4fc5-a8ab-dc6699704797"
-           printer_id <- "8d364845-8637-45ad-a6f9-f78810d30a29"
+           #printer_id <- "8d364845-8637-45ad-a6f9-f78810d30a29"
            #printer_id <- "7843711d-3674-496b-a245-4bea92bdd3f0"
+           printer_id <- "66f42ece-6c51-4968-a05a-d579750de4a2"
+           paper_id <- 259
+           paper_name <- "medianas"
+           orientation <- 1
+         },
+         'impresora_empaque_ligero'={
+           printer_id <- "3f088881-e78f-4f93-8ea6-7bd55c8ce6f9"
            paper_id <- 257
-           paper_name <- "mediana"
+           paper_name <- "4 x 2"
            orientation <- 1
          },
          "impresora_brother_paqueteria"={
@@ -91,10 +98,10 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
              if(str_detect(getwd(),"mau")){
                printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"#impresora 101
              }else{
-               printer_id <- "3fbacfc5-73b5-4f12-8e4c-614d66e8a238" #impresora 101 pero con wifi
+               printer_id <- "98f04445-f9f4-461f-bd78-16d0717f7b0e" #impresora 101 pero con wifi
              }
            }
-
+           #printer_id <- "98f04445-f9f4-461f-bd78-16d0717f7b0e"
            paper_id <- 257
            paper_name <- "4x8"
            orientation <- 1
@@ -103,7 +110,8 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            #printer_id <- "6dab9519-b26a-46a3-8b4c-fa8781a68d63"
            #printer_id <- "1ea10e2d-9264-4392-90be-2a8a09bb3f3d"
            #printer_id <- "3e574e62-2e3c-4845-b6b8-f8da1582bf17"
-           printer_id <- "ae8f8915-92da-4aa3-b097-c408ff74c3cf"
+           #printer_id <- "ae8f8915-92da-4aa3-b097-c408ff74c3cf"
+           printer_id <- "cb80a996-8c82-4cb5-82cc-002aacc6b744"
            paper_id <- 1
            paper_name <- "carta"
            orientation <- 1
