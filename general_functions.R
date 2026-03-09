@@ -323,11 +323,15 @@ registrar_producto <- function(producto,venta_producto){
           if(!is.null(aux_parte$fields$paquete)){
             
             parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$paquete[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+            
             if(parte_producto$fields$sku==10698){
               parte_producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",10006 ))[[1]]
             }
             if(parte_producto$fields$sku==10697){
               parte_producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",10005 ))[[1]]
+            }
+            if(parte_producto$id == "recaLIRarP543DdI5"){
+              next
             }
             #parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_RIR_BASE"))
             if(parte_producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
@@ -618,6 +622,10 @@ registrar_producto <- function(producto,venta_producto){
           print(venta_producto$fields$id_ventas_producto)
         }
       }else{
+        if(producto$id=="recaLIRarP543DdI5"){
+          print(154)
+          return(1)
+        }
         ov <- ""
         if(is.null(orden_venta$fields$id_origen)){
           ov <- orden_venta$fields$id_ordenes_venta
