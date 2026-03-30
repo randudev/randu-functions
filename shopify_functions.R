@@ -639,6 +639,10 @@ consulta_por_nombre <- function(order_name,access_token) {
                 shopMoney { amount currencyCode }
                 presentmentMoney { amount currencyCode }
               }
+              customAttributes {
+        key
+        value
+      }
               quantity
               currentQuantity
               variantTitle

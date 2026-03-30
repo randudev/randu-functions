@@ -1,34 +1,47 @@
 
-amz_get_active_token <- function(){
-  tkdata <- airtable_getrecorddata_byid("recLIQv40EFSx9vyr", "tokens", Sys.getenv('AIRTABLE_DEV_BASE'))
+amz_get_active_token <- function(record_id=NULL){
+  if(is.null(record_id)){
+    record_id <- "recLIQv40EFSx9vyr"
+  }
+  tkdata <- airtable_getrecorddata_byid(record_id, "tokens", Sys.getenv('AIRTABLE_DEV_BASE'))
+  
   tkdata <- tkdata$fields
   token_expires <- lubridate::as_datetime(tkdata$token_expires)
   refresh_token <- tkdata$refresh_token
   access_token <- tkdata$access_token
-  
-  if(Sys.time()<token_expires){
-    validat <- access_token
-  }else{
-    request("https://api.amazon.com/auth/o2/token") %>% 
-      req_method("POST") %>% 
-      req_body_json(list('grant_type'='refresh_token',
-                         'client_id'=Sys.getenv('AMZ_APP_CLIENTID'),
-                         'client_secret'=Sys.getenv('AMZ_APP_CLIENTSECRET'),
-                         'refresh_token'=refresh_token)) %>% 
-      req_perform()
-    
-    newtokendata <- last_response() %>% resp_body_json()
-    newaccess_token <- newtokendata$access_token
-    newrefreshtoken <- newtokendata$refresh_token
-    newexpire <- last_response() %>% resp_date() + 3360
-    
-    airtable_updatesinglerecord(fieldslist = list('access_token'=newaccess_token,
-                                                  'refresh_token'=newrefreshtoken,
-                                                  'token_expires'=newexpire), 
-                                tablename = "tokens", base_id = Sys.getenv('AIRTABLE_DEV_BASE'),
-                                recordid = "recLIQv40EFSx9vyr")
-    validat <- newaccess_token
+  if(!is.null(token_expires)){
+    if(Sys.time()<token_expires){
+      validat <- access_token
+    }else{
+      if(record_id!="recLIQv40EFSx9vyr"){
+        client_id <- Sys.getenv('AMZ_AM_APP_CLIENTID')
+        client_secret <- Sys.getenv('AMZ_AM_APP_CLIENTSECRET')
+      }else{
+        client_id <- Sys.getenv('AMZ_APP_CLIENTID')
+        client_secret <- Sys.getenv('AMZ_APP_CLIENTSECRET')
+      }
+      request("https://api.amazon.com/auth/o2/token") %>% 
+        req_method("POST") %>% 
+        req_body_json(list('grant_type'='refresh_token',
+                           'client_id'=client_id,
+                           'client_secret'=client_secret,
+                           'refresh_token'=refresh_token)) %>% 
+        req_perform()
+      
+      newtokendata <- last_response() %>% resp_body_json()
+      newaccess_token <- newtokendata$access_token
+      newrefreshtoken <- newtokendata$refresh_token
+      newexpire <- last_response() %>% resp_date() + 3360
+      
+      airtable_updatesinglerecord(fieldslist = list('access_token'=newaccess_token,
+                                                    'refresh_token'=newrefreshtoken,
+                                                    'token_expires'=newexpire), 
+                                  tablename = "tokens", base_id = Sys.getenv('AIRTABLE_DEV_BASE'),
+                                  recordid = record_id)
+      validat <- newaccess_token
+    }
   }
+  
   validat
 }
 
@@ -399,4 +412,61 @@ amz_register_address_v2026 <- function(amz_order){
   else{
     return(NULL)
   }
+}
+
+amz_orders_v2026 <- function(amz_token){
+  #created_after <- format(Sys.time() - 3600*24*365, "%Y-%m-%dT%H:%M:%SZ")
+  #created_before <- format(Sys.time()-3600, "%Y-%m-%dT%H:%M:%SZ")
+  created_after <- format(
+    as.POSIXct(Sys.time() - 3600*24*365, tz = "UTC"),
+    "%Y-%m-%dT%H:%M:%SZ"
+  )
+  
+  created_before <- format(
+    as.POSIXct(Sys.time()-3600, tz = "UTC"),
+    "%Y-%m-%dT%H:%M:%SZ"
+  )
+  
+  next_token <- NULL
+  data <- list()
+  i <- 1
+  while(T){
+    Sys.sleep(60*4)
+    print(i)
+    i <- i + 1 
+    url_amz <- paste0("https://sellingpartnerapi-na.amazon.com/orders/2026-01-01/orders?createdAfter=",created_after,
+                      "&createdBefore=",created_before)
+    
+    resp <- request(url_amz) %>%
+      req_headers(
+        Authorization = paste("Bearer ", amz_token),
+        "x-amz-access-token" = amz_token
+      ) %>%
+      req_url_query("paginationToken"=next_token,
+                    "marketplaceIds" = "A1AM78C64UM0Y8") %>% 
+      req_perform() %>%
+      resp_body_json()
+    next_token <- resp$pagination$nextToken
+    data <- append(data,resp$orders)
+    if(is.null(last_response())){
+      break
+    }
+    if(!is.null(resp$pagination$nextToken)){
+      if(!is.null(next_token)){
+        if(next_token == resp$pagination$nextToken){
+          print(next_token)
+          print(resp$pagination$nextToken)
+          #break
+        }
+      }
+      
+      
+    }else{
+      break
+    }
+    if(length(resp$orders)==0){
+      break
+    }
+  }
+  
 }
