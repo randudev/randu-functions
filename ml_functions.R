@@ -250,7 +250,10 @@ register_lineitems_ml <- function(mlorder, ml_token){
   if(!is.null(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
     product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
                                                      formula=paste0("sku=",sku))
-    
+    if(length(product_recordid_list)==0){
+      product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                       formula=paste0("AND(FIND('",sku,"',sku),NOT(FIND('-',sku)))"))
+    }
     recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
     fieldslist <- append(fieldslist, recordid_producto)
   }
