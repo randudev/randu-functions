@@ -78,14 +78,14 @@ get_amzorderaddress_byid <- function(orderid,amz_token){
     resp_body_json()
 }
 
-register_amzorder_in_airtable <- function(amz_order){
-  lineitems_recordid <- amz_register_lineitems(amz_order)
+register_amzorder_in_airtable <- function(amz_order,canal){
+  lineitems_recordid <- amz_register_lineitems(amz_order,canal)
   #client_recordid <- register_client(shopifyorder)
   shippingaddress_recordid <- amz_register_address(amz_order)
   
   fieldslist <- list(
     'fecha'=amz_order$payload$PurchaseDate,
-    'canal_venta'='amazonrnd',
+    'canal_venta'=canal,
     'ventas_producto'=lineitems_recordid,
     'id_origen'=amz_order$payload$AmazonOrderId
   )
@@ -96,8 +96,13 @@ register_amzorder_in_airtable <- function(amz_order){
   return(newov_content)
 }
 
-amz_register_lineitems <- function(amz_order){
-  amz_token <- amz_get_active_token()
+amz_register_lineitems <- function(amz_order,canal){
+  if(canal == "amazonasm"){
+    recordid_token <- "recMNZ3uARMZRBMnz"
+  }else{
+    recordid_token <- NULL
+  }
+  amz_token <- amz_get_active_token(recordid_token)
   amz_items <- get_amzorderitem_byid(amz_order$payload$AmazonOrderId,amz_token)
   vp_recordids <- vector(mode="list", length(amz_items$payload$OrderItems))
   tabla_skus <- data.frame(
@@ -126,33 +131,48 @@ amz_register_lineitems <- function(amz_order){
       'id_lineitem'=id_lineitem,
       'comentarios'=comentarios
     )
-    if(!is.null(sku)){
-      if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
-        if(amz_items$payload$OrderItems[[i]]$SellerSKU %in% tabla_skus$sku_consultado){
-          sku_mal <- amz_items$payload$OrderItems[[i]]$SellerSKU
-          sku <- buscar_sku_correcto(sku_mal,tabla_skus)
-          mensaje_advertencia <- paste0(amz_items$payload$AmazonOrderId, 
-                                        ": Esta venta se detecto que el sku de la plataforma",
-                                        " esta incorrecto","\nSe cambio al registrar, revisar y confirma\n",
-                                        "SKU Publicacion: ",sku_mal,"\nSKU Corregido: ",sku)
-          enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_advertencia)
-        }
-        product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
-                                                         formula=paste0("sku=",sku))
-        if(length(product_recordid_list)!=0){
-          recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
-          fieldslist <- append(fieldslist, recordid_producto) 
+    if(!str_detect(amz_items$payload$OrderItems[[i]]$SellerSKU,"#")){
+      if(!is.null(sku)){
+        if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
+          if(canal == "amazonasm"){
+            if(amz_items$payload$OrderItems[[i]]$SellerSKU %in% tabla_skus$sku_consultado){
+              sku_mal <- amz_items$payload$OrderItems[[i]]$SellerSKU
+              sku <- buscar_sku_correcto(sku_mal,tabla_skus)
+              mensaje_advertencia <- paste0(amz_items$payload$AmazonOrderId, 
+                                            ": Esta venta se detecto que el sku de la plataforma",
+                                            " esta incorrecto","\nSe cambio al registrar, revisar y confirma\n",
+                                            "SKU Publicacion: ",sku_mal,"\nSKU Corregido: ",sku)
+              enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_advertencia)
+            }
+          }
+          
+          product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                           formula=paste0("sku='",sku,"'"))
+          if(length(product_recordid_list)!=0){
+            recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+            fieldslist <- append(fieldslist, recordid_producto) 
+          }else{
+            
+            product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                             formula=paste0("AND(FIND('",sku,"',sku),NOT(FIND('-',sku)))"))
+          }
         }
       }
+    }else{
+      sku_value <- sku
+      sku_safe  <- gsub("#", "%23", sku_value)
+      product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                       formula=paste0("AND(FIND('",sku_safe,"',sku),NOT(FIND('-',sku)))"))
     }
+    
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
     if(!is.null(newvp_content)){
       vp_recordids[[i]] <- newvp_content$id[[1]]
     }else{
       print(paste0("hubo un problema al registrar la el line_item 
-                   (venta_producto #",i))
+                   (venta_producto #",i,")"))
       mensaje <- paste0(amz_order$payload$AmazonOrderId,"\nHubo un error al registrar (venta_producto #",i,
-                        "\nError:",last_response()$status_code,"\nBody: ",
+                        ")\nError:",last_response()$status_code,"\nBody: ",
                         last_response() %>% resp_body_json(),
                         "\nBody request: ",toJSON(last_request()$body))
       enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
@@ -183,8 +203,13 @@ amz_register_address <- function(amz_order){
   }
 }
 
-amz_enviar_guia <- function(order_id,paqueteria,numero_guia){
-  amz_token <- amz_get_active_token()
+amz_enviar_guia <- function(order_id,paqueteria,numero_guia,canal){
+  if(canal == "amazonasm"){
+    recordid_token <- "recMNZ3uARMZRBMnz"
+  }else{
+    recordid_token <- NULL
+  }
+  amz_token <- amz_get_active_token(recordid_token)
   amz_items <- get_amzorderitem_byid(order_id,amz_token)
   resp <- request(paste0("https://sellingpartnerapi-na.amazon.com/orders/v0/orders/", order_id, "/shipmentConfirmation")) %>%
     req_method("POST") %>%
@@ -310,14 +335,14 @@ get_amzorder_byid_v2026 <- function(orderid, amz_token){
     resp_body_json()
 }
 
-register_amzorder_in_airtable_v2026 <- function(amz_order){
-  lineitems_recordid <- amz_register_lineitems_v2026(amz_order)
+register_amzorder_in_airtable_v2026 <- function(amz_order,canal){
+  lineitems_recordid <- amz_register_lineitems_v2026(amz_order,canal)
   #client_recordid <- register_client(shopifyorder)
   shippingaddress_recordid <- amz_register_address_v2026(amz_order)
   
   fieldslist <- list(
     'fecha'=amz_order$order$createdTime,
-    'canal_venta'='amazonrnd',
+    'canal_venta'=canal,
     'ventas_producto'=lineitems_recordid,
     'id_origen'=amz_order$order$orderId
   )
@@ -414,7 +439,7 @@ amz_register_address_v2026 <- function(amz_order){
   }
 }
 
-amz_orders_v2026 <- function(amz_token){
+amz_orders_v2026 <- function(amz_token,canal){
   #created_after <- format(Sys.time() - 3600*24*365, "%Y-%m-%dT%H:%M:%SZ")
   #created_before <- format(Sys.time()-3600, "%Y-%m-%dT%H:%M:%SZ")
   created_after <- format(
@@ -431,7 +456,12 @@ amz_orders_v2026 <- function(amz_token){
   data <- list()
   i <- 1
   while(T){
-    Sys.sleep(60*4)
+    if(canal == "amazonasm"){
+      recordid_token <- "recMNZ3uARMZRBMnz"
+    }else{
+      recordid_token <- NULL
+    }
+    amz_token <- amz_get_active_token(recordid_token)
     print(i)
     i <- i + 1 
     url_amz <- paste0("https://sellingpartnerapi-na.amazon.com/orders/2026-01-01/orders?createdAfter=",created_after,
@@ -446,7 +476,7 @@ amz_orders_v2026 <- function(amz_token){
                     "marketplaceIds" = "A1AM78C64UM0Y8") %>% 
       req_perform() %>%
       resp_body_json()
-    next_token <- resp$pagination$nextToken
+    
     data <- append(data,resp$orders)
     if(is.null(last_response())){
       break
@@ -456,17 +486,23 @@ amz_orders_v2026 <- function(amz_token){
         if(next_token == resp$pagination$nextToken){
           print(next_token)
           print(resp$pagination$nextToken)
-          #break
+          break
         }
       }
       
       
-    }else{
+    }
+    if(length(resp$orders)<100 ){
       break
     }
-    if(length(resp$orders)==0){
+    next_token <- resp$pagination$nextToken
+    if(is.null(next_token)){
+      break
+    }
+    Sys.sleep(60*4)
+    if(i==5){
       break
     }
   }
-  
+  return(data)
 }
