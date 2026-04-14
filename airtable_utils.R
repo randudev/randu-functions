@@ -279,3 +279,108 @@ airtable_to_table <- function(lista) {
   
   do.call(rbind, registros_completos)
 }
+
+airtable_create_field <- function(tablename,base_id,body){
+  
+  url <- paste0(
+    "https://api.airtable.com/v0/meta/bases/",
+    base_id,
+    "/tables/",
+    tablename,
+    "/fields"
+  )
+  
+  atbrequest <- request(url) %>% 
+    req_method("POST") %>% 
+    req_headers(
+      "Authorization" = paste0("Bearer ", Sys.getenv("AIRTABLE_API_KEY")),
+      "Content-Type" = "application/json"
+    ) %>% 
+    req_body_json(body) %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform()
+  
+  if (atbrequest$status_code %in% 200:299) {
+    resp_body_json(atbrequest)
+  } else {
+    return(NULL)
+  }
+}
+
+# airtable_append_attachment <- function(recordid, tablename, base_id, field_name, new_url) {
+#   
+#   record <- airtable_getrecorddata_byid(recordid, tablename, base_id)
+#   
+#   existing <- record$fields[[field_name]]
+#   
+#   if (is.null(existing)) existing <- list()
+#   
+#   new_file <- list(list(url = new_url))
+#   
+#   all_files <- c(existing, new_file)
+#   
+#   airtable_updatesinglerecord(
+#     list(setNames(list(all_files), field_name)),
+#     tablename,
+#     base_id,
+#     recordid
+#   )
+# }
+airtable_append_attachment <- function(recordid, tablename, base_id, field_name, new_url) {
+  # Obtener el registro
+  record <- airtable_getrecorddata_byid(recordid, tablename, base_id)
+  
+  existing <- record$fields[[field_name]]
+  #if (is.null(existing)) existing <- list()
+  if (is.null(existing)) {
+        existing <- list()
+      } else {
+        existing <- lapply(existing, function(x) list(url = x$url))  # limpiar cualquier info extra
+      }
+  new_file <- list(list(url = new_url))
+  
+  # Concatenar de manera plana
+  all_files <- append(existing, new_file)  # append preserva la estructura correcta}
+  saveRDS(all_files,"QUE.RDS")
+  
+  fields <- list()
+  fields[[field_name]] <- all_files 
+  saveRDS(fields,"NO.RDS")
+  #list(list('url'= resp[[i]]$data$attributes$label_url))
+  # Actualizar el registro
+  airtable_updatesinglerecord(
+    fields,
+    tablename,
+    base_id,
+    recordid
+  )
+}
+# airtable_append_attachment <- function(recordid, tablename, base_id, field_name, new_url) {
+#   
+#   # Traer el registro actual
+#   record <- airtable_getrecorddata_byid(recordid, tablename, base_id)
+#   
+#   # Extraer attachments existentes
+#   existing <- record$fields[[field_name]]
+#   
+#   # Asegurarse de que existing sea lista de attachments
+#   if (is.null(existing)) {
+#     existing <- list()
+#   } else {
+#     existing <- lapply(existing, function(x) list(url = x$url))  # limpiar cualquier info extra
+#   }
+#   
+#   # Preparar nuevo attachment
+#   new_file <- list(list(url = new_url))
+#   
+#   # Concatenar
+#   all_files <- c(existing, new_file)
+#   
+#   # Actualizar el registro en Airtable
+#   airtable_updatesinglerecord(
+#     list(setNames(list(all_files), field_name)),
+#     tablename,
+#     base_id,
+#     recordid
+#   )
+# }

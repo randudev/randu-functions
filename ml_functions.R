@@ -58,6 +58,34 @@ get_mlorder_byid <- function(orderid, mltoken){
     resp_body_json()
 }
 
+get_invoice_byid_order <- function(orderid, mltoken,user_id){
+  request(paste0("https://api.mercadolibre.com/packs/",orderid,"/fiscal_documents")) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(mltoken) %>% 
+    req_headers(accept= "application/json") %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform()
+}
+
+get_invoice_byid <- function(orderid, mltoken,user_id){
+  request(paste0("https://api.mercadolibre.com/users/",user_id,"/invoices/",orderid)) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(mltoken) %>% 
+    req_headers(accept= "application/json") %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>%
+    resp_body_json()
+}
+
+get_invoice_pdf <- function(orderid,mltoken){
+  resp <- request(paste0("https://api.mercadolibre.com/invoices/io/documents/stream/order/",orderid,"/pdf")) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(mltoken) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() 
+  writeBin(resp_body_raw(resp), paste0("~/facturas/",orderid,".pdf"))
+}
+
 mlorder_bypackid <- function(orderid, mltoken) {
 
     # Intentar como order_id
@@ -158,6 +186,21 @@ mlorder_checkfullfilment <- function(mlorder, ml_token){
 get_dir_mlorder <- function(mlorder,mltoken){
   shipmenturl <- paste0("https://api.mercadolibre.com/shipments/",
                         mlorder$shipping$id)
+  
+  mlshipment <- request(shipmenturl) %>%
+    req_auth_bearer_token(mltoken) %>%
+    req_headers(accept= "application/json") %>%
+    req_headers("x-format-new"=TRUE) %>% 
+    req_headers('content-type' = 'application/x-www-form-urlencoded') %>%
+    req_perform() %>%
+    resp_body_json()
+  
+  return(mlshipment)
+}
+
+get_ml_shipments <- function(id,ml_token){
+  shipmenturl <- paste0("https://api.mercadolibre.com/shipments/",
+                        id)
   
   mlshipment <- request(shipmenturl) %>%
     req_auth_bearer_token(mltoken) %>%

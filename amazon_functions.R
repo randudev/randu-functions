@@ -134,7 +134,7 @@ amz_register_lineitems <- function(amz_order,canal){
     if(!str_detect(amz_items$payload$OrderItems[[i]]$SellerSKU,"#")){
       if(!is.null(sku)){
         if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
-          if(canal == "amazonasm"){
+          if(canal != "amazonasm"){
             if(amz_items$payload$OrderItems[[i]]$SellerSKU %in% tabla_skus$sku_consultado){
               sku_mal <- amz_items$payload$OrderItems[[i]]$SellerSKU
               sku <- buscar_sku_correcto(sku_mal,tabla_skus)
@@ -159,10 +159,14 @@ amz_register_lineitems <- function(amz_order,canal){
         }
       }
     }else{
-      sku_value <- sku
+      sku_value <- amz_items$order$orderItems[[i]]$product$sellerSku
       sku_safe  <- gsub("#", "%23", sku_value)
       product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
                                                        formula=paste0("AND(FIND('",sku_safe,"',sku),NOT(FIND('-',sku)))"))
+        if(length(product_recordid_list)!=0){
+          recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+          fieldslist <- append(fieldslist, recordid_producto) 
+        }
     }
     
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
@@ -335,10 +339,18 @@ get_amzorder_byid_v2026 <- function(orderid, amz_token){
     resp_body_json()
 }
 
-register_amzorder_in_airtable_v2026 <- function(amz_order,canal){
+register_amzorder_in_airtable_v2026 <- function(amz_order,canal,comentario=NULL){
   lineitems_recordid <- amz_register_lineitems_v2026(amz_order,canal)
   #client_recordid <- register_client(shopifyorder)
-  shippingaddress_recordid <- amz_register_address_v2026(amz_order)
+  shippingaddress_recordid <- NULL
+  if(!is.null(amz_order$order$fulfillment$fulfillmentStatus)){
+    if(amz_order$order$fulfillment$fulfillmentStatus !="SHIPPED"){
+      shippingaddress_recordid <- amz_register_address_v2026(amz_order)
+    }
+  }else{
+    shippingaddress_recordid <- amz_register_address_v2026(amz_order)
+  }
+  #shippingaddress_recordid <- amz_register_address_v2026(amz_order)
   
   fieldslist <- list(
     'fecha'=amz_order$order$createdTime,
@@ -346,15 +358,20 @@ register_amzorder_in_airtable_v2026 <- function(amz_order,canal){
     'ventas_producto'=lineitems_recordid,
     'id_origen'=amz_order$order$orderId
   )
+  if(!is.null(comentario)){
+    fieldslist$comentarios <- comentario
+  }
   if(!is.null(shippingaddress_recordid)){
     fieldslist <- append(fieldslist,list("direccion_envio"=list(shippingaddress_recordid)))
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", "appofqh5EnlVGAtn2")
+  
   return(newov_content)
 }
 
-amz_register_lineitems_v2026 <- function(amz_order){
+amz_register_lineitems_v2026 <- function(amz_order,canal){
   amz_items <- amz_order
+  
   vp_recordids <- vector(mode="list", length(amz_items$order$orderItems))
   tabla_skus <- data.frame(
     sku_correcto = c(10113,10108,10095,10110,10106,10101,10097,10109,
@@ -367,10 +384,15 @@ amz_register_lineitems_v2026 <- function(amz_order){
   for(i in 1:length(amz_items$order$orderItems)){
     
     cantidad <- amz_items$order$orderItems[[i]]$quantityOrdered
+    if(!is.null(amz_items$order$fulfillment$fulfillmentStatus)){
+      if(amz_items$order$fulfillment$fulfillmentStatus == "SHIPPED"){
+        cantidad <- 0
+      }
+    }
     nombre_producto <- amz_items$order$orderItems[[i]]$product$title
     precio <- as.numeric(amz_items$order$orderItems[[i]]$product$price$unitPrice$amount)
     sku <- str_extract(amz_items$order$orderItems[[i]]$product$sellerSku,"\\d+")
-    
+    sku_safe <- amz_items$order$orderItems[[i]]$product$sellerSku
     id_lineitem <- as.character(amz_items$order$orderItems[[i]]$orderItemId)
     comentarios <- paste0(nombre_producto,"\n Fecha limite: ",
                           amz_items$order$fulfillment$shipByWindow$earliestDateTime)
@@ -382,24 +404,44 @@ amz_register_lineitems_v2026 <- function(amz_order){
       'id_lineitem'=id_lineitem,
       'comentarios'=comentarios
     )
-    if(!is.null(sku)){
-      if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
-        if(amz_items$order$orderItems[[i]]$product$sellerSku %in% tabla_skus$sku_consultado){
-          sku_mal <- amz_items$order$orderItems[[i]]$product$sellerSku
-          sku <- buscar_sku_correcto(sku_mal,tabla_skus)
-          mensaje_advertencia <- paste0(amz_items$order$orderId, 
-                                        ": Esta venta se detecto que el sku de la plataforma",
-                                        " esta incorrecto","\nSe cambio al registrar, revisar y confirma\n",
-                                        "SKU Publicacion: ",sku_mal,"\nSKU Corregido: ",sku)
-          enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_advertencia)
-        }
-        product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
-                                                         formula=paste0("sku=",sku))
-        if(length(product_recordid_list)!=0){
-          recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
-          fieldslist <- append(fieldslist, recordid_producto) 
+    if(!str_detect(amz_items$order$orderItems[[i]]$product$sellerSku,"#")){
+      if(!is.null(sku)){
+        if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
+          if(canal != "amazonasm"){
+            if(amz_items$order$orderItems[[i]]$product$sellerSku %in% tabla_skus$sku_consultado){
+              sku_mal <- amz_items$order$orderItems[[i]]$product$sellerSku
+              sku <- buscar_sku_correcto(sku_mal,tabla_skus)
+              mensaje_advertencia <- paste0(amz_items$order$orderId, 
+                                            ": Esta venta se detecto que el sku de la plataforma",
+                                            " esta incorrecto","\nSe cambio al registrar, revisar y confirma\n",
+                                            "SKU Publicacion: ",sku_mal,"\nSKU Corregido: ",sku)
+              enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_URL"),mensaje_advertencia)
+            }
+          }
+          if(!str_detect(sku_safe,"-")){
+            sku <- sku_safe
+          }
+          product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                           formula=paste0("sku='",sku,"'"))
+          if(length(product_recordid_list)!=0){
+            recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+            fieldslist <- append(fieldslist, recordid_producto) 
+          }
         }
       }
+    }
+    else{
+      sku_value <- amz_items$order$orderItems[[i]]$product$sellerSku
+      sku_safe  <- gsub("#", "%23", sku_value)
+      product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                       formula=paste0("AND(FIND('",sku_safe,"',sku),NOT(FIND('-',sku)))"))
+      if(length(product_recordid_list)!=0){
+        recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+        fieldslist <- append(fieldslist, recordid_producto) 
+      }
+    }
+    if(cantidad==0){
+      fieldslist$vp_revisada <- T
     }
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
     if(!is.null(newvp_content)){
@@ -442,11 +484,17 @@ amz_register_address_v2026 <- function(amz_order){
 amz_orders_v2026 <- function(amz_token,canal){
   #created_after <- format(Sys.time() - 3600*24*365, "%Y-%m-%dT%H:%M:%SZ")
   #created_before <- format(Sys.time()-3600, "%Y-%m-%dT%H:%M:%SZ")
+  # created_after <- format(
+  #   as.POSIXct(Sys.time() - 3600*24*365, tz = "UTC"),
+  #   "%Y-%m-%dT%H:%M:%SZ"
+  # )
+  last_year <- as.numeric(format(Sys.Date(), "%Y")) - 1
+  
+  # Crear la fecha 1 de enero del año pasado
   created_after <- format(
-    as.POSIXct(Sys.time() - 3600*24*365, tz = "UTC"),
+    as.POSIXct(paste0(last_year, "-01-01 00:00:00"), tz = "UTC"),
     "%Y-%m-%dT%H:%M:%SZ"
   )
-  
   created_before <- format(
     as.POSIXct(Sys.time()-3600, tz = "UTC"),
     "%Y-%m-%dT%H:%M:%SZ"
@@ -463,9 +511,10 @@ amz_orders_v2026 <- function(amz_token,canal){
     }
     amz_token <- amz_get_active_token(recordid_token)
     print(i)
-    i <- i + 1 
+    i <- i + 1
+    
     url_amz <- paste0("https://sellingpartnerapi-na.amazon.com/orders/2026-01-01/orders?createdAfter=",created_after,
-                      "&createdBefore=",created_before)
+                      "&createdBefore=",created_before,"&includedData=FULFILLMENT,RECIPIENT,PROCEEDS,PACKAGES,CANCELLATION,PROMOTION,EXPENSE,PROCEEDS,BUYER")
     
     resp <- request(url_amz) %>%
       req_headers(
@@ -476,7 +525,9 @@ amz_orders_v2026 <- function(amz_token,canal){
                     "marketplaceIds" = "A1AM78C64UM0Y8") %>% 
       req_perform() %>%
       resp_body_json()
-    
+    if(!last_response()$status_code %in% c(199:299)){
+      break
+    }
     data <- append(data,resp$orders)
     if(is.null(last_response())){
       break
@@ -499,10 +550,8 @@ amz_orders_v2026 <- function(amz_token,canal){
     if(is.null(next_token)){
       break
     }
-    Sys.sleep(60*4)
-    if(i==5){
-      break
-    }
+    Sys.sleep(60*3.1)
+    
   }
   return(data)
 }

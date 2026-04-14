@@ -237,6 +237,97 @@ register_lineitemsv2 <- function(shopifyorder){
   vp_recordids
 }
 
+register_lineitemsv4 <- function(shopifyorder){
+  lineitems <- shopifyorder$data$orders$edges[[1]]$node$lineItems$edges
+  orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                         paste0("FIND('",shopifyorder$data$orders$edges[[1]]$node$name,"',{id_ordenes_venta})"))[[1]]
+  vp_recordids <- vector(mode="list", length(lineitems))
+  for(i in 1:length(lineitems)){
+    cantidad <- lineitems[[i]]$node$currentQuantity
+    nombre_producto <- lineitems[[i]]$node$name
+    variant_id <- lineitems[[i]]$node$variant_id
+    precio <- as.double(lineitems[[i]]$node$originalUnitPriceSet$shopMoney$amount)
+    sku <- lineitems[[i]]$node$sku
+    id_lineitem <- as.character(lineitems[[i]]$node$id)
+    li_properties <- lineitems[[i]]$node$customAttributes
+    comentarios <- ""
+    if(length(li_properties)>0 ){
+      for(j in 1:length(li_properties)){
+        comentarios <- paste0(comentarios,li_properties[[j]]$key,": ",
+                              li_properties[[j]]$value," \n")
+      }
+    }
+    vp <- airtable_getrecordslist("ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),
+                                  paste0("AND(vp_cancelled='',FIND('",sku,"',producto),id_origen_ov='",
+                                         shopifyorder$data$orders$edges[[1]]$node$name,"')"))
+    if(cantidad==0){
+      if(length(vp)!=0){
+        fields <- list(
+          "vp_cancelled"=T,
+          "comentarios"=trimws(paste(vp[[1]]$fields$comentarios,"Se cancelo la venta_producto el dia",Sys.Date()))
+        )
+        airtable_updatesinglerecord(fields,"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),vp[[1]]$id)
+      }
+      next
+    }
+  
+    if(length(vp)!=0){
+      if(vp[[1]]$fields$cantidad==cantidad){
+        next
+      }else{
+        fields <-list("cantidad"=cantidad,
+                      "comentarios"=trimws(paste(vp[[1]]$fields$comentarios,"Se actualizo la venta_producto el dia",Sys.Date()))) 
+        airtable_updatesinglerecord(fields,"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),vp[[1]]$id)
+      }
+    }
+    fieldslist <- list(
+      'cantidad'=cantidad,
+      'helper_product_name'=nombre_producto,
+      'precio_unitario'=precio,
+      'shopify_variant_id'=variant_id,
+      'pendiente_envio'=cantidad,
+      'id_lineitem'=id_lineitem,
+      'comentarios'=comentarios,
+      'ordenes_venta'=list(orden_venta$id)
+    )
+    
+    if(!is.null(variant_id)){
+      if(!is.na(variant_id)){
+        fieldslist <- append(fieldslist, list('shopify_variant_id'=variant_id))
+      }
+    }
+    if(!is.null(sku)){
+      if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
+        product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                         formula=paste0("sku=",sku))
+        
+        recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+      }else{
+        sku <- "10700"
+        product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                         formula=paste0("sku=",sku))
+        
+        recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+      }
+    }else{
+      sku <- "10700"
+      product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
+                                                       formula=paste0("sku=",sku))
+      
+      recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+      
+    }
+    fieldslist <- append(fieldslist, recordid_producto)
+    newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
+    if(!is.null(newvp_content)){
+      vp_recordids[[i]] <- newvp_content$id[[1]]
+    }else{
+      print(paste0("hubo un problema al registrar la el line_item 
+                   (venta_producto #",i))
+    }
+  }
+  return(vp_recordids)
+}
 register_lineitemsv3 <- function(shopifyorder){
   #Esta version esta adaptada para la api de shopify graphql
   fieldslist1 <- list()
