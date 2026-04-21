@@ -13,6 +13,13 @@ cargar_paquetes <- function(paquetes) {
 
 cargar_paquetes(paquetes)
 
+siguiente_dia_habil <- function(fecha) {
+  while (as.POSIXlt(fecha)$wday %in% c(0, 6)) { # 0 = domingo, 6 = sábado
+    fecha <- fecha + 1
+  }
+  return(fecha)
+}
+
 generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NULL,link_barras=""){
   renderform_api_key  <- Sys.getenv("RENDERFORM_API_KEY")
   renderform_template_id <- "faulty-foxes-sting-lazily-1437"
@@ -324,15 +331,15 @@ registrar_producto <- function(producto,venta_producto){
             
             parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$paquete[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
             
-            if(parte_producto$fields$sku==10698){
-              parte_producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",10006 ))[[1]]
-            }
-            if(parte_producto$fields$sku==10697){
-              parte_producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",10005 ))[[1]]
-            }
-            if(parte_producto$id == "recaLIRarP543DdI5"){
-              next
-            }
+            # if(parte_producto$fields$sku==10698){
+            #   parte_producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",10006 ))[[1]]
+            # }
+            # if(parte_producto$fields$sku==10697){
+            #   parte_producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",10005 ))[[1]]
+            # }
+            # if(parte_producto$id == "recaLIRarP543DdI5"){
+            #   next
+            # }
             #parte_producto <- airtable_getrecorddata_byid(aux_parte$fields$parte[[1]],"productos",Sys.getenv("AIRTABLE_RIR_BASE"))
             if(parte_producto$fields$cantidad_disponible_navex93 < venta_producto$fields$cantidad){
               if(!is.null(parte_producto$fields$item_produccion)){
@@ -642,7 +649,7 @@ registrar_producto <- function(producto,venta_producto){
         if(is.null(producto$fields$item_produccion)){
           cantidad_restante <- producto$fields$cantidad_disponible_navex93 - venta_producto$fields$cantidad
           if(cantidad_restante<=6){
-            mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, "solo cuenta con ", 
+            mensaje <- paste0("Advertencia: El producto ", producto$fields$id_productos, " solo cuenta con ", 
                               cantidad_restante, " unidades en Navex\nRevisa")
             cantidad_jiroba <- producto$fields$cantidad_inventario_jiroba
             if(cantidad_restante+cantidad_jiroba==0){
@@ -794,7 +801,7 @@ first_letter <- function(char){
 }
 
 actualizar_o_sumar <- function(tabla, nuevo_sku, nueva_cantidad,nombre,record_id='') {
-  if (is.na(nuevo_sku) || nuevo_sku == "") {
+  if (is.na(nuevo_sku)) {
     
     nueva_fila <- data.frame(
       sku = nuevo_sku,
@@ -805,17 +812,32 @@ actualizar_o_sumar <- function(tabla, nuevo_sku, nueva_cantidad,nombre,record_id
     )
     
     tabla <- rbind(tabla, nueva_fila)
-    return(tabla)
-  }
-  if (nuevo_sku %in% tabla$sku) {
-    if(es_numero(tabla$cantidad[tabla$sku == nuevo_sku]) && es_numero(nueva_cantidad)){
-      tabla$cantidad[tabla$sku == nuevo_sku] <- as.numeric(tabla$cantidad[tabla$sku == nuevo_sku]) + as.numeric(nueva_cantidad)
-    }
-  } else {
     
-    nueva_fila <- data.frame(sku = nuevo_sku, cantidad = as.numeric(nueva_cantidad),nombre=nombre,recordid=record_id, stringsAsFactors = FALSE)
-    tabla <- rbind(tabla, nueva_fila)
+  }else{
+    if(nuevo_sku == ""){
+      nueva_fila <- data.frame(
+        sku = nuevo_sku,
+        cantidad = as.numeric(nueva_cantidad),
+        nombre = nombre,
+        recordid = record_id,
+        stringsAsFactors = FALSE
+      )
+      
+      tabla <- rbind(tabla, nueva_fila)
+      
+    }else{
+      if (nuevo_sku %in% tabla$sku) {
+        if(es_numero(tabla$cantidad[tabla$sku == nuevo_sku]) && es_numero(nueva_cantidad)){
+          tabla$cantidad[tabla$sku == nuevo_sku] <- as.numeric(tabla$cantidad[tabla$sku == nuevo_sku]) + as.numeric(nueva_cantidad)
+        }
+      } else {
+        
+        nueva_fila <- data.frame(sku = nuevo_sku, cantidad = as.numeric(nueva_cantidad),nombre=nombre,recordid=record_id, stringsAsFactors = FALSE)
+        tabla <- rbind(tabla, nueva_fila)
+      }
+    }
   }
+  
   return(tabla)
 }
 

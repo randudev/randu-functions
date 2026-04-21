@@ -144,6 +144,7 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
     req_headers('Content-type'='application/json') %>% 
     req_headers('Authorization'=paste0('Bearer ',ezeep_at)) %>% 
     req_body_json(body) %>% 
+    req_timeout(30) %>%  
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() 
   if(last_response()$status_code %in% c(199:299)){

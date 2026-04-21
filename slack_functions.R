@@ -342,7 +342,7 @@ buscar_mensajes_slack <- function(texto, token, max_paginas = 10) {
   
   # Convertir resultados a data.frame
   data.frame(
-    cana_id = sapply(resultados,function(x) x$channel$id),
+    canal_id = sapply(resultados,function(x) x$channel$id),
     canal   = sapply(resultados, function(x) x$channel$name),
     usuario = sapply(resultados, function(x) x$username),
     texto   = sapply(resultados, function(x) x$text),
