@@ -17,7 +17,7 @@ get_active_token <- function(recordid=""){
   if(Sys.time()<token_expires){
     validat <- access_token
   }else{
-    request("https://api.mercadolibre.com/oauth/token") %>% 
+    resp <- request("https://api.mercadolibre.com/oauth/token") %>% 
       req_method("POST") %>% 
       req_headers(accept= "application/json") %>% 
       req_headers('content-type' = 'application/x-www-form-urlencoded') %>% 
@@ -38,9 +38,19 @@ get_active_token <- function(recordid=""){
       enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
       return(NULL)
     }
+    if(dir.exists("~/tokens")){
+      saveRDS(resp,paste0("~/tokens/token_ml_",recordid,"_", format(Sys.time(), "%Y-%m-%d_%H%M%S"), ".RDS"))
+    }else{
+      dir.create("~/tokens")
+      saveRDS(resp,paste0("~/tokens/token_ml_",recordid,"_", format(Sys.time(), "%Y-%m-%d_%H%M%S"), ".RDS"))
+    }
+    usuario <- Sys.info()[["user"]]
+    hora <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+    ultima_actualizacion <- paste0("Hecha por: ",usuario," Hora: ",hora)
     airtable_updatesinglerecord(fieldslist = list('access_token'=newaccess_token,
                                                   'refresh_token'=newrefreshtoken,
-                                                  'token_expires'=newexpire), 
+                                                  'token_expires'=newexpire,
+                                                  "ultima_actualizacion"=ultima_actualizacion), 
                                 tablename = "tokens", base_id = Sys.getenv('AIRTABLE_DEV_BASE'),
                                 recordid = recordid)
     validat <- newaccess_token

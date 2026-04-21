@@ -44,10 +44,13 @@ ezeep_getactivetoken <- function(){
       newaccess_token <- newtokendata$access_token
       newrefreshtoken <- newtokendata$refresh_token
       newexpire <- last_response() %>% resp_date() + 3600 
-      
+      usuario <- Sys.info()[["user"]]
+      hora <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+      ultima_actualizacion <- paste0("Hecha por: ",usuario," Hora: ",hora)
       airtable_updatesinglerecord(fieldslist = list('access_token'=newaccess_token,
                                                     'refresh_token'=newrefreshtoken,
-                                                    'token_expires'=newexpire), 
+                                                    'token_expires'=newexpire,
+                                                    "ultima_actualizacion"=ultima_actualizacion), 
                                   tablename = "tokens", base_id = atb_dev_base,
                                   recordid = "recGnx94XcVEgnpVZ")
       validat <- newaccess_token
