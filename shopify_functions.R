@@ -123,6 +123,9 @@ register_address <- function(shopifyorder){
     'colonia'=shopifyorder$shipping_address$address2,
     'referencias'=shopifyorder$shipping_address$address2
   )
+  if(str_detect(shp_order$shipping_address$address1,"\\d+")){
+    address_data$numero_exterior<- str_extract(shp_order$shipping_address$address1, "\\d+")
+  }
   #print(address_data)
   airtable_createrecord(address_data, "direcciones", Sys.getenv("AIRTABLE_CES_BASE"))
 }
