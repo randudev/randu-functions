@@ -431,7 +431,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
       enviar_mensaje_slack(Sys.getenv("SLACK_ENVIOS_LOCALES_URL"),mensaje_envio)
       fieldslist <- append(fieldslist,list("entrega_qro"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
       notas <- toupper(paste0("La orden entra dentro de la cobertura de envío local en Querétaro"))
-      nota <- enviar_nota(shopifyorden$admin_graphql_api_id,NULL,NULL,access_token,notas)
+      nota <- enviar_nota(shopifyorder$admin_graphql_api_id,NULL,NULL,access_token,notas)
     }else{
       codigospostalesCDMX <- readRDS("~/codigospostalesCDMX.RDS")
       if(shopifyorder$shipping_address$zip %in% codigospostalesCDMX){
@@ -442,7 +442,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
         #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
         fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
         notas <- toupper(paste0("La orden entra dentro de la cobertura de envío local e instalación en CDMX"))
-        nota <- enviar_nota(shopifyorden$admin_graphql_api_id,NULL,NULL,access_token,notas)
+        nota <- enviar_nota(shopifyorder$admin_graphql_api_id,NULL,NULL,access_token,notas)
       }else{
         codigospostalesInstalacion <- readRDS("~/codigospostalesInstalacion.RDS")
         if(shopifyorder$shipping_address$zip %in% codigospostalesInstalacion){
@@ -453,7 +453,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
           #enviar_mensaje_slack(Sys.getenv("SLACK_PRUEBA_URL"),mensaje_envio)
           fieldslist <- append(fieldslist,list("cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
           notas <- toupper(paste0("La orden entra dentro de la cobertura de instalación en CDMX y alrededores"))
-          nota <- enviar_nota(shopifyorden$admin_graphql_api_id,NULL,NULL,access_token,notas)
+          nota <- enviar_nota(shopifyorder$admin_graphql_api_id,NULL,NULL,access_token,notas)
         }
       }
     }
