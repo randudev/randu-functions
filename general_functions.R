@@ -944,9 +944,9 @@ resumen_guias <- function(){
   html_rendered <- whisker.render(template, data_template)
   
   # Guardar en archivo
-  writeLines(html_rendered, "resumen_tabla.html")
+  writeLines(html_rendered, "~/resumen_tabla.html")
   message("HTML generado correctamente: resumen_tabla_html")
-  browseURL(normalizePath("resumen_tabla.html"))
+  browseURL(normalizePath("~/resumen_tabla.html"))
 }
 
 resumen_guias_shiny <- function() {
