@@ -245,6 +245,7 @@ register_lineitemsv4 <- function(shopifyorder){
   orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
                                          paste0("FIND('",shopifyorder$data$orders$edges[[1]]$node$name,"',{id_ordenes_venta})"))[[1]]
   vp_recordids <- vector(mode="list", length(lineitems))
+  actualizaciones <- list()
   for(i in 1:length(lineitems)){
     cantidad <- lineitems[[i]]$node$currentQuantity
     nombre_producto <- lineitems[[i]]$node$name
@@ -265,11 +266,14 @@ register_lineitemsv4 <- function(shopifyorder){
                                          shopifyorder$data$orders$edges[[1]]$node$name,"')"))
     if(cantidad==0){
       if(length(vp)!=0){
+        
         fields <- list(
           "vp_cancelled"=T,
           "comentarios"=trimws(paste(vp[[1]]$fields$comentarios,"Se cancelo la venta_producto el dia",Sys.Date()))
         )
         airtable_updatesinglerecord(fields,"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),vp[[1]]$id)
+
+        actualizaciones$cancelado <- append(actualizaciones$cancelado,vp[[1]]$fields$id_ventas_producto)
       }
       next
     }
@@ -281,6 +285,7 @@ register_lineitemsv4 <- function(shopifyorder){
         fields <-list("cantidad"=cantidad,
                       "comentarios"=trimws(paste(vp[[1]]$fields$comentarios,"Se actualizo la venta_producto el dia",Sys.Date()))) 
         airtable_updatesinglerecord(fields,"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),vp[[1]]$id)
+        actualizaciones$actualizados <- append(actualizaciones$actualizados,list(vp[[1]]$fields$id_ventas_producto,"cantidad"=cantidad))
       }
     }
     fieldslist <- list(
@@ -324,12 +329,13 @@ register_lineitemsv4 <- function(shopifyorder){
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
     if(!is.null(newvp_content)){
       vp_recordids[[i]] <- newvp_content$id[[1]]
+      actualizaciones$creados <- append(actualizaciones$creados,vp[[1]]$fields$id_ventas_producto)
     }else{
       print(paste0("hubo un problema al registrar la el line_item 
                    (venta_producto #",i))
     }
   }
-  return(vp_recordids)
+  return(list(vp_recordids,actualizaciones))
 }
 register_lineitemsv3 <- function(shopifyorder){
   #Esta version esta adaptada para la api de shopify graphql

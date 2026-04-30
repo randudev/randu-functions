@@ -800,3 +800,81 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
   )
   
 }
+
+slack_shp_actualizar <- function(cuerpo){
+  tryCatch(
+    expr={
+      ts <- cuerpo$event$thread_ts
+      band <- 0
+      mensaje_respuesta <- ""
+      event_ts <- cuerpo$event$event_ts
+      chat_peticion <- cuerpo$event$text 
+      if(str_detect(toupper(chat_peticion),"SHP")){
+        shp <- str_extract(chat_peticion, "SHP\\d+")
+        if(nchar(shp)>3){
+          ov_shopi <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_origen='",shp,"'"))
+          if(length(ov_shopi)!=0){
+            
+            if(length(shp_order$data$orders$edges)!=0){
+              actualizacion <- register_lineitemsv4(shp_order)
+              if(length(actualizacion[[2]])!=0){
+                actualizaciones <- actualizacion[[2]]
+                partes <- c()
+                
+                # Actualizados
+                if (length(actualizaciones$actualizados) > 0) {
+                  txt <- paste(unlist(actualizaciones$actualizados), collapse = ", ")
+                  partes <- c(partes, paste0("Actualizados:\n", txt))
+                }
+                
+                # Creados
+                if (length(actualizaciones$creados) > 0) {
+                  txt <- paste(actualizaciones$creados, collapse = ", ")
+                  partes <- c(partes, paste0("Creados:\n", txt))
+                }
+                
+                # Cancelados
+                if (length(actualizaciones$cancelado) > 0) {
+                  txt <- paste(actualizaciones$cancelado, collapse = ", ")
+                  partes <- c(partes, paste0("Cancelados:\n", txt))
+                }
+                
+                # Unir todo
+                mensaje_respuesta <- paste(partes, collapse = "\n")
+                mensaje_respuesta <- paste0("Se actualizo exitosamente\nResumen:\n",mensaje_respuesta)
+                if(nchar(mensaje_respuesta)>0){
+                  
+                  add_slack_reaction(Sys.getenv("SLACK_BOT_TOKEN"),"C0AF6G7N6KX",ts)
+                  add_slack_reaction(Sys.getenv("SLACK_BOT_TOKEN"),"C0AF6G7N6KX",event_ts)
+                }
+              }else{
+                mensaje_respuesta <- paste("NO HUBO CAMBIOS EN SHOPIFY, HACER CAMBIOS MANUALMENTE")
+              }
+              
+              
+            }else{
+              mensaje_respuesta <- "NO SE ENCONTRO LA ORDEN SOLICITADA EN SHOPIFY\nREVISA"
+            }
+            
+          }else{
+            mensaje_respuesta <- "NO SE ENCONTRO LA ORDEN SOLICITADA EN EL SISTEMA\nREVISA"
+          }
+          
+        }else{
+          mensaje_respuesta <- "EL *SHP* NO TIENE LA ESTRUCTURA ESPERADA"
+        }
+        
+      }else{
+        mensaje_respuesta <- "No se detecto un *SHP* en el mensaje por favor revisar"
+      }
+      if(nchar(mensaje_respuesta)>0){
+        slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),"C0AF6G7N6KX",ts,mensaje_respuesta)
+      }
+    },
+    error=function(e){
+      mensaje <- paste0("OCURRIO UN ERROR ", e ,"\nNO SE PUDO ACTUALIZAR LA ORDEN EN AIRTABLE\nFUNCION DE SERVICIO AL CLIENTE")
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+    }
+  )
+  
+}
