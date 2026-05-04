@@ -162,7 +162,7 @@ amz_register_lineitems <- function(amz_order,canal){
         }
       }
     }else{
-      sku_value <- amz_items$order$orderItems[[i]]$product$sellerSku
+      sku_value <- amz_items$payload$OrderItems[[i]]$SellerSKU
       sku_safe  <- gsub("#", "%23", sku_value)
       product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
                                                        formula=paste0("AND(FIND('",sku_safe,"',sku),NOT(FIND('-',sku)))"))
