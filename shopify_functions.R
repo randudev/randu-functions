@@ -329,7 +329,7 @@ register_lineitemsv4 <- function(shopifyorder){
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
     if(!is.null(newvp_content)){
       vp_recordids[[i]] <- newvp_content$id[[1]]
-      actualizaciones$creados <- append(actualizaciones$creados,vp[[1]]$fields$id_ventas_producto)
+      actualizaciones$creados <- append(actualizaciones$creados,newvp_content$fields$id_ventas_producto)
     }else{
       print(paste0("hubo un problema al registrar la el line_item 
                    (venta_producto #",i))
