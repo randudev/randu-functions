@@ -814,7 +814,7 @@ slack_shp_actualizar <- function(cuerpo){
         if(nchar(shp)>3){
           ov_shopi <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_origen='",shp,"'"))
           if(length(ov_shopi)!=0){
-            
+            shp_order <- consulta_por_nombre( shp ,Sys.getenv("SHOPIFY-RANDUMX-TK"))
             if(length(shp_order$data$orders$edges)!=0){
               actualizacion <- register_lineitemsv4(shp_order)
               if(length(actualizacion[[2]])!=0){
