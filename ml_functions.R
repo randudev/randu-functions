@@ -68,34 +68,6 @@ get_mlorder_byid <- function(orderid, mltoken){
     resp_body_json()
 }
 
-get_invoice_byid_order <- function(orderid, mltoken,user_id){
-  request(paste0("https://api.mercadolibre.com/packs/",orderid,"/fiscal_documents")) %>% 
-    req_method("GET") %>% 
-    req_auth_bearer_token(mltoken) %>% 
-    req_headers(accept= "application/json") %>% 
-    req_error(is_error = function(resp) FALSE) %>%
-    req_perform()
-}
-
-get_invoice_byid <- function(orderid, mltoken,user_id){
-  request(paste0("https://api.mercadolibre.com/users/",user_id,"/invoices/",orderid)) %>% 
-    req_method("GET") %>% 
-    req_auth_bearer_token(mltoken) %>% 
-    req_headers(accept= "application/json") %>% 
-    req_error(is_error = function(resp) FALSE) %>%
-    req_perform() %>%
-    resp_body_json()
-}
-
-get_invoice_pdf <- function(orderid,mltoken){
-  resp <- request(paste0("https://api.mercadolibre.com/invoices/io/documents/stream/order/",orderid,"/pdf")) %>% 
-    req_method("GET") %>% 
-    req_auth_bearer_token(mltoken) %>% 
-    req_error(is_error = function(resp) FALSE) %>%
-    req_perform() 
-  writeBin(resp_body_raw(resp), paste0("~/facturas/",orderid,".pdf"))
-}
-
 mlorder_bypackid <- function(orderid, mltoken) {
 
     # Intentar como order_id
@@ -1665,3 +1637,56 @@ calcular_fecha_envio <- function(shipping, cutoff_hour = 8) {
   return(envio_date)
 }
 
+get_invoice_byid_order <- function(orderid, mltoken,user_id){
+  request(paste0("https://api.mercadolibre.com/packs/",orderid,"/fiscal_documents")) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(mltoken) %>% 
+    req_headers(accept= "application/json") %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>% 
+    resp_body_string() %>% 
+    fromJSON()
+}
+get_billing_info <- function(site_id="MLM", billing_id, mltoken){
+  
+  request(paste0(
+    "https://api.mercadolibre.com/orders/billing-info/",
+    site_id, "/", billing_id
+  )) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(mltoken) %>% 
+    req_headers(accept = "application/json") %>% 
+    req_error(is_error = function(resp) FALSE) %>% 
+    req_perform() %>% 
+    resp_body_json()
+}
+
+get_invoice_byid <- function(id_invoice, mltoken,user_id){
+  request(paste0("https://api.mercadolibre.com/users/",user_id,"/invoices/",id_invoice)) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(mltoken) %>% 
+    req_headers(accept= "application/json") %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>%
+    resp_body_json()
+}
+
+get_invoices_byid_xml <- function(seller_id,orderid,ml_token){
+  #https://api.mercadolibre.com/invoices/io/documents/stream/order/2000065432198754/xml
+  request(paste0("https://api.mercadolibre.com/invoices/io/documents/stream/order/",orderid,"/pdf")) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(mltoken) %>% 
+    req_headers(accept= "application/json") %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>%
+    resp_body_json()
+}
+
+get_invoice_pdf <- function(orderid,mltoken){
+  resp <- request(paste0("https://api.mercadolibre.com/invoices/io/documents/stream/order/",orderid,"/pdf")) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(mltoken) %>% 
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() 
+  writeBin(resp_body_raw(resp), paste0("~/facturas/",orderid,".pdf"))
+}
