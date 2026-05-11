@@ -460,7 +460,7 @@ registrar_producto <- function(producto,venta_producto){
                   if(cantidad_restante+cantidad_jiroba==0){
                     pausar[[length(pausar)+1]] <-  parte_producto
                     mensajes_enviar[[length(mensajes_enviar)]] <- paste0(mensajes_enviar[[length(mensajes_enviar)]],
-                                                                         "NO HAY INVENTARIO EN NAVEX Y JIROBA\n*SE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON*")
+                                                                         "\nNO HAY INVENTARIO EN NAVEX Y JIROBA\n*SE PAUSARON LAS PUBLICACIONES EN MERCADO LIBRE Y AMAZON*")
                   }
                   #enviar_email(mensaje,"mauricio@randu.mx")
                   #enviar_email(mensaje,"yatzel@randu.mx")
