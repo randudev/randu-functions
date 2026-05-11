@@ -628,11 +628,12 @@ registrar_producto <- function(producto,venta_producto){
           print(paste0("No hay stock de producto: ",producto$fields$id_productos))
           print(venta_producto$fields$id_ventas_producto)
         }
-      }else{
-        if(producto$id=="recaLIRarP543DdI5"){
-          print(154)
-          return(1)
-        }
+      }
+      else{
+        # if(producto$id=="recaLIRarP543DdI5"){
+        #   print(154)
+        #   return(1)
+        # }
         ov <- ""
         if(is.null(orden_venta$fields$id_origen)){
           ov <- orden_venta$fields$id_ordenes_venta
