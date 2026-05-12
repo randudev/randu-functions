@@ -1708,6 +1708,14 @@ ml_registrar_facturas <- function(noti_invoices){
           fila <- noti_invoices[i,]
           body <- fromJSON(fila$body)
           id_resource <- fila$id_resource
+          if(!is.na(id_resource[[1]])){
+            if(id_resource[[1]]=="NA"){
+              next
+            }
+          }else{
+            next
+          }
+          
           if(body$user_id==Sys.getenv("SELLERID_ML_RANDU")){
             seller_id <- Sys.getenv("SELLERID_ML_RANDU")
             ml_token <- get_active_token()
