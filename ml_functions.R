@@ -1615,7 +1615,6 @@ ml_get_category <- function(category_id, ml_token) {
   return(resp)
 }
 
-
 calcular_fecha_envio <- function(shipping, cutoff_hour = 8) {
   
   now <- Sys.time()
@@ -1689,4 +1688,81 @@ get_invoice_pdf <- function(orderid,mltoken){
     req_error(is_error = function(resp) FALSE) %>%
     req_perform() 
   writeBin(resp_body_raw(resp), paste0("~/facturas/",orderid,".pdf"))
+}
+
+ml_registrar_facturas <- function(noti_invoices){
+  tryCatch(
+    expr={
+      if(nrow(noti_invoices)!=0){
+        ml_token <- get_active_token()
+        ml_token_asm <-  get_active_token("recQLtjnMhd4ZCiJq")
+        noti_invoices_all <- noti_invoices
+        noti_invoices <- noti_invoices_all %>%
+          distinct(id_resource, .keep_all = TRUE)
+        procesar <-setdiff(noti_invoices_all$id, noti_invoices_all$id)
+        if (length(procesar) != 0) {
+          supabase_updates(procesar,list("procesada"=TRUE))
+        }
+        
+        for(i in seq_len(nrow(noti_invoices))){
+          fila <- noti_invoices[i,]
+          body <- fromJSON(fila$body)
+          id_resource <- fila$id_resource
+          if(body$user_id==Sys.getenv("SELLERID_ML_RANDU")){
+            seller_id <- Sys.getenv("SELLERID_ML_RANDU")
+            ml_token <- get_active_token()
+          }else{
+            seller_id <- Sys.getenv("SELLERID_ML_ASM")
+            ml_token <-  get_active_token("recQLtjnMhd4ZCiJq")
+          }
+          invoice <- get_invoice_byid(id_resource,ml_token,seller_id)
+          if(!last_response()$status_code %in% c(199:299)){
+            mensaje_error <- paste0("Ocurrio un error al intentar revisar la factura:\nResponse:\n",
+                                    last_response() %>% resp_body_string(),"\nRequest:",last_request()$url,"\n",
+                                    toJSON(last_request()$body))
+            enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+            next
+          }
+          if(length(invoice)==0){
+            mensaje_error <- paste0("Ocurrio un error al intentar revisar la factura:\nResponse:\n",
+                                    last_response() %>% resp_body_string(),"\nRequest:",last_request()$url,"\n",
+                                    
+                                    toJSON(last_request()$body))
+            enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+            next
+          }
+          if(length(invoice$items[[1]]$external_order_id)==0){
+            print(paste0("No tiene orden id la factura :",invoice$id))
+            print(invoice)
+            next
+          }
+          orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                                 paste0("AND(FIND(",invoice$items[[1]]$external_order_id
+                                                        ,",id_ordenes_venta))"))
+          if(length(orden_venta)!=0){
+            if(length(orden_venta[[1]]$fields$factura_marketplace)==0){
+              uuid_mkp <- invoice[["attributes"]][["receipt"]]
+              airtable_updatesinglerecord(list("factura_marketplace"=uuid_mkp),"ordenes_venta",
+                                          Sys.getenv("AIRTABLE_CES_BASE"),orden_venta[[1]]$id)
+              #print(paste0("Se actualizo la orden: ",orden_venta[[1]]$fields$id_ordenes_venta," ",uuid_mkp))
+              supabase_update(fila$id,list("procesada"=TRUE))
+            }else{
+              #print(paste0("Ya habia sido actualizada ", orden_venta[[1]]$fields$id_ordenes_venta))
+              supabase_update(fila$id,list("procesada"=TRUE))
+            }
+          }else{
+            print(paste0(invoice$id,"\nNo se encontro la orden: ",invoice$items[[1]]$external_order_id,"\nRevisa"))
+          }
+          # if(i>2){
+          #   break
+          # }
+        }
+      }
+    },error=function(e){
+      mensaje_error <- paste0("ml_registrar_facturas: Ocurrio un error al intentar registra el UUID de las ordenes:\n",e)
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_error)
+    }
+  )
+  
+  
 }
