@@ -119,6 +119,10 @@ amz_register_lineitems <- function(amz_order,canal){
   for(i in 1:length(amz_items$payload$OrderItems)){
     tax <- amz_items$payload$OrderItems[[i]]$ItemTax$Amount
     cantidad <- amz_items$payload$OrderItems[[i]]$QuantityOrdered
+    cantidad_pd <- cantidad
+    if(amz_order[["payload"]][["OrderStatus"]]=="Shipped"){
+      cantidad_pd <- 0
+    }
     nombre_producto <- amz_items$payload$OrderItems[[i]]$Title
     precio <- as.numeric(amz_items$payload$OrderItems[[i]]$ItemPrice$Amount) + as.numeric(ifelse(is.null(tax)||is.na(tax), 0, tax))
     sku <- str_extract(amz_items$payload$OrderItems[[i]]$SellerSKU,"\\d+")
@@ -130,7 +134,7 @@ amz_register_lineitems <- function(amz_order,canal){
       'cantidad'=cantidad,
       'helper_product_name'=nombre_producto,
       'precio_unitario'=precio,
-      'pendiente_envio'=cantidad,
+      'pendiente_envio'=cantidad_pd,
       'id_lineitem'=id_lineitem,
       'comentarios'=comentarios
     )
@@ -171,7 +175,9 @@ amz_register_lineitems <- function(amz_order,canal){
           fieldslist <- append(fieldslist, recordid_producto) 
         }
     }
-    
+    if(cantidad_pd==0){
+      fieldslist$vp_revisada <- T
+    }
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
     if(!is.null(newvp_content)){
       vp_recordids[[i]] <- newvp_content$id[[1]]
@@ -387,9 +393,10 @@ amz_register_lineitems_v2026 <- function(amz_order,canal){
   for(i in 1:length(amz_items$order$orderItems)){
     
     cantidad <- amz_items$order$orderItems[[i]]$quantityOrdered
+    cantidad_pd <- cantidad
     if(!is.null(amz_items$order$fulfillment$fulfillmentStatus)){
       if(amz_items$order$fulfillment$fulfillmentStatus == "SHIPPED"){
-        cantidad <- 0
+        cantidad_pd <- 0
       }
     }
     nombre_producto <- amz_items$order$orderItems[[i]]$product$title
@@ -403,7 +410,7 @@ amz_register_lineitems_v2026 <- function(amz_order,canal){
       'cantidad'=cantidad,
       'helper_product_name'=nombre_producto,
       'precio_unitario'=precio,
-      'pendiente_envio'=cantidad,
+      'pendiente_envio'=cantidad_pd,
       'id_lineitem'=id_lineitem,
       'comentarios'=comentarios
     )
@@ -443,7 +450,7 @@ amz_register_lineitems_v2026 <- function(amz_order,canal){
         fieldslist <- append(fieldslist, recordid_producto) 
       }
     }
-    if(cantidad==0){
+    if(cantidad_pd==0){
       fieldslist$vp_revisada <- T
     }
     newvp_content  <- airtable_createrecord(fieldslist, "ventas_producto", Sys.getenv('AIRTABLE_CES_BASE'))
