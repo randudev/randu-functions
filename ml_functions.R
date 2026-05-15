@@ -1457,7 +1457,9 @@ ml_full_register_op <- function(operaciones){
             mensaje_operacion <- paste0("El stock de la publicacion: ", id_item, "  ", nombre,"\n",permalink
                                         ,"\nID del inventario de fulfillment: ",operacion$inventory_id,"\n"
                                         ,"Se quedo sin stock en full por la operacion: ",operacion$type," ",operacion$detail$available_quantity)
-            enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_FULL_ML_URL"),mensaje_operacion)
+            if(operacion$type!="ADJUSTMENT"){
+              enviar_mensaje_slack(Sys.getenv("SLACK_STOCK_FULL_ML_URL"),mensaje_operacion)
+            }
           }
           if(length(fields)!=0){
             fields$comentarios <- paste0(fields$comentarios," FECHA:",Sys.Date())
