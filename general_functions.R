@@ -1226,9 +1226,14 @@ prioridad_agencia <- function(fecha){
 }
 
 generar_recibos_directas <- function(){
-  month_year <- format(Sys.Date(), "%Y/%m")
-  a_year <- format(Sys.Date(), "%Y")
-  a_mes <- as.numeric(format(Sys.Date(), "%m"))
+  # month_year <- format(Sys.Date(), "%Y/%m")
+  # a_year <- format(Sys.Date(), "%Y")
+  # a_mes <- as.numeric(format(Sys.Date(), "%m"))
+  fecha_mexico <- as.POSIXct(Sys.time(), tz = "America/Mexico_City")
+  
+  month_year <- format(fecha_mexico, "%Y/%m")
+  a_year <- format(fecha_mexico, "%Y")
+  a_mes <- as.numeric(format(fecha_mexico, "%m"))
   ov_directas <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
                                          paste0("AND(canal_venta='directa',mes=",a_mes,","
                                                 ,"recibos='',cancelada='',FIND(",a_year,",fecha))"))
