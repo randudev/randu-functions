@@ -1235,6 +1235,7 @@ generar_recibos_directas <- function(){
   if(length(ov_directas)!=0){
     for(i in seq_along(ov_directas)){
       ov <- ov_directas[[i]]
+      print(paste0("Se creo el recibo de la orden ",ov$fields$id_ordenes_venta))
       recibo <- facturapi_crear_recibo(ov,Sys.getenv("FACTURAPI_KEY"),ov$fields$id_ordenes_venta,"directa")
       registrar_recibo(recibo,ov)
     }
