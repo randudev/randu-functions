@@ -1224,3 +1224,19 @@ prioridad_agencia <- function(fecha){
   )
   return(prioridad)
 }
+
+generar_recibos_directas <- function(){
+  month_year <- format(Sys.Date(), "%Y/%m")
+  a_year <- format(Sys.Date(), "%Y")
+  a_mes <- as.numeric(format(Sys.Date(), "%m"))
+  ov_directas <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                         paste0("AND(canal_venta='directa',mes=",a_mes,","
+                                                ,"recibos='',cancelada='',FIND(",a_year,",fecha))"))
+  if(length(ov_directas)!=0){
+    for(i in seq_along(ov_directas)){
+      ov <- ov_directas[[i]]
+      recibo <- facturapi_crear_recibo(ov,Sys.getenv("FACTURAPI_KEY"),ov$fields$id_ordenes_venta,"directa")
+      registrar_recibo(recibo,ov)
+    }
+  }
+}
