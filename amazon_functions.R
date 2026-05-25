@@ -565,3 +565,217 @@ amz_orders_v2026 <- function(amz_token,canal){
   }
   return(data)
 }
+
+amazon_getitems <- function(amz_token,seller_id){
+  next_token <- NULL
+  previus_token <- NULL
+  data <- list()
+  page <- 1
+  
+  while(T) {
+    Sys.sleep(1)
+    
+    base_url <- paste0("https://sellingpartnerapi-na.amazon.com/listings/2021-08-01/items/",seller_id
+                       ,"?includedData=summaries,attributes,fulfillmentAvailability,productTypes&sortBy=lastUpdatedDate&sortOrder=DESC")
+    
+    req <- request(base_url) %>%
+      req_method("GET") %>%
+      req_headers(
+        'x-amz-access-token' = amz_token
+      )
+    
+    # Siempre incluir marketplaceIds (incluso con nextToken)
+    if (is.null(next_token)) {
+      req <- req_url_query(req,
+                           "marketplaceIds" = "A1AM78C64UM0Y8",
+                           "maxResults" = "20"
+      )
+    } else {
+      req <- req_url_query(req,
+                           "marketplaceIds" = "A1AM78C64UM0Y8",
+                           "pageToken"=next_token
+      ) 
+    }
+    
+    resp <- req %>%
+      req_perform() %>%
+      resp_body_json()
+    
+    if (!is.null(resp$items)) {
+      data <- append(data, resp$items)
+      #cat("Página", page, "- Total acumulado:", length(data), "\n")
+      page <- page + 1
+    }
+    
+    # Aquí está la clave: usar el token de paginación correctamente
+    if (!is.null(resp$pagination$nextToken)) {
+      
+      if (!is.null(next_token) && next_token == resp$pagination$nextToken) {
+        cat("nextToken repetido, saliendo...\n")
+        break
+      }
+      if(page>2){
+        previus_token <- next_token
+      }
+      next_token <- resp$pagination$nextToken
+      
+    } else {
+      break
+    }
+    
+    if (length(resp$items) == 0) break
+  }
+  return(data)
+}
+
+amz_registrar_publicacion <- function(data,canal){
+  
+}
+
+subir_publicaciones_amazon <- function(item_amz,canal){
+  #canal <- "amazon randu"
+  # Obtener SKU
+  sku_amz <- item_amz$sku
+  sku <- str_extract(item_amz$sku,"\\d+")
+  envio <- "Fulfillment by Randu" 
+  
+  # Título del producto
+  titulo <- item_amz$summaries[[1]]$itemName
+  
+  # Subtítulo armado desde atributos
+  # subtitle <- ""
+  for(attr_name in names(item_amz$attributes)){
+    attr <- item_amz$attributes[[attr_name]]
+    
+    # Algunos atributos tienen múltiples valores (lista)
+    if(is.list(attr)){
+      for(a in attr){
+        if(!is.null(a$value)){
+          subtitle <- paste0(subtitle, attr_name, ": ", a$value, " / ")
+        }
+      }
+    }
+  }
+  
+  #
+  stock <- 0
+  if(length(item_amz$fulfillmentAvailability)!=0){
+    #print(item_amz$fulfillmentAvailability)
+    if(!is.null(item_amz$fulfillmentAvailability[[1]]$quantity)){
+      if(item_amz$fulfillmentAvailability[[1]]$quantity > 0 ){
+        status <- "Activo"
+        stock <- item_amz$fulfillmentAvailability[[1]]$quantity
+      }else{
+        status <- "Pausada"
+      }
+    }else{
+      #print(item_amz)
+      envio <- "Fulfillment by marketplace"
+      stock <- NULL
+      status <- NULL
+    }
+    if(item_amz$fulfillmentAvailability[[1]]$fulfillmentChannelCode != "DEFAULT"){
+      envio <- "Fulfillment by marketplace"
+    }
+    if(length(item_amz$fulfillmentAvailability)>1){
+      print("NO SE NADAAAAAAA")
+      print(item_amz$sku)
+    }
+  }else{
+    status <- "Pausada"
+  }
+  
+  #  Tipo de envío (simplificado)
+  #envio <- "Fulfillment by Randu"  # podrías refinar si quieres diferenciar FBA/FBM
+  
+  # Buscar producto en Airtable
+  #producto <- airtable_getrecordslist("productos", Sys.getenv("AIRTABLE_CES_BASE"), paste0("sku=", sku))
+  producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
+                                      paste0("sku='",sku_amz,"'"))
+  if(length(producto)==0){
+    producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),
+                                        paste0("sku='",sku,"'"))
+  }
+  #  Preparar campos para crear registro
+  fields <- list(
+    "canal" = canal,
+    "id_canal" = item_amz[["summaries"]][[1]][["asin"]],
+    "titulo" = titulo,
+    "product_id"=sku_amz,
+    "subtitulo" = subtitle,
+    "status" = status,
+    "tipo_envio" = envio,
+    "stock_publicacion"=stock
+  )
+  if(!is.null(item_amz$summaries[[1]]$fnSku)){
+    fields$id_inventario_marketplace <- item_amz$summaries[[1]]$fnSku
+  }
+  if(length(item_amz$summaries)>1){
+    print(item_amz$sku)
+  }
+  if(length(producto) != 0){
+    fields <- append(fields, list("producto" = list(producto[[1]]$id)))
+    if(str_detect(sku_amz,"-")){
+      print(length(producto))
+      print(paste0("SKU real= ",sku_amz,"  sku acomodado= ",sku))
+      print(producto[[1]]$fields$id_productos)
+    }
+  }
+  #print(fields)
+  #return(fields)
+  aux_buscar <- airtable_getrecordslist("publicaciones",Sys.getenv("AIRTABLE_CES_BASE"),paste0("AND(canal='",canal,"',id_canal='",item_amz[["summaries"]][[1]][["asin"]],"')"))
+  
+  registro_a_actualizar <- NULL
+  
+  if(length(aux_buscar) != 0){
+    #  Buscar registro con product_id igual a sku_amz
+    for(reg in aux_buscar){
+      if(!is.null(reg$fields$product_id) && reg$fields$product_id == sku_amz){
+        registro_a_actualizar <- reg
+        break
+      }
+    }
+    
+    # Si no hay ninguno con sku_amz, buscar registro con product_id NULL
+    if(is.null(registro_a_actualizar)){
+      for(reg in aux_buscar){
+        if(is.null(reg$fields$product_id)){
+          registro_a_actualizar <- reg
+          break
+        }
+      }
+    }
+  }
+  
+  # ------------------------------
+  # Actualizar o crear
+  # ------------------------------
+  if(!is.null(registro_a_actualizar)){
+    airtable_updatesinglerecord(
+      fields,
+      "publicaciones",
+      Sys.getenv("AIRTABLE_CES_BASE"),
+      registro_a_actualizar$id
+    )
+    print(paste("Se actualizó:", sku_amz))
+  } else {
+    airtable_createrecord(
+      fields,
+      "publicaciones",
+      Sys.getenv("AIRTABLE_CES_BASE")
+    )
+    
+    print(paste0("Se creó una nueva: ",sku_amz))
+  }
+  #airtable_createrecord(fields, "publicaciones", Sys.getenv("AIRTABLE_CES_BASE"))
+  
+  # 
+  if(last_response()$status_code %in% 199:299){
+    #print(paste("Subido:", titulo))
+    
+  }else{
+    print(last_response() %>% resp_body_json())
+    #print(fields)
+  }
+  return(fields)
+}

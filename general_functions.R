@@ -1117,6 +1117,64 @@ pausar_todas_publicaciones <- function(producto){
         }
       }
       
+      publicaciones_amazon_am <- airtable_getrecordslist(
+        "publicaciones",
+        Sys.getenv("AIRTABLE_CES_BASE"),
+        paste0(
+          "AND(canal='amazon asia mayoreo',",
+          "status!='',",
+          "tipo_envio!='Fulfillment by marketplace',",
+          "FIND('", producto$fields$id_productos, "',{producto}))"
+        )
+      )
+      
+      if(length(publicaciones_amazon_am) != 0){
+        
+        amz_token_am <- amz_get_active_token("recMNZ3uARMZRBMnz")
+        
+        for(publi_amz in publicaciones_amazon_am){
+          
+          item_amz <- amz_getitems(
+            amz_token_am,
+            Sys.getenv("SELLERID_AMZ_AM"),
+            publi_amz$fields$product_id
+          )
+          
+          if(length(item_amz$fulfillmentAvailability) != 0){
+            
+            if(length(item_amz$fulfillmentAvailability[[1]]$quantity) != 0){
+              
+              if(item_amz$fulfillmentAvailability[[1]]$quantity > 0){
+                
+                amazon_update_listing(
+                  amz_token_am,
+                  Sys.getenv("SELLERID_AMZ_AM"),
+                  item_amz$sku,
+                  "0"
+                )
+                
+                if(!last_response()$status_code %in% c(199:299)){
+                  
+                  mensaje_amz <- paste0(
+                    "Ocurrio un error al pausar el item: ",
+                    item_amz$sku,
+                    "\nError: ",
+                    last_response()$status_code,
+                    "\n Body: ",
+                    last_response() %>% resp_body_string()
+                  )
+                  
+                  enviar_mensaje_slack(
+                    Sys.getenv("SLACK_ERROR_URL"),
+                    mensaje_amz
+                  )
+                }
+              }
+            }
+          }
+        }
+      }
+      
       publicaciones_ml <- airtable_getrecordslist(
         "publicaciones",
         Sys.getenv("AIRTABLE_CES_BASE"),
