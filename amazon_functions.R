@@ -162,6 +162,11 @@ amz_register_lineitems <- function(amz_order,canal){
             
             product_recordid_list <- airtable_getrecordslist("productos",Sys.getenv('AIRTABLE_CES_BASE'), 
                                                              formula=paste0("AND(FIND('",sku,"',sku),NOT(FIND('-',sku)))"))
+            if(length(product_recordid_list)!=0){
+              recordid_producto <- list(producto=list(product_recordid_list[[1]]$id))
+              fieldslist <- append(fieldslist, recordid_producto) 
+            }
+            
           }
         }
       }
@@ -499,6 +504,7 @@ amz_orders_v2026 <- function(amz_token,canal){
   #   "%Y-%m-%dT%H:%M:%SZ"
   # )
   last_year <- as.numeric(format(Sys.Date(), "%Y")) - 1
+  last_year <- as.numeric(format(Sys.Date(), "%Y")) 
   
   # Crear la fecha 1 de enero del año pasado
   created_after <- format(
