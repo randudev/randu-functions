@@ -313,16 +313,16 @@ amazon_update_listing <- function(
     productType = "PRODUCT",
     patches = patches
   )
-
-  req <- request(url) |>
-    req_method("PATCH") |>
+ 
+  req <- request(url) %>%
+    req_method("PATCH") %>%
     req_url_query("marketplaceIds" = "A1AM78C64UM0Y8") %>% 
     req_headers(
       Authorization = paste("Bearer", access_token),
       `Content-Type` = "application/json",
       `x-amz-access-token` = access_token
-    ) |>
-    req_body_json(body) |>
+    ) %>%
+    req_body_json(body) %>%
     req_perform()
   
   status <- resp_status(req)
