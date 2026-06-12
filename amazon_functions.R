@@ -123,8 +123,12 @@ amz_register_lineitems <- function(amz_order,canal){
     if(amz_order[["payload"]][["OrderStatus"]]=="Shipped"){
       cantidad_pd <- 0
     }
+    cantidad <- suppressWarnings(as.numeric(cantidad))
+    if (is.null(cantidad) || is.na(cantidad) || cantidad == 0) {
+      cantidad <- 1
+    }
     nombre_producto <- amz_items$payload$OrderItems[[i]]$Title
-    precio <- as.numeric(amz_items$payload$OrderItems[[i]]$ItemPrice$Amount) + as.numeric(ifelse(is.null(tax)||is.na(tax), 0, tax))
+    precio <- (as.numeric(amz_items$payload$OrderItems[[i]]$ItemPrice$Amount) + as.numeric(ifelse(is.null(tax)||is.na(tax), 0, tax)))/cantidad
     sku <- str_extract(amz_items$payload$OrderItems[[i]]$SellerSKU,"\\d+")
     
     id_lineitem <- as.character(amz_items$payload$OrderItems[[i]]$OrderItemId)
