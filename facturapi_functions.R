@@ -153,7 +153,7 @@ facturapi_cancelar_factura <- function(invoice_id, auth_facturapi, motive, subst
   
   req <- request(url) %>% 
     req_method("DELETE") %>% 
-    req_headers(Authorization = paste0("Bearer ", auth_facturapi)) |>
+    req_headers(Authorization = paste0("Bearer ", auth_facturapi)) %>%
     req_url_query(motive = motive)
   
   # Agregar substitution solo si existe
