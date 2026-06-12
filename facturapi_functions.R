@@ -1,5 +1,5 @@
 
-facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL,filters=NULL) {
+facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL,fecha_final=NULL,filters=NULL) {
   # Inicializar la página de búsqueda
   page <- 1
   facturas_totales <- list()  # Lista para almacenar todas las facturas
@@ -9,8 +9,11 @@ facturapi_obtener_facturas <- function(auth_facturapi,fecha=NULL,filters=NULL) {
       url <- paste0("https://www.facturapi.io/v2/invoices", "?page=", page)  # 'page_size' es el número de resultados por página
     }
     else{
+      if(is.null(fecha_final)){
+        fecha_final <- Sys.Date()
+      }
       url <- paste0("https://www.facturapi.io/v2/invoices","?date[gt]=",fecha, "&date[lte]=",
-                    as.character(Sys.Date()),"&page=", page)  
+                    as.character(fecha_final),"&page=", page)  
     }
     if(!is.null(filters)){
       url <- paste0(url,"&",filters)
@@ -106,6 +109,74 @@ facturapi_crear_recibo <- function(orden,auth_facturapi,id_orden,canal_venta,tip
     resp_body_json()
 }
 
+facturapi_cambiar_factura <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago="31",omitir="",
+                                      datos_direccion=NULL,mes='',fecha=NULL,factura_anterior=list(),series="Randu"){
+  items <- datos_recibo(canal_venta,orden,id_orden,omitir)
+  if(tipo_de_pago == "31"){
+    tipo_de_pago <- tipo_pago_real(orden,canal_venta)
+  }
+  items_json <- sapply(items, function(producto) {
+    generar_json(producto$cantidad,  gsub('"', "\\'", producto$nombre), producto$producto_key, producto$precio, producto$sku,producto$descuento)
+  })
+  recibo <- paste0('{"payment_form": "',tipo_de_pago,'", "items": [', paste(items_json, collapse = ","), ']}')
+  recibo_lista <- fromJSON(recibo)
+  if(length(id_orden)>1){
+    id_orden <- id_orden[[1]]
+  }
+  recibo_lista <- append(recibo_lista,list("external_id"=id_orden))
+  recibo_lista$series <- series
+  if(length(datos_direccion)==0){
+    datos_direccion <- list(
+      "legal_name"="PUBLICO EN GENERAL",
+      "tax_id"="XAXX010101000",
+      "tax_system"="616",
+      "address"=list(zip='76113')
+      
+    )
+    global <- list(
+      "periodicity"="day",
+      "months"="03",
+      "year"="2026"
+      )
+    recibo_lista$global <- global
+    recibo_lista$customer <- datos_direccion
+    related_documents <- list("relationship"="04",
+                              "documents"=factura_anterior)
+    recibo_lista$related_documents <- list(related_documents)
+  }
+  return(recibo_lista)
+}
+
+facturapi_cancelar_factura <- function(invoice_id, auth_facturapi, motive, substitution = NULL) {
+  
+  url <- paste0("https://www.facturapi.io/v2/invoices/", invoice_id)
+  
+  req <- request(url) %>% 
+    req_method("DELETE") %>% 
+    req_headers(Authorization = paste0("Bearer ", auth_facturapi)) |>
+    req_url_query(motive = motive)
+  
+  # Agregar substitution solo si existe
+  if (!is.null(substitution)) {
+    req <- req %>%  req_url_query(substitution = substitution)
+  }
+  
+  response <- req %>%  req_perform()
+  
+  return(resp_body_json(response))
+}
+
+facturapi_crear_factura <- function(body,auth_facturapi){
+  res1<-request("https://www.facturapi.io/v2/invoices") %>% 
+    req_method("POST") %>% 
+    req_headers('Authorization'=paste0("Bearer ",auth_facturapi))  %>% 
+    req_headers('Content-type'='application/json') %>%
+    req_body_json(body) %>%
+    req_error(is_error = function(resp) FALSE) %>%
+    req_perform() %>%
+    resp_body_json()
+}
+
 datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
   items_orden <- list()
   
@@ -129,16 +200,21 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
       if(item$Title %in% omitir){
         next
       }
+      if(!is.null(item$QuantityOrdered)){
+        cantidad <- item$QuantityOrdered
+      }else{
+        cantidad <- 1
+      }
       precio <- as.numeric(item$ItemPrice$Amount)
       if(!is.null(item$PromotionDiscount$Amount)){
         if(as.numeric(item$PromotionDiscount$Amount)!=0){
-          descuento <- item$PromotionDiscount$Amount
+          descuento <- as.numeric(item$PromotionDiscount$Amount)/cantidad
         }
       }
       sku <- str_extract(item$SellerSKU,"\\d+")
       if(!is.null(item$ItemTax$Amount)){
         if(!is.na(item$ItemTax$Amount)){
-          precio <- precio + as.numeric(item$ItemTax$Amount)
+          precio <- (precio + as.numeric(item$ItemTax$Amount))/cantidad
         }
       }
       items_orden[[length(items_orden) + 1]] <- list(
@@ -146,6 +222,39 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
         "precio" = precio,
         "sku"=sku,
         "cantidad" = item$QuantityOrdered,
+        "descuento"=descuento
+      )  
+    }
+  }
+  if(canal_venta == "amz_v2"){
+    for(item in orden$order$orderItems){
+      descuento <- NULL
+      if(item$product$title %in% omitir){
+        next
+      }
+      if(!is.null(item$quantityOrdered)){
+        cantidad <- item$quantityOrdered
+      }else{
+        cantidad <- 1
+      }
+      precio <- as.numeric(item$product$price$unitPrice$amount)/cantidad
+      # if(!is.null(item$product$condition$conditionType)){
+      #   if(as.numeric(item$PromotionDiscount$Amount)!=0){
+      #     descuento <- as.numeric(item$PromotionDiscount$Amount)/cantidad
+      #   }
+      # }
+      
+      sku <- str_extract(item$product$sellerSku,"\\d+")
+      # if(!is.null(item$ItemTax$Amount)){
+      #   if(!is.na(item$ItemTax$Amount)){
+      #     precio <- precio + as.numeric(item$ItemTax$Amount)/cantidad
+      #   }
+      # }
+      items_orden[[length(items_orden) + 1]] <- list(
+        "nombre" = item$product$title,
+        "precio" = precio,
+        "sku"=sku,
+        "cantidad" = cantidad,
         "descuento"=descuento
       )  
     }
@@ -319,6 +428,10 @@ generar_json <- function(cantidad, descripcion, product_key, precio, sku,descuen
   }else{
     if(is.na(sku)){
       sku <- 10700
+    }else{
+      if(sku==""){
+        sku <- 10700
+      }
     }
   }
   if(is.null(product_key)){
@@ -380,7 +493,7 @@ facturapi_obtener_recibos <- function(auth_facturapi,fecha=NULL,filters=NULL){
     if(!is.null(filters)){
       url <- paste0(url,"&",filters)
     }
-    
+    url <- URLencode(url)
     response <- request(url) %>%
       req_method("GET") %>% 
       req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
@@ -415,7 +528,8 @@ facturapi_crear_factura_recibo <- function(auth_facturapi,recibo,mes,serie,date)
     req_headers('Authorization'=paste0("Bearer ",auth_facturapi)) %>%
     req_body_json(list(
       "from"= recibo$date,
-      "to"=   recibo$created_at,
+      #"to"=   recibo$created_at,
+      "to"=   recibo$date,
       "receipts"= list(
         recibo$id
       ),
@@ -488,6 +602,7 @@ registrar_recibo <- function(recibo,orden_venta=NULL){
 revisar_recibo <- function(recibos){
   ml_token <- get_active_token()
   amz_token <- amz_get_active_token()
+  amz_token_am <- amz_get_active_token("recMNZ3uARMZRBMnz")
   ml_token_asm <- get_active_token("recQLtjnMhd4ZCiJq")
   shp_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
   recibos_validos <- list()
@@ -528,6 +643,17 @@ revisar_recibo <- function(recibos){
           airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibos[[i]]$fields$orden_venta[[1]])
         }
       }
+      if(recibos[[i]]$fields$canal_venta == "amazonasm"){
+        orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
+        amz_order <- get_amzorder_byid(orden_venta$fields$id_origen,amz_token_am)
+        if(amz_order$payload$OrderStatus != "Canceled"){
+          if(as.numeric(amz_order$payload$OrderTotal$Amount)== as.numeric(recibos[[i]]$fields$monto)){
+            recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
+          }
+        }else{
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibos[[i]]$fields$orden_venta[[1]])
+        }
+      }
       if(recibos[[i]]$fields$canal_venta == "shprndmx"){
         orden_venta <- airtable_getrecorddata_byid(recibos[[i]]$fields$orden_venta[[1]],"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"))
         if(!str_detect(orden_venta$fields$id_ordenes_venta,"DST")){
@@ -552,6 +678,9 @@ revisar_recibo <- function(recibos){
         }else{
           airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),recibos[[i]]$fields$orden_venta[[1]])
         }
+      }
+      if(recibos[[i]]$fields$canal_venta == "directa"){
+        recibos_validos[[length(recibos_validos) + 1]] <- recibos[[i]]
       }
     }
   }
@@ -622,6 +751,120 @@ tipo_pago_real <- function(orden,canal_venta){
       }
     }
   }else{
-    return("31")
+    if(canal_venta == "amz"){
+      return("31")
+    }else{
+      return("31")
+    }
+    
   }
+}
+
+facturapi_crear_factura_martin <- function(recordid){
+  tryCatch(
+    expr={
+      datos <- airtable_getrecorddata_byid(recordid,"prefactura",Sys.getenv("AIRTABLE_MARTIN_BASE"))
+      productos <- sapply(datos$fields$items, function(x)
+        airtable_getrecorddata_byid(x,"items",Sys.getenv("AIRTABLE_MARTIN_BASE")),
+        simplify = F)
+      
+      codigo_tax_system <- sub("-.*", "", datos$fields$tax_system)
+      descripcion_tax_system <- sub("^[^-]*-", "", datos$fields$tax_system)
+      
+      items <- lapply(productos, function(prod){
+        
+        # Taxes del producto
+        taxes <- list()
+        
+        if (!is.null(prod$fields$taxes) &&
+            length(prod$fields$taxes) > 0) {
+          
+          taxes <- lapply(prod$fields$taxes, function(tax_id){
+            
+            tax <- airtable_getrecorddata_byid(
+              tax_id,
+              "taxes",
+              Sys.getenv("AIRTABLE_MARTIN_BASE")
+            )
+            
+            list(
+              type = tax$fields$type,
+              rate = tax$fields$rate,
+              withholding = isTRUE(tax$fields$withholding)
+            )
+          })
+        }else {
+          
+          taxes <- list(
+            list(
+              type = "IVA",
+              rate = 0.16
+            )
+          )
+          
+        }
+        
+        list(
+          quantity = prod$fields$quantity,
+          product=list(
+            description = prod$fields$description,
+            product_key = sub("-.*", "", prod$fields$product_key),
+            unit_key = sub("-.*", "", prod$fields$unit_key),
+            price = prod$fields$price,
+            taxability = if(length(taxes)) "02" else "01",
+            taxes = taxes,
+            unit_name = sub("^[^-]*-", "", prod$fields$unit_key)
+          )
+          
+        )
+      })
+      factura <- list(
+        customer=list(
+          "legal_name"=datos$fields$legal_name,
+          "tax_id"=datos$fields$tax_id,
+          "tax_system"=codigo_tax_system,
+          "address"=list(
+            "street" = datos$fields$street,
+            "city" = datos$fields$city,
+            "state" = datos$fields$state,
+            "zip" = datos$fields$zip,
+            "country" = datos$fields$country
+          )
+        ),
+        "items"=items,
+        "payment_form"=sub("-.*", "", datos$fields$payment_form),
+        "use"=sub("-.*", "", datos$fields$use)
+        
+      )
+      cfdi_api <- facturapi_crear_factura(factura,Sys.getenv("FACTURAPI_KEY"))
+      if(!last_response()$status_code %in% c(199:299)){
+        aux <- last_response() %>% resp_body_string()
+        mensaje <- paste0("Fallo al intentar hacer la factura:\n",aux,"\nDatos:",toJSON(factura))
+        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+        return(aux)
+      }
+      i <- 0
+      while(TRUE){
+        pdf <- facturapi_descargar_factura(cfdi_api$id,Sys.getenv("FACTURAPI_KEY"),"pdf")
+        if(pdf$status_code %in% c(199:299)){
+          writeBin(pdf$body, paste0("~/facturas/",cfdi_api$uuid,".pdf"))
+          
+          airtable_subir_pdf(datos$id,paste0("~/facturas/",cfdi_api$uuid,".pdf"),"fldPGYWcrenO5qMiz",Sys.getenv("AIRTABLE_MARTIN_BASE"),"pdf")
+          break
+        }
+        if(i>=10){
+          i <- 0
+          break
+        }
+        Sys.sleep(1)
+        i <- i + 1
+      }
+    },
+    error=function(e){
+      mensaje <- paste0("Hubo un error al intentar facturar desde el boton de Martin\nRecord:",recordid,
+                        "\nError: ",e)
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+    }
+  )
+  
 }
