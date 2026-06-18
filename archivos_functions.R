@@ -1,6 +1,6 @@
 if (!require("openxlsx")) {install.packages("openxlsx")}
 library(openxlsx)
-paquetes <- c("tidyr","emayili")
+paquetes <- c("tidyr")
 cargar_paquetes(paquetes)
 
 
