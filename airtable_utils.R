@@ -50,7 +50,8 @@ airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",or
   }else{
     #------trycatch para guardar el error------- 
     if(!is.null(con)){
-      email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/api_logs_documentation.sqlite")
+      print("HUBO UN ERROR")
+      #email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   }
@@ -75,7 +76,8 @@ airtable_getrecordslist <- function(tablename, base_id, formula="", fields="",or
     }else{
       #------trycatch para guardar el error------- 
       if(!is.null(con)){
-        email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/api_logs_documentation.sqlite")
+        print("HUBO UN ERROR")
+        #email_error(last_response()$status_code,"airtable_getrecordslist",origen,"~/api_logs_documentation.sqlite")
         
       }
       if(length(recordslist)>0){
@@ -110,7 +112,8 @@ airtable_getrecorddata_byid <- function(recordid, tablename, base_id,origen="",c
     resp_body_json(atbrequest)
   }else{
     if(!is.null(con)){
-      email_error(last_response()$status_code,"airtable_getrecorddata_byid",origen,"~/api_logs_documentation.sqlite")
+      print("HUBO UN ERROR")
+      #email_error(last_response()$status_code,"airtable_getrecorddata_byid",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   } 
@@ -132,7 +135,8 @@ airtable_createrecord <- function(fieldslist, tablename, base_id,origen="",con=N
     resp_body_json(atbreq)
   }else{
     if(!is.null(con)){
-      email_error(last_response()$status_code,"airtable_createrecord",origen,"~/api_logs_documentation.sqlite")
+      print("HUBO UN ERROR")
+      #email_error(last_response()$status_code,"airtable_createrecord",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   } 
@@ -156,7 +160,8 @@ airtable_updatesinglerecord <- function(fieldslist, tablename, base_id, recordid
   }else{
     if(!is.null(con)){
       #guardar(origen,last_response(),last_request(),con,"airtable_updatesinglerecord","api_logs")
-      email_error(last_response()$status_code,"airtable_updatesinglerecord",origen,"~/api_logs_documentation.sqlite")
+      print("HUBO UN ERROR")
+      #email_error(last_response()$status_code,"airtable_updatesinglerecord",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   } 
@@ -183,7 +188,8 @@ airtable_record_delete <- function(recordid, tablename, base_id,origen="",con=NU
     resp_body_json(atbrequest)
   }else{
     if(!is.null(con)){
-      email_error(last_response()$status_code,"airtable_record_delete",origen,"~/api_logs_documentation.sqlite")
+      print("HUBO UN ERROR")
+      #email_error(last_response()$status_code,"airtable_record_delete",origen,"~/api_logs_documentation.sqlite")
     }
     return(NULL)
   } 
@@ -264,7 +270,7 @@ airtable_to_table <- function(lista) {
     campos <- reg$fields
     campos$id <- reg$id
     campos <- lapply(campos, function(x) {
-      if (is.list(x)) toJSON(x) else x
+      if (is.list(x)) toJSON(x) else paste0(x)
     })
     as.data.frame(campos, stringsAsFactors = FALSE)
   })

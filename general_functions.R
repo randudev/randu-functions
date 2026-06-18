@@ -1,4 +1,4 @@
-paquetes <- c("tidyr","emayili")
+paquetes <- c("tidyr")
 
 cargar_paquetes <- function(paquetes) {
   for (pkg in paquetes) {
@@ -61,106 +61,6 @@ generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NU
     print(paste0("Ocurrio un problema al subirla imagen: ",sp))
     return(NULL)
   }
-}
-
-#-----Enviar por correo los errores------
-email_error <- function(status,funcion,origen,archivo=""){
-  
-  email <- envelope() %>%
-    from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
-    to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
-    subject(paste0("Error: ",uuid::UUIDgenerate())) %>%
-    text(paste0("¡Tuvimos un error ", status,"! Con en la funcion: ",funcion, ", y origen: ",origen, ". Adjunto archivo")) %>%
-    attachment(path = archivo) # Ruta al archivo a adjuntar
-  
-  smtp <- server(
-    host = "smtp.fastmail.com",
-    port = 465,
-    username = Sys.getenv("EMAIL_FAST_MAIL"),
-    password = Sys.getenv("EMAIL_KEY"),
-    use_ssl = TRUE
-  )
-  
-  smtp(email)
-  
-}
-
-email_error_general <- function(mensaje,archivo=NULL, max_retries=3, delay=5){
-  print(mensaje)
-  if(nchar(mensaje)>300){
-    mensaje <- substr(mensaje,1,300)
-  }
-  Sys.sleep(3)
-  tryCatch(
-    expr = {
-      # email <- envelope() %>%
-      #   from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
-      #   to(Sys.getenv("EMAIL_ERROR_FAST_MAIL") ) %>%
-      #   subject(paste0("Error : ",uuid::UUIDgenerate())) %>%
-      #   text(paste0("¡Tuvimos un problema: ", mensaje)) 
-      # 
-      email <- envelope(
-        to = Sys.getenv("EMAIL_ERROR_FAST_MAIL"),
-        from = Sys.getenv("EMAIL_FAST_MAIL"),
-        subject = paste0("Error : ",uuid::UUIDgenerate()),
-        text = paste0("¡Tuvimos un problema: ", mensaje)
-      )
-      
-      if(!is.null(archivo)){
-        email <- email %>% attachment(path = archivo) # Ruta al archivo a adjuntar
-      }
-      
-      smtp <- server(
-        host = "smtp.fastmail.com",
-        port = 465,
-        username = Sys.getenv("EMAIL_FAST_MAIL"),
-        password = Sys.getenv("EMAIL_KEY"),
-        use_ssl = TRUE,
-        timeout = 25 
-      )
-      for (i in 1:max_retries) {
-        tryCatch({
-          # Enviar el correo
-          smtp(email)
-          message("Correo enviado exitosamente.")
-          break  # Si se envió correctamente, salir del bucle
-        }, error = function(e) {
-          print(paste0("Intento de reenvío", i, "fallido. Error:", conditionMessage(e)))
-          if (i < max_retries) {
-            Sys.sleep(delay)  # Espera antes de intentar nuevamente
-          } else {
-            print("Reintentos agotados. No se pudo enviar el correo.")
-          }
-        })
-      }
-    },error=function(e){
-      error_mensaje <- paste0(e)
-      print(error_mensaje)
-    }
-  )
-}
-
-enviar_email <- function(mensaje,correo,archivo=NULL){
-  email <- envelope() %>%
-    from(Sys.getenv("EMAIL_FAST_MAIL") ) %>%
-    to(correo) %>%
-    subject(paste0("Mensaje : ",uuid::UUIDgenerate())) %>%
-    text(paste0(mensaje)) 
-  
-  if(!is.null(archivo)){
-    email <- email %>% attachment(path = archivo) # Ruta al archivo a adjuntar
-  }
-  
-  smtp <- server(
-    host = "smtp.fastmail.com",
-    port = 465,
-    username = Sys.getenv("EMAIL_FAST_MAIL"),
-    password = Sys.getenv("EMAIL_KEY"),
-    use_ssl = TRUE,
-    timeout = 30 
-  )
-  
-  smtp(email)
 }
 
 guardar <- function(origen="", resp, req, con, func, tabla){
