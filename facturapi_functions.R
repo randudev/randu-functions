@@ -599,6 +599,171 @@ registrar_recibo <- function(recibo,orden_venta=NULL){
   }
 }
 
+registrar_factura <-function(factura,orden_venta) {
+  if (length(factura) == 0 ) {
+    pagada <- FALSE
+    if(factura$amount_due==0){
+      pagada <- TRUE
+    }
+    subtotal <- 0
+    tax <- 0
+    
+    if(!is.null(factura$items)){
+      
+      for(item in factura$items){
+        if(length(item$product$taxes)!=0){
+          if(!is.null(item$product$taxes[[1]]$base)){
+            subtotal <-subtotal + item$product$taxes[[1]]$base*item$quantity
+            for(k in 1:length(item$product$taxes)){
+              if(!item$product$taxes[[k]]$withholding){
+                tax <- tax + item$product$taxes[[k]]$base * item$product$taxes[[k]]$rate*item$quantity
+              }else{
+                tax <- tax - item$product$taxes[[k]]$base * item$product$taxes[[k]]$rate*item$quantity
+              }
+            }
+          }
+          else{
+            
+            aux_rate <- sum(unlist(lapply(item$product$taxes,function(x) if(!x$withholding){x$rate}else{-1*x$rate})))
+            if(aux_rate !=0)
+            {
+              subtotal <- subtotal + item$product$taxes[[1]]$rate/aux_rate
+              tax <- tax + (item$product$taxes[[1]]$rate/aux_rate-item$product$taxes[[1]]$rate)
+            }
+            else{
+              subtotal <- subtotal + item$product$taxes[[1]]$rate
+            }
+            
+          }
+        }
+      }
+    }
+    if(length(subtotal)==0){
+      subtotal <- 0
+    }
+    if(length(tax)==0){
+      tax <- 0
+    }
+    if(!is.null(factura$stamp$date)){
+      mes <- as.numeric(format(as.Date(factura$stamp$date),"%m"))
+    }else{
+      mes <- as.numeric(format(Sys.Date(),"%m"))
+    }
+    fields_factura <- list(
+      'issued_at'=factura$date,
+      'id_satws'=factura$id,
+      'issuer_rfc'=factura$issuer_info$tax_id,
+      'total'=as.numeric(factura$total),
+      'uuid'=tolower(factura$uuid),
+      'receiver_rfc'=factura$customer$tax_id,
+      'receiver_name'=factura$customer$legal_name,
+      'issuer_name'= factura$issuer_info$legal_name,
+      'cancellation_status'=factura$cancellation_status,
+      'status'=factura$status,
+      'version'=paste0(factura$cfdi_version),
+      'type'=factura$type,
+      'usage'=factura$use,
+      'payment_type'=factura$payment_method,
+      'payment_method'=factura$payment_form,
+      'currency'=factura$currency,
+      'discount'=sum(unlist(lapply(factura$items,function(x) x$discount))),
+      'exchange_rate'=factura$exchange,
+      'serie'=factura$series,
+      'subtotal'=subtotal,
+      "mes"=mes,
+      'tax'=tax,
+      'por_pagar'=factura$amount_due,
+      'place_of_issue'=factura$issuer_info$address$zip,
+      'place_of_receiver'=factura$customer$address$zip,
+      'monto_por_pagar'=factura$amount_due,
+      "fecha_timbrado"=factura$stamp$date,
+      'pagada'=pagada,
+      'monto_pagado'=factura$total-factura$amount_due
+    )
+    # if(!is.null(factura$external_id)){
+    #   orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_origen='",factura$external_id,"'"))
+    #   if(length(orden_venta)!=0){
+    #     fields_factura <- append(fields_factura,list("ordenes_venta"=list(orden_venta[[1]]$id)))
+    #   }
+    # }
+    fields_factura <- append(fields_factura,list("ordenes_venta"=list(orden_venta$id)))
+    if(!is.null(factura[["series"]])){
+      if(factura[["series"]]=="ECOM" || factura[["series"]]=="SNG"){
+        if(!is.null(factura[["folio_number"]])){
+          orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_origen='",factura[["folio_number"]],"'"))
+          if(length(orden_venta)!=0){
+            fields_factura <- append(fields_factura,list("ordenes_venta"=list(orden_venta[[1]]$id)))
+          }
+        }
+      }
+      if(factura[["series"]]=="MLRNFI"){
+        orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                               paste0("factura_marketplace='",factura$uuid,"'"))
+        if(length(orden_venta)!=0){
+          fields_factura <- append(fields_factura,list("ordenes_venta"=list(orden_venta[[1]]$id)))
+        }
+      }
+    }
+    
+    if(factura$currency=="MXN"){
+      fields_factura <- append(fields_factura,list("subtotal_mxn"=subtotal,"total_mxn"=factura$total))
+    }
+    if(!is.null(factura$folio_number)){
+      fields_factura <- append(fields_factura,list('folio'=as.character(factura$folio_number)))
+    }
+    resp <- airtable_createrecord(fields_factura,"cfdi",Sys.getenv("AIRTABLE_CES_BASE"))
+    # recibos <- facturapi_obtener_recibos(Sys.getenv("FACTURAPI_KEY"),,paste0("external_id=",factura$external_id))
+     id_recibo <- ""
+    # for(recibo in recibos){
+    #   if(!is.null(recibo$invoice)){
+    #     if(recibo$invoice==factura$id){
+    #       id_recibo <- recibo$id
+    #     }
+    #   }
+    # }
+    # if(id_recibo!=""){
+    #   recibo_airtable <- airtable_getrecordslist("recibos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_recibo='",id_recibo,"'"))
+    #   if(length(recibo_airtable)!=0){
+    #     airtable_updatesinglerecord(list("cfdi"=list(resp$id),"status_factura"="facturado"),"recibos",Sys.getenv("AIRTABLE_CES_BASE"),recibo_airtable[[1]]$id)
+    #   }
+    # }
+    i <- 0
+    while(TRUE){
+      pdf <- facturapi_descargar_factura(factura$id,Sys.getenv("FACTURAPI_KEY"),"pdf")
+      if(pdf$status_code %in% c(199:299)){
+        writeBin(pdf$body, paste0("~/facturas/",factura$uuid,".pdf"))
+        airtable_subir_pdf(resp$id,paste0("~/facturas/",factura$uuid,".pdf"),"pdf_file",Sys.getenv("AIRTABLE_CES_BASE"),"pdf")
+        break
+      }
+      if(i>=10){
+        i <- 0
+        break
+      }
+      Sys.sleep(1)
+      i <- i + 1
+    }
+    
+    while(TRUE){
+      xml <- facturapi_descargar_factura(factura$id,Sys.getenv("FACTURAPI_KEY"),"xml")
+      if(xml$status_code %in% c(199:299)){
+        writeBin(xml$body, paste0("~/facturas/",factura$uuid,".xml"))
+        airtable_subir_pdf(resp$id,paste0("~/facturas/",factura$uuid,".xml"),"xml_file",Sys.getenv("AIRTABLE_CES_BASE"),"xml")
+        break
+      }
+      if(i>=10){
+        i <- 0
+        break
+      }
+      Sys.sleep(1)
+      i <- i + 1
+    }
+    insertar_factura(conn,toupper(factura$uuid))
+    if((j%%500)==0){
+      Sys.sleep(4)
+    }
+  }
+}
+
 revisar_recibo <- function(recibos){
   ml_token <- get_active_token()
   amz_token <- amz_get_active_token()
@@ -867,4 +1032,41 @@ facturapi_crear_factura_martin <- function(recordid){
     }
   )
   
+}
+
+crear_factura <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago="31",omitir="",
+                          datos_direccion=NULL,mes='',fecha=NULL,series="Randu"){
+  items <- datos_recibo(canal_venta,orden,id_orden,omitir)
+  if(tipo_de_pago == "31"){
+    tipo_de_pago <- tipo_pago_real(orden,canal_venta)
+  }
+  items_json <- sapply(items, function(producto) {
+    generar_json(producto$cantidad,  gsub('"', "\\'", producto$nombre), producto$producto_key, producto$precio, producto$sku,producto$descuento)
+  })
+  recibo <- paste0('{"payment_form": "',tipo_de_pago,'", "items": [', paste(items_json, collapse = ","), ']}')
+  recibo_lista <- fromJSON(recibo)
+  if(length(id_orden)>1){
+    id_orden <- id_orden[[1]]
+  }
+  recibo_lista <- append(recibo_lista,list("external_id"=id_orden))
+  recibo_lista$series <- series
+  if(length(datos_direccion)==0){
+    datos_direccion <- list(
+      "legal_name"="PUBLICO EN GENERAL",
+      "tax_id"="XAXX010101000",
+      "tax_system"="616",
+      "address"=list(zip='76113')
+      
+    )
+    months <- sprintf("%02d", month(Sys.Date()))
+    factura_year <- year(Sys.Date())
+    global <- list(
+      "periodicity"="day",
+      "months"=months,
+      "year"=factura_year
+    )
+    recibo_lista$global <- global
+    recibo_lista$customer <- datos_direccion
+  }
+  return(recibo_lista)
 }
