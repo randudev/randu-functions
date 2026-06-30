@@ -600,7 +600,7 @@ registrar_recibo <- function(recibo,orden_venta=NULL){
 }
 
 registrar_factura <-function(factura,orden_venta) {
-  if (length(factura) == 0 ) {
+  if (length(factura) != 0 ) {
     pagada <- FALSE
     if(factura$amount_due==0){
       pagada <- TRUE
@@ -757,7 +757,6 @@ registrar_factura <-function(factura,orden_venta) {
       Sys.sleep(1)
       i <- i + 1
     }
-    insertar_factura(conn,toupper(factura$uuid))
     if((j%%500)==0){
       Sys.sleep(4)
     }
