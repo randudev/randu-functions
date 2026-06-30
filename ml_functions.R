@@ -1541,7 +1541,7 @@ ml_full_saldo_inicial <- function(){
         next
       }
       skus_repetidos[[length(skus_repetidos) + 1]] <- sku[[1]]
-      comentarios <- paste0("Primer registro: ",publicaciones_full[[i]]$fields$id_canal)
+      comentarios <- paste0("Segundo Registro : ",publicaciones_full[[i]]$fields$id_canal," ",Sys.Date())
       fields <- list("tipo"="saldo inicial",
                      "ubicacion"="ml_full_rnd",
                      "cantidad"=safe_abs_numeric(cantidad),
@@ -1701,7 +1701,10 @@ ml_registrar_facturas <- function(noti_invoices){
         noti_invoices_all <- noti_invoices
         noti_invoices <- noti_invoices_all %>%
           distinct(id_resource, .keep_all = TRUE)
-        procesar <-setdiff(noti_invoices_all$id, noti_invoices_all$id)
+        procesar <- setdiff(
+          noti_invoices_all$id,
+          noti_invoices$id
+        )
         if (length(procesar) != 0) {
           supabase_updates(procesar,list("procesada"=TRUE))
         }
@@ -1750,13 +1753,20 @@ ml_registrar_facturas <- function(noti_invoices){
                                                  paste0("AND(FIND(",invoice$items[[1]]$external_order_id
                                                         ,",id_ordenes_venta))"))
           if(length(orden_venta)!=0){
+            uuid_mkp <- invoice[["attributes"]][["receipt"]]
             if(length(orden_venta[[1]]$fields$factura_marketplace)==0){
-              uuid_mkp <- invoice[["attributes"]][["receipt"]]
+              
               airtable_updatesinglerecord(list("factura_marketplace"=uuid_mkp),"ordenes_venta",
                                           Sys.getenv("AIRTABLE_CES_BASE"),orden_venta[[1]]$id)
               #print(paste0("Se actualizo la orden: ",orden_venta[[1]]$fields$id_ordenes_venta," ",uuid_mkp))
               supabase_update(fila$id,list("procesada"=TRUE))
             }else{
+              if(orden_venta[[1]]$fields$factura_marketplace!=uuid_mkp){
+                airtable_updatesinglerecord(list("factura_marketplace"=uuid_mkp),"ordenes_venta",
+                                            Sys.getenv("AIRTABLE_CES_BASE"),orden_venta[[1]]$id)
+                #print(paste0("Se actualizo la orden: ",orden_venta[[1]]$fields$id_ordenes_venta," ",uuid_mkp))
+                #supabase_update(fila$id,list("procesada"=TRUE))
+              }
               #print(paste0("Ya habia sido actualizada ", orden_venta[[1]]$fields$id_ordenes_venta))
               supabase_update(fila$id,list("procesada"=TRUE))
             }

@@ -63,10 +63,25 @@ generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NU
   }
 }
 
+header_json <- function(headers) {
+  tryCatch(
+    jsonlite::toJSON(as.list(headers), auto_unbox = TRUE, null = "null"),
+    error = function(e) {
+      tryCatch(
+        jsonlite::toJSON(unclass(headers), auto_unbox = TRUE, null = "null"),
+        error = function(e) {
+          jsonlite::toJSON(capture.output(print(headers)),
+                           auto_unbox = TRUE)
+        }
+      )
+    }
+  )
+}
+
 guardar <- function(origen="", resp, req, con, func, tabla){
   tryCatch(expr={
     logs <- tibble(time=format(Sys.time(), "%Y-%m-%d %H:%M:%S"),rspns=toJSON(resp_body_json(resp)),
-                   url=resp$url, status=resp$status_code, header =toJSON(req$headers),
+                   url=resp$url, status=resp$status_code, header =header_json(req),
                    request=toJSON(req$body$data),funcion=func, origenes=origen)
     insertar_fila(con, tabla, logs)
   },
