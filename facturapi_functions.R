@@ -1057,11 +1057,48 @@ crear_factura <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago
       "address"=list(zip='76113')
       
     )
-    months <- sprintf("%02d", month(Sys.Date()))
-    factura_year <- year(Sys.Date())
+    # fecha_ori <- ymd_hms(fecha, tz = "UTC")
+    # hoy <- Sys.Date()
+    # 
+    # # Fecha candidata
+    # if (as.numeric(hoy - as.Date(fecha_ori)) > 3) {
+    #   fecha_final <- hoy
+    # } else {
+    #   fecha_final <- as.Date(fecha_ori)
+    # }
+    # 
+    # # Si cambió de mes, usar el último día del mes original
+    # if (month(fecha_final) != month(fecha_ori) ||
+    #     year(fecha_final) != year(fecha_ori)) {
+    #   fecha_final <- ceiling_date(as.Date(fecha_ori), "month") - days(1)
+    # }
+    
+    
+    fecha_ori <- ymd_hms(fecha)
+    
+    ahora <- Sys.time() + minutes(30)
+    
+    if (difftime(ahora, fecha_ori, units = "hours") > 72) {
+      fecha_final <- ahora
+      
+      # Si cambió de mes
+      if (month(fecha_final) != month(fecha_ori) ||
+          year(fecha_final) != year(fecha_ori)) {
+        
+        fecha_final <- ultimo_dia_mes_anterior(Sys.Date())+1800
+      }
+    } else {
+      fecha_final <- fecha_ori
+    }
+
+    recibo_lista$date <- fecha_final
+    
+    factura_year <- year(fecha_final)
+    # months <- sprintf("%02d", month(Sys.Date()))
+    # factura_year <- year(Sys.Date())
     global <- list(
       "periodicity"="day",
-      "months"=months,
+      "months"=mes,
       "year"=factura_year
     )
     recibo_lista$global <- global
