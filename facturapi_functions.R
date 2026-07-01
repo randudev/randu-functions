@@ -340,7 +340,7 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
     
   }
   if(canal_venta == "shp1"){
-    orden <- orden$data$orders$ed0ges[[1]]$node
+    orden <- orden$data$orders$edges[[1]]$node
     if(!is.null(orden)){
       for(i in 1:length(orden$lineItems$edges)){
         if(orden$lineItems$edges[[i]]$node$currentQuantity==0){
@@ -388,7 +388,7 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
     }
     
   }
-  print(items_orden)
+  
   if(canal_venta != "directa" && canal_venta !="directaunir"){
     for(i in 1:length(items_orden)){
       if(!is.null(items_orden[[i]]$sku)){
