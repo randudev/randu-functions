@@ -368,7 +368,7 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
           "nombre" = orden$lineItems$edges[[i]]$node$name,
           "precio"= ifelse(precio>0,precio,1.16),
           "sku"=orden$lineItems$edges[[i]]$node$sku,
-          "cantidad" =orden$lineItems$edges[[1]]$node$currentQuantity,
+          "cantidad" =orden$lineItems$edges[[i]]$node$currentQuantity,
           "descuento" = descuento_real
         )  
         
