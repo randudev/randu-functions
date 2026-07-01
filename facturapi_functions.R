@@ -343,6 +343,9 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
     orden <- orden$data$orders$edges[[1]]$node
     if(!is.null(orden)){
       for(i in 1:length(orden$lineItems$edges)){
+        if(orden$lineItems$edges[[1]]$node$currentQuantity==0){
+          next
+        }
         if(orden$lineItems$edges[[i]]$node$name %in% omitir){
           next
         }
@@ -365,7 +368,7 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
           "nombre" = orden$lineItems$edges[[i]]$node$name,
           "precio"= ifelse(precio>0,precio,1.16),
           "sku"=orden$lineItems$edges[[i]]$node$sku,
-          "cantidad" = orden$lineItems$edges[[i]]$node$quantity,
+          "cantidad" =orden$lineItems$edges[[1]]$node$currentQuantity,
           "descuento" = descuento_real
         )  
         
