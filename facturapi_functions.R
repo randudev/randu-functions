@@ -371,26 +371,30 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
           "cantidad" =orden$lineItems$edges[[i]]$node$currentQuantity,
           "descuento" = descuento_real
         )  
-        
+       
         
         if(length(orden$shippingLines$edges)!=0){
-          if(i == length(orden$shippingLines$edges$id) && as.numeric(orden$shippingLines$edges$price[[1]])!=0){
+          if(i == length(orden$shippingLines$edges) && as.numeric(orden$shippingLines$edges[[1]]$node$discountedPriceSet$shopMoney$amount)!=0){
             items_orden[[length(items_orden) + 1]] <- list(
-              "nombre" = orden$shippingLines$edges$title[[1]],
-              "precio"= sum(as.numeric(orden$shippingLines$edges$price),na.rm=TRUE),
+              "nombre" = orden$shippingLines$edges[[1]]$node$title,
+              "precio"= sum(as.numeric(orden$shippingLines$edges[[1]]$node$discountedPriceSet$shopMoney$amount),na.rm=TRUE),
               "sku"=1000,
               "cantidad" = 1,
               "descuento" = NULL
             )  
+            
           }
         }
+        
       }
     }
     
   }
   
   if(canal_venta != "directa" && canal_venta !="directaunir"){
+    
     for(i in 1:length(items_orden)){
+      
       if(!is.null(items_orden[[i]]$sku)){
         if(!is.na(items_orden[[i]]$sku) && str_detect(items_orden[[i]]$sku,"^\\d\\d\\d\\d\\d$") ){
           if(items_orden[[i]]$sku!=1000){
@@ -648,11 +652,16 @@ registrar_factura <-function(factura,orden_venta) {
     if(length(tax)==0){
       tax <- 0
     }
-    if(!is.null(factura$stamp$date)){
-      mes <- as.numeric(format(as.Date(factura$stamp$date),"%m"))
+    if(length(factura$global)!=0){
+      if(!is.null(factura$global$months)){
+        mes <- as.numeric(factura$global$months)
+      }else{
+        mes <- as.numeric(format(as.Date(factura$date),"%m"))
+      }
     }else{
-      mes <- as.numeric(format(Sys.Date(),"%m"))
+      mes <- as.numeric(format(as.Date(factura$date),"%m"))
     }
+    
     fields_factura <- list(
       'issued_at'=factura$date,
       'id_satws'=factura$id,
@@ -684,6 +693,9 @@ registrar_factura <-function(factura,orden_venta) {
       'pagada'=pagada,
       'monto_pagado'=factura$total-factura$amount_due
     )
+    if(length(factura$global)!=0){
+      fields_factura$factura_global <- T
+    }
     # if(!is.null(factura$external_id)){
     #   orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("id_origen='",factura$external_id,"'"))
     #   if(length(orden_venta)!=0){
