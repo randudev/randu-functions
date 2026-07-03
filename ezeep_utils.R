@@ -79,8 +79,8 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            #printer_id <- "66f42ece-6c51-4968-a05a-d579750de4a2"
            # paper_id <- 259
            # paper_name <- "medianas"
-           paper_id <- 257
-           paper_name <- "2 x 4"
+           paper_id <- 260
+           paper_name <- "mediana"
            orientation <- 1
          },
          'impresora_empaque_ligero'={
