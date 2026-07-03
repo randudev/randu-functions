@@ -61,7 +61,7 @@ ezeep_getactivetoken <- function(){
   validat
 }
 
-ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=NULL,orientacion=1){
+ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=NULL,orientacion=1,type="pdf"){
   switch(printername,
          'impresora_rosa'={
            #printer_id <- "1f0763ce-3112-4c5d-929c-800354d6ca83"
@@ -74,9 +74,9 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            #printer_id <- "e2e15ccf-7674-475b-9a86-9f1e5b1eb495"
            #printer_id <- "f7abe3c0-0623-43e3-bda9-694d69df71dc"
            #printer_id <- "d8e483c8-fc68-4fc5-a8ab-dc6699704797"
-           #printer_id <- "8d364845-8637-45ad-a6f9-f78810d30a29"
+           printer_id <- "8d364845-8637-45ad-a6f9-f78810d30a29"
            #printer_id <- "7843711d-3674-496b-a245-4bea92bdd3f0"
-           printer_id <- "66f42ece-6c51-4968-a05a-d579750de4a2"
+           #printer_id <- "66f42ece-6c51-4968-a05a-d579750de4a2"
            paper_id <- 259
            paper_name <- "medianas"
            orientation <- 1
@@ -124,7 +124,7 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
   jsonbody <- paste0('{
     "fileurl": "',urltoprint,'",
     "printerid": "',printer_id,'",
-    "type": "pdf",
+    "type": "',type,'",
     "properties": {
         "color": false,
         "copies": ',copies,',
@@ -141,15 +141,37 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
   if(!is.null(rango)){
     body$properties <- append(body$properties,list("pageRanges"=rango))
   }
-  resp <- request("https://printapi.ezeep.com/sfapi/Print/") %>% 
-    req_method("POST") %>% 
-    # req_headers('Content-type'='application/x-www-form-urlencoded') %>% 
-    req_headers('Content-type'='application/json') %>% 
-    req_headers('Authorization'=paste0('Bearer ',ezeep_at)) %>% 
-    req_body_json(body) %>% 
-    req_timeout(30) %>%  
-    req_error(is_error = function(resp) FALSE) %>%
-    req_perform() 
+  resp <- tryCatch({
+    
+    request("https://printapi.ezeep.com/sfapi/Print/") %>% 
+      req_method("POST") %>% 
+      req_headers('Content-type'='application/json') %>% 
+      req_headers('Authorization'=paste0('Bearer ',ezeep_at)) %>% 
+      req_body_json(body) %>% 
+      req_timeout(30) %>%  
+      req_error(is_error = function(resp) FALSE) %>%
+      req_perform()
+    
+  }, error = function(e){
+    
+    mensaje <- paste0(
+      "Error imprimiendo en Ezeep: ",
+      e$message
+    )
+    
+    print(mensaje)
+    
+    enviar_mensaje_slack(
+      Sys.getenv("SLACK_ERROR_URL"),
+      mensaje
+    )
+    
+    return(NULL)
+  })
+  if(is.null(resp)){
+    return(list())
+  }
+  
   if(last_response()$status_code %in% c(199:299)){
     return(resp %>% resp_body_json())
   }else{
