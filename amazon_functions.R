@@ -92,8 +92,14 @@ register_amzorder_in_airtable <- function(amz_order,canal){
     'ventas_producto'=lineitems_recordid,
     'id_origen'=amz_order$payload$AmazonOrderId
   )
+  if("EasyShipShipmentStatus" %in% names(amz_order$payload)){
+    fieldslist$comentarios <- paste0("Easy Ship: ",amz_order$payload$EasyShipShipmentStatus)
+  }
   if(!is.null(shippingaddress_recordid)){
     fieldslist <- append(fieldslist,list("direccion_envio"=list(shippingaddress_recordid)))
+  }
+  if(amz_order$payload$OrderStatus=="Canceled"){
+    fieldslist$cancelada <- T
   }
   newov_content  <- airtable_createrecord(fieldslist, "ordenes_venta", "appofqh5EnlVGAtn2")
   return(newov_content)
@@ -371,7 +377,7 @@ register_amzorder_in_airtable_v2026 <- function(amz_order,canal,comentario=NULL)
   #shippingaddress_recordid <- amz_register_address_v2026(amz_order)
   
   fieldslist <- list(
-    'fecha'=amz_order$order$createdTime,
+    'fecha'=amz_order$order$createdTime-6*3600,
     'canal_venta'=canal,
     'ventas_producto'=lineitems_recordid,
     'id_origen'=amz_order$order$orderId
