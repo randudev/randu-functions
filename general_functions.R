@@ -169,7 +169,16 @@ registrar_producto <- function(producto,venta_producto){
               fields <- append(fields,list('prioridad'="1 - Media"))
             }
             if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
-              fields <- append(fields,list('prioridad'="7 - Extrema"))
+              if(!is.null(orden_venta$fields$comentarios)){
+                if(str_detect(orden_venta$fields$comentarios, "Easy Ship")){
+                  fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
+                }
+                else{
+                  fields <- append(fields,list('prioridad'="7 - Extrema"))
+                }
+              }else{
+                fields <- append(fields,list('prioridad'="7 - Extrema"))
+              }
             }
             if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
               fields <- append(fields,list('prioridad'="7 - Extrema"))
@@ -329,7 +338,16 @@ registrar_producto <- function(producto,venta_producto){
                   fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="1 - Media"))
                 }
                 if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
-                  fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
+                  if(!is.null(orden_venta$fields$comentarios)){
+                    if(str_detect(orden_venta$fields$comentarios, "Easy Ship")){
+                      fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 12"))
+                    }
+                    else{
+                      fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
+                    }
+                  }else{
+                    fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
+                  }
                 }
                 if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
                   fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
@@ -502,7 +520,16 @@ registrar_producto <- function(producto,venta_producto){
             fields <- append(fields,list('prioridad'="1 - Media"))
           }
           if(orden_venta$fields$canal_venta=="amazonrnd" | orden_venta$fields$canal_venta=="amazonasm"){
-            fields <- append(fields,list('prioridad'="7 - Extrema"))
+            if(!is.null(orden_venta$fields$comentarios)){
+              if(str_detect(orden_venta$fields$comentarios, "Easy Ship")){
+                fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
+              }
+              else{
+                fields <- append(fields,list('prioridad'="7 - Extrema"))
+              }
+            }else{
+              fields <- append(fields,list('prioridad'="7 - Extrema"))
+            }
           }
           if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
             fields <- append(fields,list('prioridad'="7 - Extrema"))
