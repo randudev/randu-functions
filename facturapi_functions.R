@@ -427,6 +427,10 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
     }
     
   }
+  items_orden <- lapply(items_orden, function(x) {
+    x$nombre <- paste(id_orden, x$nombre)
+    x
+  })
   return(items_orden)
 }
 
