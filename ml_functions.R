@@ -185,7 +185,7 @@ get_ml_shipments <- function(id,ml_token){
                         id)
   
   mlshipment <- request(shipmenturl) %>%
-    req_auth_bearer_token(mltoken) %>%
+    req_auth_bearer_token(ml_token) %>%
     req_headers(accept= "application/json") %>%
     req_headers("x-format-new"=TRUE) %>% 
     req_headers('content-type' = 'application/x-www-form-urlencoded') %>%
@@ -1506,6 +1506,9 @@ ml_full_saldo_inicial <- function(){
   for(i in 1:length(publicaciones_full)){
     if(length(publicaciones_full[[i]]$fields$product_id)!=0){
       item <- buscar_primera_por_valor(items,publicaciones_full[[i]]$fields$product_id)
+      if(is.null(item)){
+        next
+      }
       cantidad <- item$available_quantity
       sku <- publicaciones_full[[i]]$fields$producto
       if(is.null(sku)){
@@ -1754,6 +1757,10 @@ ml_registrar_facturas <- function(noti_invoices){
                                                         ,",id_ordenes_venta))"))
           if(length(orden_venta)!=0){
             uuid_mkp <- invoice[["attributes"]][["receipt"]]
+            if(is.null(uuid_mkp)){
+              mensaje <- paste0()
+              supabase_update(fila$id,list("procesada"=TRUE))
+            }
             if(length(orden_venta[[1]]$fields$factura_marketplace)==0){
               
               airtable_updatesinglerecord(list("factura_marketplace"=uuid_mkp),"ordenes_venta",

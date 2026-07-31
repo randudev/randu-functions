@@ -140,7 +140,9 @@ registrar_producto <- function(producto,venta_producto){
             "origen"="pedido",
             "fecha_solicitud"=Sys.time()-6*3600
           )
-          
+          if(str_detect(producto$fields$id_productos,"tablero")&length(producto$fields$archivo_cnc_corte)!=0){
+            fields$guias_verificadas <- T
+          }
           if(orden_venta$fields$canal_venta=="mercadolibrernd"){
             ml_token <- get_active_token()
             ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
@@ -310,7 +312,9 @@ registrar_producto <- function(producto,venta_producto){
                     fields[[length(fields)]]$origen <- "empaque CNC"
                   }
                 }
-                
+                if(str_detect(parte_producto$fields$id_productos,"tablero")&length(parte_producto$fields$archivo_cnc_corte)!=0){
+                  fields[[length(fields)]]$guias_verificadas <- T
+                }
                 if(orden_venta$fields$canal_venta=="mercadolibrernd"){
                   ml_token <- get_active_token()
                   ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
@@ -539,6 +543,9 @@ registrar_producto <- function(producto,venta_producto){
           }
           if(orden_venta$fields$canal_venta=="directa"){
             fields <- append(fields,list('prioridad'="1 - Media"))
+          }
+          if(str_detect(producto$fields$id_productos,"tablero")&length(producto$fields$archivo_cnc_corte)!=0){
+            fields$guias_verificadas <- T
           }
           aux <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
           

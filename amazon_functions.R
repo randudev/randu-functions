@@ -795,3 +795,47 @@ subir_publicaciones_amazon <- function(item_amz,canal){
   }
   return(fields)
 }
+
+get_easyship_package_byid <- function(orderid, marketplaceId, amz_token){
+  
+  order_url <- paste0(
+    "https://sellingpartnerapi-na.amazon.com/easyShip/2022-03-23/package",
+    "?amazonOrderId=", orderid,
+    "&marketplaceId=", marketplaceId
+  )
+  
+  order_response <- request(order_url) %>%
+    req_headers(
+      Authorization = paste("Bearer", amz_token),
+      "x-amz-access-token" = amz_token,
+      accept = "application/json"
+    ) %>%
+    req_perform() %>%
+    resp_body_json()
+  
+  return(order_response)
+}
+
+dar_baja_easyship <- function(){
+  ordenes_amazon <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                            "AND(canal_venta='amazonasm',cancelada='',pendiente_envio>0,FIND('Easy Ship',comentarios))")
+  amz_token_am <- amz_get_active_token("recMNZ3uARMZRBMnz")
+  for(orden in ordenes_amazon){
+    amz_order <- get_amzorder_byid(orden$fields$id_origen,amz_token_am)
+    if(amz_order$payload$OrderStatus != "Shipped"){
+      print("HOLA")
+      next
+    }
+    # transaccion <- airtable_getrecorddata_byid(orden$fields$transacciones_almacen[[1]],"transacciones_almacen",
+    #                                            Sys.getenv("AIRTABLE_CES_BASE"))
+    transacciones <- airtable_getrecordslist("transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"),
+                                             paste0("AND(FIND('",orden$fields$id_ordenes_venta,"',orden_venta),tipo='reserva')"))
+    if(length(transacciones)!=0){
+      for(transaccion in transacciones){
+        airtable_updatesinglerecord(list("tipo"="baja"),"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"),transaccion$id)
+        airtable_updatesinglerecord(list("pendiente_envio"=0),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),transaccion$fields$ventas_producto[[1]])
+      }
+    }
+    print(orden$fields$id_origen)
+  }
+}
