@@ -500,13 +500,23 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
         }
         
         if(str_detect(tolower(cuerpo$event$text),"activar")){
+          aux_productos_pieza <- list()
+          if(length(producto$fields$piezas_producto)!=0){
+            producto_pieza <- airtable_getrecordslist("piezas_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{pieza})"))
+            aux_productos_pieza <- sapply(producto_pieza,function(x){
+              res <- airtable_getrecorddata_byid(x$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+            },simplify = F) %>% compact()
+            
+          }
           if(length(producto$fields$pertence_paquetes)!=0){
-            producto_partes <- airtable_getrecordslist("paquetes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{parte})"))
+            producto_partes <- airtable_getrecordslist("paquetes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{paquete})"))
             if(length(producto_partes)!=0){
               aux_productos_parte <- sapply(producto_partes,function(x){
                 res <- airtable_getrecorddata_byid(x$fields$productos[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
               },simplify = F) %>% compact()
-              
+              if(length(aux_productos_pieza)!=0){
+                aux_productos_parte <- append(aux_productos_parte,aux_productos_pieza)
+              }
               publicaciones_amazon <- lapply(aux_productos_parte, function(x) {
                 res <- airtable_getrecordslist(
                   "publicaciones",
@@ -540,6 +550,64 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
                   }
                 }
                 mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Amazon")
+              }
+              
+              publicaciones_amazon_am <- airtable_getrecordslist(
+                "publicaciones",
+                Sys.getenv("AIRTABLE_CES_BASE"),
+                paste0(
+                  "AND(canal='amazon asia mayoreo',",
+                  "status!='',",
+                  "tipo_envio!='Fulfillment by marketplace',",
+                  "FIND('", producto$fields$id_productos, "',{producto}))"
+                )
+              )
+              
+              if(length(publicaciones_amazon_am) != 0){
+                
+                amz_token_am <- amz_get_active_token("recMNZ3uARMZRBMnz")
+                
+                for(publi_amz in publicaciones_amazon_am){
+                  
+                  item_amz <- amz_getitems(
+                    amz_token_am,
+                    Sys.getenv("SELLERID_AMZ_AM"),
+                    publi_amz$fields$product_id
+                  )
+                  
+                  if(length(item_amz$fulfillmentAvailability) != 0){
+                    
+                    if(length(item_amz$fulfillmentAvailability[[1]]$quantity) != 0){
+                      
+                      if(item_amz$fulfillmentAvailability[[1]]$quantity > 0){
+                        
+                        amazon_update_listing(
+                          amz_token_am,
+                          Sys.getenv("SELLERID_AMZ_AM"),
+                          item_amz$sku,
+                          "0"
+                        )
+                        
+                        if(!last_response()$status_code %in% c(199:299)){
+                          
+                          mensaje_amz <- paste0(
+                            "Ocurrio un error al pausar el item: ",
+                            item_amz$sku,
+                            "\nError: ",
+                            last_response()$status_code,
+                            "\n Body: ",
+                            last_response() %>% resp_body_string()
+                          )
+                          
+                          enviar_mensaje_slack(
+                            Sys.getenv("SLACK_ERROR_URL"),
+                            mensaje_amz
+                          )
+                        }
+                      }
+                    }
+                  }
+                }
               }
               
               
@@ -592,71 +660,132 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
             }
             
           }else{
-            publicaciones_amazon <- airtable_getrecordslist(
-              "publicaciones",
-              Sys.getenv("AIRTABLE_CES_BASE"),
-              paste0("AND(canal='amazon randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
-                     producto$fields$id_productos, "',{producto}))"))
-            if(length(publicaciones_amazon)!=0){
-              for(publi_amz in publicaciones_amazon){
-                item_amz <- amz_getitems(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),publi_amz$fields$product_id)
-                if(length(item_amz$fulfillmentAvailability)!=0){
-                  if(length(item_amz$fulfillmentAvailability[[1]]$quantity)!=0){
-                    if(item_amz$fulfillmentAvailability[[1]]$quantity==0){
-                      amazon_update_listing(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),item_amz$sku,"25")
+            if(length(aux_productos_pieza)==0){
+              publicaciones_amazon <- airtable_getrecordslist(
+                "publicaciones",
+                Sys.getenv("AIRTABLE_CES_BASE"),
+                paste0("AND(canal='amazon randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+                       producto$fields$id_productos, "',{producto}))"))
+              if(length(publicaciones_amazon)!=0){
+                for(publi_amz in publicaciones_amazon){
+                  item_amz <- amz_getitems(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),publi_amz$fields$product_id)
+                  if(length(item_amz$fulfillmentAvailability)!=0){
+                    if(length(item_amz$fulfillmentAvailability[[1]]$quantity)!=0){
+                      if(item_amz$fulfillmentAvailability[[1]]$quantity==0){
+                        amazon_update_listing(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),item_amz$sku,"25")
+                        if(!last_response()$status_code %in% c(199:299)){
+                          mensaje_amz <- paste0("Ocurrio un error al pausar el item: ",item_amz$sku,"\nError: ",
+                                                last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_amz)
+                        }
+                      }
+                    }
+                  }
+                  
+                }
+                mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Amazon")
+              }
+              
+              publicaciones_ml <- airtable_getrecordslist(
+                "publicaciones",
+                Sys.getenv("AIRTABLE_CES_BASE"),
+                paste0("AND(canal='mercadolibre randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+                       producto$fields$id_productos, "',{producto}))"))
+              if(length(publicaciones_ml)!=0){
+                for(publi_ml in publicaciones_ml){
+                  item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
+                  if(item_ml$available_quantity<=0){
+                    item_aux <- ml_stock_item(item_ml$id,ml_token,10)
+                    if(item_aux$status=="active"){
+                      next
+                    }
+                  }
+                  if(!is.null(item_ml$status)){
+                    if(item_ml$status=="paused"){
+                      ml_status_item(item_ml$id,ml_token,"active")
                       if(!last_response()$status_code %in% c(199:299)){
-                        mensaje_amz <- paste0("Ocurrio un error al pausar el item: ",item_amz$sku,"\nError: ",
-                                              last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
-                        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_amz)
+                        mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
+                                             last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_ml)
                       }
                     }
                   }
                 }
-                
-              }
-              mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Amazon")
-            }
-            
-            publicaciones_ml <- airtable_getrecordslist(
-              "publicaciones",
-              Sys.getenv("AIRTABLE_CES_BASE"),
-              paste0("AND(canal='mercadolibre randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
-                     producto$fields$id_productos, "',{producto}))"))
-            if(length(publicaciones_ml)!=0){
-              for(publi_ml in publicaciones_ml){
-                item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
-                if(item_ml$available_quantity<=0){
-                  item_aux <- ml_stock_item(item_ml$id,ml_token,10)
-                  if(item_aux$status=="active"){
-                    next
-                  }
+                if(mensaje_confirmacion!=''){
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion," y Mercado Libre exitosamente")
+                }else{
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Mercado Libre")
                 }
-                if(!is.null(item_ml$status)){
-                  if(item_ml$status=="paused"){
-                    ml_status_item(item_ml$id,ml_token,"active")
-                    if(!last_response()$status_code %in% c(199:299)){
-                      mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
-                                           last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
-                      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_ml)
+              }
+            }
+            else{
+              aux_productos_parte <- aux_productos_pieza
+              publicaciones_ml <- lapply(aux_productos_parte, function(x) {
+                res <- airtable_getrecordslist(
+                  "publicaciones",
+                  Sys.getenv("AIRTABLE_CES_BASE"),
+                  paste0("AND(canal='mercadolibre randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+                         x$fields$id_productos, "',{producto}))")
+                )
+                if (length(res) == 0 || is.null(res)) return(NULL)
+                return(res)
+              })
+              
+              publicaciones_ml <- Filter(Negate(is.null), publicaciones_ml)
+              
+              publicaciones_ml <- unlist(publicaciones_ml, recursive = FALSE)
+              
+              ml_token <- get_active_token()
+              if(length(publicaciones_ml)!=0){
+                for(publi_ml in publicaciones_ml){
+                  item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
+                  if(!is.null(item_ml$status)){
+                    if(!is.null(item_ml$available_quantity) ){
+                      if(item_ml$available_quantity<=0){
+                        item_aux <- ml_stock_item(item_ml$id,ml_token,10)
+                        if(item_aux$status=="active"){
+                          next
+                        }
+                      }
+                    }
+                    if(item_ml$status=="paused"){
+                      ml_status_item(item_ml$id,ml_token,"active")
+                      if(!last_response()$status_code %in% c(199:299)){
+                        mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
+                                             last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_ml)
+                      }
                     }
                   }
                 }
+                if(mensaje_confirmacion!=''){
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion," y Mercado Libre exitosamente")
+                }else{
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Mercado Libre")
+                }
               }
-              if(mensaje_confirmacion!=''){
-                mensaje_confirmacion <- paste0(mensaje_confirmacion," y Mercado Libre exitosamente")
-              }else{
-                mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Mercado Libre")
-              }
+              
             }
           }
         }
         if(str_detect(tolower(cuerpo$event$text),"pausar")){
+          aux_productos_pieza <- list()
+          if(length(producto$fields$piezas_producto)!=0){
+            producto_pieza <- airtable_getrecordslist("piezas_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{pieza})"))
+            aux_productos_pieza <- sapply(producto_pieza,function(x){
+              res <- airtable_getrecorddata_byid(x$fields$producto[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
+            },simplify = F) %>% compact()
+            
+          }
           if(length(producto$fields$pertenece_paquetes)!=0){
-            producto_partes <- airtable_getrecordslist("paquetes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{parte})"))
+            producto_partes <- airtable_getrecordslist("paquetes_producto",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",producto$fields$id_productos,"',{paquete})"))
             if(length(producto_partes)!=0){
               aux_productos_parte <- sapply(producto_partes,function(x){
                 res <- airtable_getrecorddata_byid(x$fields$productos[[1]],"productos",Sys.getenv("AIRTABLE_CES_BASE"))
               },simplify = F) %>% compact()
+              if(length(aux_productos_pieza)!=0){
+                aux_productos_parte <- append(aux_productos_parte,aux_productos_pieza)
+              }
               
               publicaciones_amazon <- lapply(aux_productos_parte, function(x) {
                 res <- airtable_getrecordslist(
@@ -735,56 +864,98 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
             }
             
           }else{
-            publicaciones_amazon <- airtable_getrecordslist(
-              "publicaciones",
-              Sys.getenv("AIRTABLE_CES_BASE"),
-              paste0("AND(canal='amazon randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
-                     producto$fields$id_productos, "',{producto}))"))
-            if(length(publicaciones_amazon)!=0){
-              for(publi_amz in publicaciones_amazon){
-                item_amz <- amz_getitems(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),publi_amz$fields$product_id)
-                if(length(item_amz$fulfillmentAvailability)!=0){
-                  if(length(item_amz$fulfillmentAvailability[[1]]$quantity)!=0){
-                    if(item_amz$fulfillmentAvailability[[1]]$quantity>0){
-                      amazon_update_listing(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),item_amz$sku,"0")
+            if(length(aux_productos_pieza)==0){
+              publicaciones_amazon <- airtable_getrecordslist(
+                "publicaciones",
+                Sys.getenv("AIRTABLE_CES_BASE"),
+                paste0("AND(canal='amazon randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+                       producto$fields$id_productos, "',{producto}))"))
+              if(length(publicaciones_amazon)!=0){
+                for(publi_amz in publicaciones_amazon){
+                  item_amz <- amz_getitems(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),publi_amz$fields$product_id)
+                  if(length(item_amz$fulfillmentAvailability)!=0){
+                    if(length(item_amz$fulfillmentAvailability[[1]]$quantity)!=0){
+                      if(item_amz$fulfillmentAvailability[[1]]$quantity>0){
+                        amazon_update_listing(amz_token,Sys.getenv("SELLERID_AMZ_RANDU"),item_amz$sku,"0")
+                        if(!last_response()$status_code %in% c(199:299)){
+                          mensaje_amz <- paste0("Ocurrio un error al pausar el item: ",item_amz$sku,"\nError: ",
+                                                last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                          enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_amz)
+                        }
+                      }
+                    }
+                  }
+                  
+                }
+                mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se pausaron las publicaciones de Amazon")
+              }
+              
+              publicaciones_ml <- airtable_getrecordslist(
+                "publicaciones",
+                Sys.getenv("AIRTABLE_CES_BASE"),
+                paste0("AND(canal='mercadolibre randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+                       producto$fields$id_productos, "',{producto}))"))
+              if(length(publicaciones_ml)!=0){
+                for(publi_ml in publicaciones_ml){
+                  item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
+                  if(!is.null(item_ml$status)){
+                    if(item_ml$status=="active"){
+                      ml_status_item(item_ml$id,ml_token,"paused")
                       if(!last_response()$status_code %in% c(199:299)){
-                        mensaje_amz <- paste0("Ocurrio un error al pausar el item: ",item_amz$sku,"\nError: ",
-                                              last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
-                        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_amz)
+                        mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
+                                             last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_ml)
                       }
                     }
                   }
                 }
-                
+                if(mensaje_confirmacion!=''){
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion," y Mercado Libre exitosamente")
+                }else{
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Mercado Libre")
+                }
               }
-              mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se pausaron las publicaciones de Amazon")
-            }
-            
-            publicaciones_ml <- airtable_getrecordslist(
-              "publicaciones",
-              Sys.getenv("AIRTABLE_CES_BASE"),
-              paste0("AND(canal='mercadolibre randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
-                     producto$fields$id_productos, "',{producto}))"))
-            if(length(publicaciones_ml)!=0){
-              for(publi_ml in publicaciones_ml){
-                item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
-                if(!is.null(item_ml$status)){
-                  if(item_ml$status=="active"){
-                    ml_status_item(item_ml$id,ml_token,"paused")
-                    if(!last_response()$status_code %in% c(199:299)){
-                      mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
-                                           last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
-                      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_ml)
+            }else{
+              aux_productos_parte <- aux_productos_pieza
+              publicaciones_ml <- lapply(aux_productos_parte, function(x) {
+                res <- airtable_getrecordslist(
+                  "publicaciones",
+                  Sys.getenv("AIRTABLE_CES_BASE"),
+                  paste0("AND(canal='mercadolibre randu',status!='',tipo_envio!='Fulfillment by marketplace',FIND('", 
+                         x$fields$id_productos, "',{producto}))")
+                )
+                if (length(res) == 0 || is.null(res)) return(NULL)
+                return(res)
+              })
+              
+              publicaciones_ml <- Filter(Negate(is.null), publicaciones_ml)
+              
+              publicaciones_ml <- unlist(publicaciones_ml, recursive = FALSE)
+              
+              ml_token <- get_active_token()
+              if(length(publicaciones_ml)!=0){
+                for(publi_ml in publicaciones_ml){
+                  item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
+                  if(!is.null(item_ml$status)){
+                    if(item_ml$status=="active"){
+                      ml_status_item(item_ml$id,ml_token,"paused")
+                      if(!last_response()$status_code %in% c(199:299)){
+                        mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
+                                             last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
+                        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje_ml)
+                      }
                     }
                   }
                 }
+                if(mensaje_confirmacion!=''){
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion," y Mercado Libre exitosamente")
+                }else{
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Mercado Libre exitosamente")
+                }
               }
-              if(mensaje_confirmacion!=''){
-                mensaje_confirmacion <- paste0(mensaje_confirmacion," y Mercado Libre exitosamente")
-              }else{
-                mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Mercado Libre")
-              }
+              
             }
+            
           }
         }
         if(mensaje_confirmacion!=''){
