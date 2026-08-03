@@ -1097,23 +1097,43 @@ crear_factura <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago
     fecha_ori <- ymd_hms(fecha)-6*3600
     
     ahora <- Sys.time()-6*3600
-    if(month(ahora) == month(fecha_ori)){
-      if (difftime(ahora, fecha_ori, units = "hours") > 72) {
-        fecha_final <- ahora
+    # if(month(ahora) == month(fecha_ori)){
+    #   if (difftime(ahora, fecha_ori, units = "hours") > 72) {
+    #     fecha_final <- ahora
+    #     
+    #     # Si cambió de mes
+    #     if (month(fecha_final) != month(fecha_ori) ||
+    #         year(fecha_final) != year(fecha_ori)) {
+    #       
+    #       fecha_final <- ultimo_dia_mes_anterior(Sys.Date())+1800
+    #     }
+    #   } else {
+    #     fecha_final <- fecha_ori
+    #   }
+    #   
+    #   recibo_lista$date <- fecha_final
+    #   
+    # }
+    
+    ahora <- Sys.time() - 6 * 3600
+    
+    if (difftime(ahora, fecha_ori, units = "hours") > 72) {
+      
+      fecha_final <- ahora
+      
+      if (month(fecha_final) != month(fecha_ori) ||
+          year(fecha_final) != year(fecha_ori)) {
         
-        # Si cambió de mes
-        if (month(fecha_final) != month(fecha_ori) ||
-            year(fecha_final) != year(fecha_ori)) {
-          
-          fecha_final <- ultimo_dia_mes_anterior(Sys.Date())+1800
-        }
-      } else {
-        fecha_final <- fecha_ori
+        fecha_final <- ultimo_dia_mes_anterior(Sys.Date()) + 1800
       }
       
-      recibo_lista$date <- fecha_final
+    } else {
+      
+      fecha_final <- fecha_ori
       
     }
+    
+    recibo_lista$date <- fecha_final
     
     factura_year <- year(fecha_final)
     # months <- sprintf("%02d", month(Sys.Date()))
