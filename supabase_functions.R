@@ -29,14 +29,14 @@ supabase_createrecord <- function(fields, tablename="", base_id="",apikey=Sys.ge
   
 }
 
-supabase_update <- function(id,fieldslist, tablename="", base_id="",apikey=Sys.getenv("AUTH_SUPABASE_DEV")){
+supabase_update <- function(id,fieldslist, tablename="", base_id="",apikey=Sys.getenv("AUTH_SUPABASE_DEV"),index="id"){
   if(base_id!=""){
     url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tablename)
   }else{
     url_supabase <- Sys.getenv("URL_SUPABASE_DEV")
   }
   ids <- paste0("(", paste(id, collapse = ","),")")
-  url_supabase <- paste0(url_supabase,'?id=in.',ids)
+  url_supabase <- paste0(url_supabase,'?',index,'=in.',ids)
  
   res<-request(url_supabase) %>% 
     req_method("PATCH") %>% 
@@ -83,8 +83,13 @@ supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="",api
       pagina_url <- paste0(pagina_url, "&order=id.asc")
     }
   
-    if (fields!="") {
-      pagina_url <- paste0(pagina_url, "&select=", paste(fields, collapse = ","))
+    if (length(fields) > 1 || fields!="") {
+      if(str_detect(pagina_url,"\\?")){
+        pagina_url <- paste0(pagina_url, "&select=", paste(fields, collapse = ","))
+      }else{
+        pagina_url <- paste0(pagina_url, "?select=", paste(fields, collapse = ","))
+      }
+      
     }
     response <- request(pagina_url) %>%
       req_method("GET") %>% 
