@@ -17,7 +17,7 @@ supabase_createrecord <- function(fields, tablename="", base_id="",apikey=Sys.ge
         req_method("POST") %>%
         req_headers('apikey'=apikey) %>%
         req_headers('Content-type'='application/json') %>%
-        req_headers('Prefer'='return=minimal') %>%
+        req_headers('Prefer'="return=representation") %>%
         req_body_json(fields) %>%
         req_error(is_error = function(resp) FALSE) %>%
         req_perform()
@@ -42,14 +42,14 @@ supabase_update <- function(id,fieldslist, tablename="", base_id="",apikey=Sys.g
     req_method("PATCH") %>% 
     req_headers("apikey"=apikey,
                 "Content-Type" = "application/json") %>%
-    req_headers('Prefer'= 'return=merge-duplicates') %>% 
+    req_headers('Prefer'= 'return=representation') %>% 
     req_body_json(fieldslist) %>%
     req_error(is_error = function(resp) FALSE) %>%
     req_perform()  
   if(!last_response()$status_code %in% c(199:299)){
     print(paste0("La fila ",id," no se modifico exitosamente"))
   }else{
-    return(NULL)
+    return(res %>% resp_body_json())
   } 
 }
 
@@ -137,8 +137,8 @@ supabase_updates <- function(id,fieldslist, tablename="", base_id="",apikey=Sys.
   }
 }
 
-supabase_update_sql <- function(sql,service_role_key){
-  res <- request(paste0("https://", base_id, ".supabase.co/rest/v1/rpc/execute_sql")) %>%
+supabase_update_sql <- function(sql,base_id,service_role_key){
+  res <- request(paste0("https://", base_id, ".supabase.co/rest/v1/rpc/query_sql")) %>%
     req_method("POST") %>%
     req_headers(
       "Authorization" = paste("Bearer", service_role_key),
@@ -147,5 +147,6 @@ supabase_update_sql <- function(sql,service_role_key){
     ) %>%
     req_body_json(list(sql = sql)) %>%
     req_error(is_error = function(resp) FALSE) %>%
-    req_perform()
+    req_perform() %>% 
+    resp_body_json()
 } 

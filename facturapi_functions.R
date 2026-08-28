@@ -611,7 +611,7 @@ registrar_recibo <- function(recibo,orden_venta=NULL){
   }
 }
 
-registrar_factura <-function(factura,orden_venta) {
+registrar_factura <-function(factura,orden_venta,orden_supabase=list()) {
   if (length(factura) != 0 ) {
     pagada <- FALSE
     if(factura$amount_due==0){
@@ -732,6 +732,23 @@ registrar_factura <-function(factura,orden_venta) {
       fields_factura <- append(fields_factura,list('folio'=as.character(factura$folio_number)))
     }
     resp <- airtable_createrecord(fields_factura,"cfdi",Sys.getenv("AIRTABLE_CES_BASE"))
+    if(length(orden_supabase)!=0){
+      fields_factura$record_id <- resp$id
+      fields_factura$id_cfdi <- resp$fields$id_cfdi
+      fields_factura$autonumber <- resp$fields$autonumber
+      resp_supabase <- supabase_createrecord(fields_factura,"cfdi",Sys.getenv("SUPABASE_BASE_ID_CES"),
+                                             Sys.getenv("AUTH_SUPABASE_CES"))
+      resp_supabase <- resp_supabase %>% resp_body_json()
+      if(!last_response()$status_code %in% c(199:299)){
+        actualizar <- list(ordenes_venta_id=orden_supabase[[1]]$id_auto,cfdi_id=resp_supabase[[1]]$id_auto)
+        supabase_createrecord(
+          fields = actualizar,
+          tablename = "_nc_m2m_ordenes_venta_cfdi",
+          base_id = Sys.getenv("SUPABASE_BASE_ID_CES"),apikey = Sys.getenv("SUPABASE_SECRET_ROLE")
+        )
+      }
+    }
+    
     # recibos <- facturapi_obtener_recibos(Sys.getenv("FACTURAPI_KEY"),,paste0("external_id=",factura$external_id))
      id_recibo <- ""
     # for(recibo in recibos){
@@ -753,6 +770,12 @@ registrar_factura <-function(factura,orden_venta) {
       if(pdf$status_code %in% c(199:299)){
         writeBin(pdf$body, paste0("~/facturas/",factura$uuid,".pdf"))
         airtable_subir_pdf(resp$id,paste0("~/facturas/",factura$uuid,".pdf"),"pdf_file",Sys.getenv("AIRTABLE_CES_BASE"),"pdf")
+        
+        if(length(orden_supabase)!=0){
+          url <- subir_s3(factura$uuid,pdf$body,"pdf","cfdi/pdf_file")
+          supabase_update(resp_supabase[[1]]$id_auto,list("pdf_file"=url),"cfdi",Sys.getenv("SUPABASE_BASE_ID_CES"),
+                          Sys.getenv("AUTH_SUPABASE_CES"),index = "id_auto")
+        }
         break
       }
       if(i>=10){
@@ -768,6 +791,11 @@ registrar_factura <-function(factura,orden_venta) {
       if(xml$status_code %in% c(199:299)){
         writeBin(xml$body, paste0("~/facturas/",factura$uuid,".xml"))
         airtable_subir_pdf(resp$id,paste0("~/facturas/",factura$uuid,".xml"),"xml_file",Sys.getenv("AIRTABLE_CES_BASE"),"xml")
+        if(length(orden_supabase)!=0){
+          url_xml <- subir_s3(factura$uuid,xml$body,"xml","cfdi/xml_file")
+          supabase_update(resp_supabase[[1]]$id_auto,list("xml_file"=url_xml),"cfdi",Sys.getenv("SUPABASE_BASE_ID_CES"),
+                          Sys.getenv("AUTH_SUPABASE_CES"),index = "id_auto")
+        }
         break
       }
       if(i>=10){
