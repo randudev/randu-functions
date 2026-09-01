@@ -773,10 +773,7 @@ registrar_factura <-function(factura,orden_venta,orden_supabase=list()) {
         airtable_subir_pdf(resp$id,paste0("~/facturas/",factura$uuid,".pdf"),"pdf_file",Sys.getenv("AIRTABLE_CES_BASE"),"pdf")
         
         if(length(orden_supabase)!=0){
-          print(pdf$body)
-          print(class(pdf$body))
-          print(typeof(pdf$body))
-          print(length(pdf$body))
+          
           url <- subir_s3(factura$uuid,pdf$body,"pdf","cfdi/pdf_file")
           supabase_update(resp_supabase[[1]]$id_auto,list("pdf_file"=url),"cfdi",Sys.getenv("SUPABASE_BASE_ID_CES"),
                           Sys.getenv("AUTH_SUPABASE_CES"),index = "id_auto")
