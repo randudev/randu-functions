@@ -739,14 +739,14 @@ registrar_factura <-function(factura,orden_venta,orden_supabase=list()) {
       resp_supabase <- supabase_createrecord(fields_factura,"cfdi",Sys.getenv("SUPABASE_BASE_ID_CES"),
                                              Sys.getenv("AUTH_SUPABASE_CES"))
       resp_supabase <- resp_supabase %>% resp_body_json()
-      if(!last_response()$status_code %in% c(199:299)){
+      if(last_response()$status_code %in% c(199:299)){
         actualizar <- list(ordenes_venta_id=orden_supabase[[1]]$id_auto,cfdi_id=resp_supabase[[1]]$id_auto)
         supabase_createrecord(
           fields = actualizar,
           tablename = "_nc_m2m_ordenes_venta_cfdi",
           base_id = Sys.getenv("SUPABASE_BASE_ID_CES"),apikey = Sys.getenv("SUPABASE_SECRET_ROLE")
         )
-        print(last_response())
+        #print(last_response())
       }
     }
     
@@ -773,6 +773,10 @@ registrar_factura <-function(factura,orden_venta,orden_supabase=list()) {
         airtable_subir_pdf(resp$id,paste0("~/facturas/",factura$uuid,".pdf"),"pdf_file",Sys.getenv("AIRTABLE_CES_BASE"),"pdf")
         
         if(length(orden_supabase)!=0){
+          print(pdf$body)
+          print(class(pdf$body))
+          print(typeof(pdf$body))
+          print(length(pdf$body))
           url <- subir_s3(factura$uuid,pdf$body,"pdf","cfdi/pdf_file")
           supabase_update(resp_supabase[[1]]$id_auto,list("pdf_file"=url),"cfdi",Sys.getenv("SUPABASE_BASE_ID_CES"),
                           Sys.getenv("AUTH_SUPABASE_CES"),index = "id_auto")

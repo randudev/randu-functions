@@ -1259,7 +1259,7 @@ subir_s3 <- function(id_shipping,response_envio,tipo,carpeta){
   bucket_name <- "processmediacesrir"
   object_name <- paste0(carpeta,"/",id_shipping,".",tipo)
 
-  put_object(what  = response_envio,bucket = bucket_name, object = object_name,acl = "public-read")
+  put_object(file  = response_envio,bucket = bucket_name, object = object_name,acl = "public-read")
   print("El archivo se ha subido exitosamente a S3.")
   url <- paste0("https://processmediacesrir.s3.us-west-2.amazonaws.com/",carpeta,"/",id_shipping,".",tipo)
   return(url)
