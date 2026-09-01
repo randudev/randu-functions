@@ -1069,7 +1069,8 @@ ml_status_conjunto_publicaciones <- function(productos,ml_token,status){
       if(item_no_cambio$status == "under_review"){
         next
       }
-      item <- ml_status_item(productos[[i]],ml_token,status)
+      #item <- ml_status_item(productos[[i]],ml_token,status)
+      item <- ml_stock_item(productos[[i]],ml_token,"0")
       if(!last_response()$status_code %in% c(199:299) ){
         causa <- toJSON(last_response() %>% resp_body_json())
         
@@ -1146,7 +1147,8 @@ ml_status_publicacion_agencia <- function(ml_token,status,flag_msg=T){
           productos_pausados[[length(productos_pausados) + 1]] <-  item_no_cambio$title
         }
       }
-      item <- ml_status_item(productos[[i]],ml_token,status)
+      #item <- ml_status_item(productos[[i]],ml_token,status)
+      item <- ml_stock_item(productos[[i]],ml_token,"0")
       if(!last_response()$status_code %in% c(199:299) ){
         causa <- toJSON(last_response() %>% resp_body_json())
         
