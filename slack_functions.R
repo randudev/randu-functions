@@ -111,6 +111,7 @@ slack_npu <- function(cuerpo,ml_token){
     if(last_response()$status_code %in% c(199:299)){
       Sys.sleep(10)
       item <- ml_status_item(resp$id,ml_token, "active")
+      
       ml_crear_descripcion(resp$id, titulo,ml_token)
       mensaje <- paste0(item$id,": ",item$permalink)
       tryCatch(expr={
@@ -483,17 +484,17 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
           
         }
         if(last_response()$status_code %in% c(199:299)){
-          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$thread_ts,mensaje_confirmacion)
+          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,mensaje_confirmacion)
         }
       }else{
         sku <- str_split(cuerpo$event$text," ")[[1]][3]
         if(is.na(as.numeric(sku))){
-          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$thread_ts,"No se pudo encontrar el sku recuerda que va al final")
+          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,"No se pudo encontrar el sku recuerda que va al final")
           return(0)
         }
         producto <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("sku=",sku))
         if(length(producto)==0){
-          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$thread_ts,"No se pudo encontrar el producto revisa el sku")
+          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,"No se pudo encontrar el producto revisa el sku")
           return(0)
         }else{
           producto <- producto[[1]]
@@ -845,6 +846,7 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
                   if(!is.null(item_ml$status)){
                     if(item_ml$status=="active"){
                       ml_status_item(item_ml$id,ml_token,"paused")
+                      item <- ml_stock_item(item_ml$id,ml_token,"0")
                       if(!last_response()$status_code %in% c(199:299)){
                         mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
                                              last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
@@ -856,7 +858,7 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
                 if(mensaje_confirmacion!=''){
                   mensaje_confirmacion <- paste0(mensaje_confirmacion," y Mercado Libre exitosamente")
                 }else{
-                  mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Mercado Libre exitosamente")
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se pausaron las publicaciones de Mercado Libre exitosamente")
                 }
               }
               
@@ -938,7 +940,8 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
                   item_ml <- ml_obtener_item(publi_ml$fields$id_canal,ml_token)
                   if(!is.null(item_ml$status)){
                     if(item_ml$status=="active"){
-                      ml_status_item(item_ml$id,ml_token,"paused")
+                      #ml_status_item(item_ml$id,ml_token,"paused")
+                      item <- ml_stock_item(item_ml$id,ml_token,"0")
                       if(!last_response()$status_code %in% c(199:299)){
                         mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
                                              last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
@@ -950,7 +953,7 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
                 if(mensaje_confirmacion!=''){
                   mensaje_confirmacion <- paste0(mensaje_confirmacion," y Mercado Libre exitosamente")
                 }else{
-                  mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se activaron las publicaciones de Mercado Libre exitosamente")
+                  mensaje_confirmacion <- paste0(mensaje_confirmacion,"Se pausaron las publicaciones de Mercado Libre exitosamente")
                 }
               }
               
@@ -959,7 +962,7 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
           }
         }
         if(mensaje_confirmacion!=''){
-          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$thread_ts,mensaje_confirmacion)
+          slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,mensaje_confirmacion)
         }
       }
       
