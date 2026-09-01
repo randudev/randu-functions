@@ -746,6 +746,7 @@ registrar_factura <-function(factura,orden_venta,orden_supabase=list()) {
           tablename = "_nc_m2m_ordenes_venta_cfdi",
           base_id = Sys.getenv("SUPABASE_BASE_ID_CES"),apikey = Sys.getenv("SUPABASE_SECRET_ROLE")
         )
+        print(last_response())
       }
     }
     
