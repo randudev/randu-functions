@@ -642,7 +642,7 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
                     }
                     if(item_ml$status=="paused"){
                       #ml_status_item(item_ml$id,ml_token,"active")
-                      item <- ml_stock_item(item_ml$id,ml_token,"0")
+                      item <- ml_stock_item(item_ml$id,ml_token,"500")
                       if(!last_response()$status_code %in% c(199:299)){
                         mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
                                              last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
@@ -704,8 +704,8 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
                   }
                   if(!is.null(item_ml$status)){
                     if(item_ml$status=="paused"){
-                      ml_status_item(item_ml$id,ml_token,"active")
-                      item <- ml_stock_item(item_ml$id,ml_token,"0")
+                      #ml_status_item(item_ml$id,ml_token,"active")
+                      item <- ml_stock_item(item_ml$id,ml_token,"500")
                       if(!last_response()$status_code %in% c(199:299)){
                         mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
                                              last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
@@ -753,7 +753,7 @@ slack_status_publi <- function(cuerpo,ml_token,amz_token){
                     }
                     if(item_ml$status=="paused"){
                       #ml_status_item(item_ml$id,ml_token,"active")
-                      item <- ml_stock_item(item_ml$id,ml_token,"0")
+                      item <- ml_stock_item(item_ml$id,ml_token,"500")
                       if(!last_response()$status_code %in% c(199:299)){
                         mensaje_ml <- paste0("Ocurrio un error al pausar el item: ",item_amz$id,"\nError: ",
                                              last_response()$status_code,"\n Body: ",last_response() %>% resp_body_string())
