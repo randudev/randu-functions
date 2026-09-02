@@ -1627,7 +1627,7 @@ calcular_fecha_envio <- function(shipping, cutoff_hour = 8) {
   now <- Sys.time()
   today <- as.Date(now)
   
-  buffering_date <- shipping$buffering$date
+  buffering_date <- shipping$lead_time$estimated_delivery_time$pay_before
   
   envio_date <- today
   
