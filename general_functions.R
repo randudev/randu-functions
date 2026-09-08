@@ -1265,21 +1265,21 @@ subir_s3 <- function(id_shipping,response_envio,tipo,carpeta){
   return(url)
 }
 
-crear_etiquetas_producto_slack <- function(sku,cantidad){
+crear_etiquetas_producto_slack <- function(sku,cantidad,nueva){
   ezeep_at <- ezeep_getactivetoken()
   productos <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("AND(sku='",sku,"')"))
   if(length(productos)!=0){
     
     for(aux in productos){
       url_etiqueta <- ""
-      if(length(aux$fields$qr_image)==0){
+      if(length(aux$fields$qr_image)==0 || nueva){
         if(!is.null(aux)){
           link_qr <- aux$fields$barcodeapi_link
           if(is.null(link_qr)){
             link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$sku,"%7C",aux$id)
           }
           sp <- aux$fields$sku
-          nombre_producto <- paste0(aux$fields$helper_nombre_modelo,".")
+          nombre_producto <- paste0(aux$fields$id_productos,".")
           url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
           print(url_etiqueta)
           airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),

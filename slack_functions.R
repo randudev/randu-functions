@@ -1057,21 +1057,21 @@ slack_shp_actualizar <- function(cuerpo){
   
 }
 
-slack_etiqueta_imprimir <- function(cuerpo){
+slack_etiqueta_imprimir <- function(cuerpo,nueva=F){
   sku <- str_split(cuerpo$event$text," ")[[1]][3]
   cantidad <- str_split(cuerpo$event$text,"cantidad ")[[1]][2]
   if(es_numero(cantidad)){
     productos <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("AND(sku='",sku,"')"))
-    if(length(productos)){
-      crear_etiquetas_producto_slack(sku,cantidad)
+    if(length(productos)!=0){
+      crear_etiquetas_producto_slack(sku,cantidad,nueva)
       slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,"Se imprimieron las etiquetas exitosamente")
     }else{
       slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,"No se pudo encontrar el producto revisa el sku")
     }
   }else{
     productos <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("AND(sku='",sku,"')"))
-    if(length(productos)){
-      crear_etiquetas_producto_slack(sku,"5")
+    if(length(productos)!=0){
+      crear_etiquetas_producto_slack(sku,"5",nueva)
     }else{
       slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,"Se imprimieron las etiquetas exitosamente")
     }
