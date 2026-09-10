@@ -53,7 +53,7 @@ supabase_update <- function(id,fieldslist, tablename="", base_id="",apikey=Sys.g
   } 
 }
 
-supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="",apikey=Sys.getenv("AUTH_SUPABASE_DEV"),ordenar = T) {
+supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="",apikey=Sys.getenv("AUTH_SUPABASE_DEV"),ordenar = T,id_ordenar="id") {
   if(base_id!=""){
     url_supabase <- paste0("https://",base_id,".supabase.co/rest/v1/",tabla)
   }else{
@@ -80,7 +80,7 @@ supabase_getrecordslist <- function(tabla="",base_id="",filters="",fields="",api
       }
     }
     if(ordenar){
-      pagina_url <- paste0(pagina_url, "&order=id.asc")
+      pagina_url <- paste0(pagina_url, "&order=",id_ordenar,".asc")
     }
   
     if (length(fields) > 1 || fields!="") {
