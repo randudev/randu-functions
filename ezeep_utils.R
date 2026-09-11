@@ -74,9 +74,10 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            #printer_id <- "e2e15ccf-7674-475b-9a86-9f1e5b1eb495"
            #printer_id <- "f7abe3c0-0623-43e3-bda9-694d69df71dc"
            #printer_id <- "d8e483c8-fc68-4fc5-a8ab-dc6699704797"
-           printer_id <- "8d364845-8637-45ad-a6f9-f78810d30a29"
+           #printer_id <- "8d364845-8637-45ad-a6f9-f78810d30a29"#ULTIMA
            #printer_id <- "7843711d-3674-496b-a245-4bea92bdd3f0"
            #printer_id <- "66f42ece-6c51-4968-a05a-d579750de4a2"
+           printer_id <- "28d1be2e-7088-4243-a59e-1e48a1f57b51"
            # paper_id <- 259
            # paper_name <- "medianas"
            paper_id <- 260
