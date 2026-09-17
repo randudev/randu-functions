@@ -107,6 +107,13 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
   if(!is.null(mlorder$shipping$id)){
     fieldslist <- append(fieldslist,list('ml_id_envio'=paste0(mlorder$shipping$id)))
     ml_shipping <- get_dir_mlorder(mlorder,ml_token)
+    if(length(ml_shipping)!=0){
+      if(length(ml_shipping$logistic)!=0 && length(ml_shipping$logistic$mode)!=0){
+        if(ml_shipping$logistic$mode=="me1"){
+          fieldslist$fulfillment <- "M1"
+        }
+      }
+    }
   }
   records <- list()
   for(i in seq_along(mlorder$payments)){
