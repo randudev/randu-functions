@@ -1802,3 +1802,43 @@ ml_registrar_facturas <- function(noti_invoices){
   
   
 }
+
+ml_notificar_despacho_v2 <- function(shipment_id,
+                                       tracking_number,
+                                       service_id = 231876, 
+                                       comment = "Envio despachado con Paquetexpress",
+                                       ml_token,
+                                       tracking_url='') {
+  
+  url <- paste0("https://api.mercadolibre.com/v2/shipments/", shipment_id, "/seller_notifications")
+  
+  # URL pública de rastreo de Paquetexpress
+  if(tracking_url ==''){
+    tracking_url <- paste0("https://www.paquetexpress.com.mx/rastreo?tracking=", tracking_number)
+  }
+  
+  # Fecha actual en formato ISO 8601 UTC
+  fecha_utc <- strftime(as.POSIXlt(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%OS3Z")
+  
+  body <- list(
+    payload = list(
+      service_id = as.integer(service_id),
+      comment    = as.character(comment),
+      date       = fecha_utc
+    ),
+    tracking_number = as.character(tracking_number),
+    tracking_url    = tracking_url,
+    status          = "shipped",
+    substatus       = NULL # En httr2, se serializa como null en JSON
+  )
+  
+  request(url) %>% 
+    req_method("POST") %>% 
+    req_headers(
+      "Authorization" = paste("Bearer", ml_token),
+      "Content-Type"  = "application/json"
+    ) %>% 
+    req_body_json(body) %>% 
+    req_perform() %>% 
+    resp_body_json()
+}
