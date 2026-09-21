@@ -261,9 +261,17 @@ register_lineitemsv4 <- function(shopifyorder){
                               li_properties[[j]]$value," \n")
       }
     }
-    vp <- airtable_getrecordslist("ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),
-                                  paste0("AND(vp_cancelled='',FIND('",sku,"',producto),id_origen_ov='",
-                                         shopifyorder$data$orders$edges[[1]]$node$name,"')"))
+    if(!is.null(sku)){
+      vp <- airtable_getrecordslist("ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),
+                                    paste0("AND(vp_cancelled='',FIND('",sku,"',producto),id_origen_ov='",
+                                           shopifyorder$data$orders$edges[[1]]$node$name,"')"))
+    }else{
+      vp <- airtable_getrecordslist("ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),
+                                    paste0("AND(vp_cancelled='',FIND('","10700","',producto),id_origen_ov='",
+                                           shopifyorder$data$orders$edges[[1]]$node$name,"',helper_product_name='",
+                                           nombre_producto,"')"))
+    }
+    
     if(cantidad==0){
       if(length(vp)!=0){
         
@@ -409,15 +417,24 @@ register_lineitemsv3 <- function(shopifyorder){
   #fieldslist1
 }
 
-register_shopifyorder_in_airtablev2 <- function(shopifyorder){
+register_shopifyorder_in_airtablev2 <- function(shopifyorder,dominio='randumexico'){
   lineitems_recordid <- register_lineitemsv3(shopifyorder)
   
   shippingaddress_resp <- register_address(shopifyorder)
   shippingaddress_id <- shippingaddress_resp$id
   client_recordid <- register_client_shopify(shopifyorder,shippingaddress_resp$id)
+  if(dominio=="randumexico"){
+    shopi_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
+    access_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
+    canal <- 'shprndmx'
+  }else{
+    shopi_token <- Sys.getenv("SHOPIFY-RANDUDIRECTO-TK")
+    access_token <- Sys.getenv("SHOPIFY-RANDUDIRECTO-TK")
+    canal <- "drsrnd"
+  }
   fieldslist <- list(
     'fecha'=shopifyorder$created_at,
-    'canal_venta'='shprndmx',
+    'canal_venta'=canal,
     'ventas_producto'=lineitems_recordid,
     'id_origen'=shopifyorder$name,
     'direccion_envio'=list(shippingaddress_id),
@@ -426,7 +443,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
   if(!is.null(client_recordid)){
     fieldslist <- append(fieldslist,list("cliente"=list(client_recordid$id)))
   }
-  access_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
+  
   codigospostalesQRO <- readRDS("~/codigospostalesQRO.RDS")
   if(!is.null(shopifyorder$shipping_address$zip)){
     if(shopifyorder$shipping_address$zip %in% codigospostalesQRO){
@@ -438,7 +455,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
       fieldslist <- append(fieldslist,list("entrega_qro"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
       notas <- toupper(paste0("CP: ",shopifyorder$shipping_address$zip,
                               "\nLa orden entra dentro de la cobertura de envío local en Querétaro"))
-      nota <- enviar_nota(shopifyorder$admin_graphql_api_id,NULL,NULL,access_token,notas)
+      nota <- enviar_nota(shopifyorder$admin_graphql_api_id,NULL,NULL,access_token,notas,dominio = dominio)
     }else{
       codigospostalesCDMX <- readRDS("~/codigospostalesCDMX.RDS")
       if(shopifyorder$shipping_address$zip %in% codigospostalesCDMX){
@@ -450,7 +467,7 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
         fieldslist <- append(fieldslist,list("entrega_cdmx"=TRUE,"cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
         notas <- toupper(paste0("CP: ",shopifyorder$shipping_address$zip,
                                 "\nLa orden entra dentro de la cobertura de envío local e instalación en CDMX"))
-        nota <- enviar_nota(shopifyorder$admin_graphql_api_id,NULL,NULL,access_token,notas)
+        nota <- enviar_nota(shopifyorder$admin_graphql_api_id,NULL,NULL,access_token,notas,dominio = dominio)
       }else{
         codigospostalesInstalacion <- readRDS("~/codigospostalesInstalacion.RDS")
         if(shopifyorder$shipping_address$zip %in% codigospostalesInstalacion){
@@ -462,13 +479,13 @@ register_shopifyorder_in_airtablev2 <- function(shopifyorder){
           fieldslist <- append(fieldslist,list("cobertura_instalacion"=TRUE,"estatus_instalacion"="por_ofrecer"))
           notas <- toupper(paste0("CP: ",shopifyorder$shipping_address$zip,
                                   "\nLa orden entra dentro de la cobertura de instalación en CDMX y alrededores"))
-          nota <- enviar_nota(shopifyorder$admin_graphql_api_id,NULL,NULL,access_token,notas)
+          nota <- enviar_nota(shopifyorder$admin_graphql_api_id,NULL,NULL,access_token,notas,dominio = dominio)
         }
       }
     }
   }
-  shopi_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
-  shp_order<- consulta_por_nombre(shopifyorder$name,shopi_token)
+  
+  shp_order<- consulta_por_nombre(shopifyorder$name,shopi_token,dominio = dominio)
   records <- list()
   for(i in seq_along(shp_order$data$orders$edges[[1]]$node$transactions)){
     payment_id <- shp_order$data$orders$edges[[1]]$node$transactions[[i]]$paymentId
@@ -511,8 +528,8 @@ register_client_shopify <- function(shopifyorder,direccion_id){
   
 }
 
-consulta_por_nombre <- function(order_name,access_token) {
-  shopify_url <- "https://randumexico.myshopify.com/admin/api/2025-01/graphql.json"
+consulta_por_nombre <- function(order_name,access_token,dominio='randumexico') {
+  shopify_url <- paste0("https://",dominio,".myshopify.com/admin/api/2025-01/graphql.json")
   # Consulta GraphQL para obtener los detalles de la orden por nombre usando paste0
   
 #   query <- paste0('
@@ -659,6 +676,27 @@ consulta_por_nombre <- function(order_name,access_token) {
         name
         edited
         note
+        app {
+  id
+  name
+}
+        metafields(first: 50) {
+  edges {
+    node {
+      namespace
+      key
+      value
+    }
+  }
+}
+        events(first: 50) {
+          edges {
+            node {
+              createdAt
+              message
+            }
+          }
+        }
         merchantOfRecordApp{
           id
           name
@@ -776,8 +814,10 @@ consulta_por_nombre <- function(order_name,access_token) {
                   }
                 }
               }
+              unfulfilledQuantity
             }
           }
+          
         }
         shippingLines(first: 10) {
           edges {
@@ -860,9 +900,9 @@ consulta_por_nombre <- function(order_name,access_token) {
   return(respuesta)
 }
 
-mandar_numero_rastreo <- function(numeros_rastreo,paqueteria,fulfill_id,access_token){
+mandar_numero_rastreo <- function(numeros_rastreo,paqueteria,fulfill_id,access_token,dominio='randumexico'){
   #shopify_url <- 
-  shopify_url <- "https://randumexico.myshopify.com/admin/api/2025-01/graphql.json"
+  shopify_url <- paste0("https://",dominio,".myshopify.com/admin/api/2025-01/graphql.json")
   if(paqueteria=="PAQUETEXPRESS"){
     url <- "https://www.paquetexpress.com.mx/"
     paqueteria <- "Other"
@@ -917,7 +957,7 @@ mandar_numero_rastreo <- function(numeros_rastreo,paqueteria,fulfill_id,access_t
   return(response)
 }
 
-enviar_nota <- function(order_id,numeros_rastreo=NULL,paqueteria=NULL,access_token,notes=NULL){
+enviar_nota <- function(order_id,numeros_rastreo=NULL,paqueteria=NULL,access_token,notes=NULL,dominio='randumexico'){
   if(is.null(notes)){
     if(paqueteria[[2]]=="PQX"){
       notes <- paste("Paqueteria:",paqueteria[[1]],"\nMulti-guia:\n", paste(numeros_rastreo, collapse = "\n"))
@@ -930,7 +970,7 @@ enviar_nota <- function(order_id,numeros_rastreo=NULL,paqueteria=NULL,access_tok
     }
   }
   
-  shopify_url <- "https://randumexico.myshopify.com/admin/api/2025-01/graphql.json"
+  shopify_url <- paste0("https://",dominio,".myshopify.com/admin/api/2025-01/graphql.json")
   query_get_notes <- paste0('
       query {
       order(id: "', order_id, '") {
@@ -943,6 +983,10 @@ enviar_nota <- function(order_id,numeros_rastreo=NULL,paqueteria=NULL,access_tok
   notes <- paste0(nota,"\n",notes)
   print(nota)
   notes <- gsub("\n{2,}", "\n", notes)
+  notes <- gsub("\\\\", "\\\\\\\\", notes)  # \
+  notes <- gsub("\"", "\\\\\"", notes)      # "
+  notes <- gsub("\r", "", notes)            # quitar CR
+  notes <- gsub("\n", "\\\\n", notes)       
   print(notes)
   
   notes_mutation <- paste0('
@@ -962,7 +1006,7 @@ enviar_nota <- function(order_id,numeros_rastreo=NULL,paqueteria=NULL,access_tok
   return(response_notes)
 }
 
-shopify_marcar_enviado <- function(fulfill_id,access_token){
+shopify_marcar_enviado <- function(fulfill_id,access_token,dominio='randumexico'){
   query <- paste0('mutation {
   fulfillmentCreateV2(
     fulfillment: {
@@ -984,7 +1028,7 @@ shopify_marcar_enviado <- function(fulfill_id,access_token){
     }
   }
 }')
-  shopify_url <- "https://randumexico.myshopify.com/admin/api/2025-01/graphql.json"
+  shopify_url <- paste0("https://",dominio,".myshopify.com/admin/api/2025-01/graphql.json")
   ayuda <- shopify_api_resquest(shopify_url,access_token,query)
 }
 
@@ -1021,3 +1065,310 @@ shopify_doc_api <- function(shop_url,shopi_token,nombre){
 }')
   res <- shopify_api(shop_url,shopi_token,graphql_query)
 } 
+
+consultar_por_fecha <- function(
+    access_token,
+    fecha_inicio = Sys.Date()-58,
+    fecha_fin    = Sys.Date(),
+    dominio='randumexico'
+) {
+  
+  shopify_url <- paste0("https://",dominio,".myshopify.com/admin/api/2025-01/graphql.json")
+  
+  # Convertir fechas a character
+  fecha_inicio <- as.character(fecha_inicio)
+  fecha_fin    <- as.character(fecha_fin)
+  
+  todas_las_ordenes <- list()
+  cursor <- NULL
+  has_next_page <- TRUE
+  
+  while (has_next_page) {
+    
+    after_cursor <- if (!is.null(cursor)) {
+      paste0(', after: "', cursor, '"')
+    } else {
+      ""
+    }
+    
+    query <- paste0('
+{
+  orders(
+    first: 50',
+  after_cursor,
+  ',
+    query: "created_at:>=', fecha_inicio, ' created_at:<=', fecha_fin, '"
+  ) {
+    pageInfo {
+      hasNextPage
+    }
+    edges {
+      cursor
+      node {
+        id
+        name
+        createdAt
+        email
+        totalPriceSet {
+          shopMoney {
+            amount
+            currencyCode
+          }
+        }
+        cancelledAt
+        currentSubtotalPriceSet {
+          shopMoney { amount currencyCode }
+          presentmentMoney { amount currencyCode }
+        }
+        currentTotalPriceSet {
+          shopMoney { amount currencyCode }
+          presentmentMoney { amount currencyCode }
+        }
+        currentTotalTaxSet {
+          shopMoney { amount currencyCode }
+          presentmentMoney { amount currencyCode }
+        }
+        refunds {
+          id
+          createdAt
+          note
+          totalRefundedSet {
+            shopMoney { amount currencyCode }
+          }
+        }
+        transactions {
+          kind
+          id
+          gateway
+          status
+          processedAt
+          paymentId
+          receiptJson
+          amountSet {
+            shopMoney { amount currencyCode }
+          }
+          paymentDetails {
+            ... on CardPaymentDetails {
+              company
+              paymentMethodName
+              # otros campos específicos de tarjeta
+            }
+            # puedes agregar otros tipos si usas diferentes métodos de pago
+          }
+        }
+        currencyCode
+        tags
+        note
+        customer {
+          firstName
+          lastName
+          email
+        }
+      }
+    }
+  }
+}
+')
+    
+    response <- request(shopify_url) %>%
+      req_headers(
+        "X-Shopify-Access-Token" = access_token,
+        "Content-Type" = "application/json"
+      ) %>%
+      req_body_json(list(query = query)) %>%
+      req_perform()
+    
+    body <- resp_body_json(response)
+    
+    orders <- body$data$orders$edges
+    todas_las_ordenes <- c(todas_las_ordenes, orders)
+    
+    has_next_page <- body$data$orders$pageInfo$hasNextPage
+    
+    if (has_next_page) {
+      cursor <- orders[[length(orders)]]$cursor
+    }
+  }
+  
+  return(todas_las_ordenes)
+}
+
+consultar_pendientes_preparacion <- function(access_token,dominio='randumexico') {
+  
+  shopify_url <- paste0("https://",dominio,".myshopify.com/admin/api/2025-01/graphql.json")
+  
+  todas_las_ordenes <- list()
+  cursor <- NULL
+  has_next_page <- TRUE
+  
+  while (has_next_page) {
+    
+    after_cursor <- if (!is.null(cursor)) {
+      paste0(', after: "', cursor, '"')
+    } else {
+      ""
+    }
+    
+    query <- paste0('
+{
+  orders(
+    first: 50',
+  after_cursor,
+  ',
+    query: "fulfillment_status:unfulfilled -status:cancelled"
+  ) {
+    pageInfo {
+      hasNextPage
+    }
+    edges {
+      cursor
+      node {
+        id
+        name
+        createdAt
+        displayFulfillmentStatus
+        email
+
+        lineItems(first:100){
+          edges{
+            node{
+              id
+              name
+              quantity
+              unfulfilledQuantity
+            }
+          }
+        }
+
+        customer{
+          firstName
+          lastName
+          email
+        }
+      }
+    }
+  }
+}
+')
+    
+    response <- request(shopify_url) %>%
+      req_headers(
+        "X-Shopify-Access-Token" = access_token,
+        "Content-Type" = "application/json"
+      ) %>%
+      req_body_json(list(query = query)) %>%
+      req_perform()
+    
+    body <- resp_body_json(response)
+    
+    orders <- body$data$orders$edges
+    
+    todas_las_ordenes <- c(todas_las_ordenes, orders)
+    
+    has_next_page <- body$data$orders$pageInfo$hasNextPage
+    
+    if (has_next_page)
+      cursor <- tail(orders, 1)[[1]]$cursor
+  }
+  
+  todas_las_ordenes
+}
+
+
+library(httr2)
+
+get_product_by_sku <- function(sku, shop_name, access_token, api_version = "2024-04") {
+  url <- sprintf("https://%s.myshopify.com/admin/api/%s/graphql.json", shop_name, api_version)
+  
+  # GraphQL query buscando en variantes
+  graphql_query <- "query GetProductBySku($skuQuery: String!) {
+  productVariants(first: 1, query: $skuQuery) {
+    edges {
+      node {
+        id
+        sku
+        title
+        price
+        compareAtPrice
+        unitPrice {
+          amount
+          currencyCode
+        }
+        unitPriceMeasurement {
+          measuredType
+          quantityUnit
+          quantityValue
+          referenceUnit
+          referenceValue
+        }
+        inventoryItem {
+          unitCost {
+            amount
+            currencyCode
+          }
+        }
+        product {
+          id
+          title
+          handle
+          status
+          vendor
+          priceRangeV2 {
+            minVariantPrice {
+              amount
+              currencyCode
+            }
+            maxVariantPrice {
+              amount
+              currencyCode
+            }
+          }
+          compareAtPriceRange {
+            minVariantCompareAtPrice {
+              amount
+              currencyCode
+            }
+            maxVariantCompareAtPrice {
+              amount
+              currencyCode
+            }
+          }
+        }
+      }
+    }
+  }
+}"
+  # Si el SKU contiene espacios o guiones, conviene entrecomillarlo en la sintaxis de búsqueda
+  sku_filter <- sprintf('sku:"%s"', sku)
+  
+  body <- list(
+    query = graphql_query,
+    variables = list(skuQuery = sku_filter)
+  )
+  
+  # Petición HTTP
+  resp <- request(url) |>
+    req_headers(
+      "X-Shopify-Access-Token" = access_token,
+      "Content-Type" = "application/json"
+    ) |>
+    req_body_json(body) |>
+    req_perform()
+  
+  data <- resp_body_json(resp)
+  
+  # Manejo de errores de GraphQL
+  if (!is.null(data$errors)) {
+    stop("Error en la consulta GraphQL: ", jsonlite::toJSON(data$errors, auto_unbox = TRUE))
+  }
+  
+  variants <- data$data$productVariants$edges
+  
+  if (length(variants) == 0) {
+    message("No se encontró ningún producto con el SKU: ", sku)
+    return(NULL)
+  }
+  
+  # Devuelve la información de la variante y su producto padre
+  return(variants[[1]]$node)
+}
