@@ -207,6 +207,8 @@ registrar_producto <- function(producto,venta_producto){
             if(is.null(link_qr)){
               link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
             }
+            link_qr <- sub("#", "%23", link_qr, fixed = TRUE)
+            
             sp <- aux$fields$id_solicitud
             nombre_producto <- paste0(aux$fields$producto_solicitado,".")
             url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
@@ -422,6 +424,7 @@ registrar_producto <- function(producto,venta_producto){
                 if(is.null(link_qr)){
                   link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
                 }
+                link_qr <- sub("#", "%23", link_qr, fixed = TRUE)
                 sp <- aux$fields$id_solicitud
                 nombre_producto <- paste0(aux$fields$producto_solicitado,".")
                 url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
@@ -556,6 +559,7 @@ registrar_producto <- function(producto,venta_producto){
             if(is.null(link_qr)){
               link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
             }
+            link_qr <- sub("#", "%23", link_qr, fixed = TRUE)
             sp <- aux$fields$id_solicitud
             nombre_producto <- paste0(aux$fields$producto_solicitado,".")
             url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,aux$id)
@@ -1188,6 +1192,7 @@ pedir_piezas <- function(solicitud){
         if(is.null(link_qr)){
           link_qr <- paste0("https://barcodeapi.org/api/qr/",pz$fields$id_solicitud,"%7C",pz$id)
         }
+        link_qr <- sub("#", "%23", link_qr, fixed = TRUE)
         sp <- paste0(pz$fields$id_solicitud)
         link_barras <- paste0("https://barcodeapi.org/api/128/",pz_producto$fields$sku)
         nombre_producto <- paste0(pz$fields$producto_solicitado,".")
@@ -1206,6 +1211,29 @@ pedir_piezas <- function(solicitud){
       }
     }
   }
+}
+
+pedir_empaque <- function(solicitud){
+  if(solicitud$fields$origen=="pieza"){
+    return(NULL)
+  }
+  fields <- list(
+    origen="pedido",
+    tipo="empaque",
+    sp_padre=list(solicitud$id),
+    qr_image=list(list(url=solicitud$fields$qr_image[[1]]$url)),
+    prioridad=solicitud$fields$prioridad,
+    "cantidad"=solicitud$fields$cantidad,
+    comentarios=paste0("Empaque de ",solicitud$fields$id_solicitud),
+    "indice_padre"=solicitud$fields$autonumber_upd+1000,
+    "fecha_solicitud"=Sys.time()-6*3600
+  )
+  if(length(solicitud$fields$producto_personalizado)!=0){
+    fields$producto_personalizado <- solicitud$fields$producto_personalizado
+  }else{
+    fields$producto <- solicitud$fields$producto
+  }
+  empaque <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
 }
 
 prioridad_agencia <- function(fecha){
