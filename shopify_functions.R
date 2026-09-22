@@ -1347,12 +1347,12 @@ get_product_by_sku <- function(sku, shop_name, access_token, api_version = "2024
   )
   
   # Petición HTTP
-  resp <- request(url) |>
+  resp <- request(url) %>% 
     req_headers(
       "X-Shopify-Access-Token" = access_token,
       "Content-Type" = "application/json"
-    ) |>
-    req_body_json(body) |>
+    ) %>% 
+    req_body_json(body) %>% 
     req_perform()
   
   data <- resp_body_json(resp)
