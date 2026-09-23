@@ -1234,6 +1234,7 @@ pedir_empaque <- function(solicitud){
     fields$producto <- solicitud$fields$producto
   }
   empaque <- airtable_createrecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+  return(empaque)
 }
 
 prioridad_agencia <- function(fecha){
