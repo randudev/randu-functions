@@ -222,6 +222,7 @@ registrar_producto <- function(producto,venta_producto){
                                 toJSON(last_request()$body) )
               enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
             }
+            pedir_empaque(aux)
             airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
           }
           
@@ -420,6 +421,7 @@ registrar_producto <- function(producto,venta_producto){
               
               if(!is.null(aux)){
                 pedir_piezas(aux)
+                #pedir_empaque(aux)
                 link_qr <- aux$fields$barcode_link
                 if(is.null(link_qr)){
                   link_qr <- paste0("https://barcodeapi.org/api/qr/",aux$fields$id_solicitud,"%7C",aux$id)
@@ -438,6 +440,7 @@ registrar_producto <- function(producto,venta_producto){
                                     toJSON(last_request()$body) )
                   enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
                 }
+                pedir_empaque(aux)
               }
               
             }
@@ -573,6 +576,7 @@ registrar_producto <- function(producto,venta_producto){
                                 toJSON(last_request()$body) )
               enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
             }
+            pedir_empaque(aux)
             airtable_updatesinglerecord(list("vp_revisada"=TRUE),"ventas_producto",Sys.getenv("AIRTABLE_CES_BASE"),venta_producto$id)
           }
           
