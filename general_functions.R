@@ -1217,7 +1217,7 @@ pedir_empaque <- function(solicitud){
   if(solicitud$fields$origen=="pieza"){
     return(NULL)
   }
-  if(length(solicitud$fields$image_qr)){
+  if(length(solicitud$fields$image_qr)==0){
     link_qr <- solicitud$fields$barcode_link
     if(is.null(link_qr)){
       link_qr <- paste0("https://barcodeapi.org/api/qr/",solicitud$fields$id_solicitud,"%7C",solicitud$id)
