@@ -1217,11 +1217,27 @@ pedir_empaque <- function(solicitud){
   if(solicitud$fields$origen=="pieza"){
     return(NULL)
   }
+  if(length(solicitud$fields$image_qr)){
+    link_qr <- solicitud$fields$barcode_link
+    if(is.null(link_qr)){
+      link_qr <- paste0("https://barcodeapi.org/api/qr/",solicitud$fields$id_solicitud,"%7C",solicitud$id)
+    }
+    link_qr <- sub("#", "%23", link_qr, fixed = TRUE)
+    sp <- solicitud$fields$id_solicitud
+    nombre_producto <- paste0(solicitud$fields$producto_solicitado,".")
+    url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,solicitud$id)
+    airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
+                                'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),solicitud$id)
+  }else{
+    url_etiqueta <- solicitud$fields$qr_image[[1]]$url
+  }
+  
+  
   fields <- list(
     origen="pedido",
     tipo="empaque",
     sp_padre=list(solicitud$id),
-    qr_image=list(list(url=solicitud$fields$qr_image[[1]]$url)),
+    qr_image=list(list(url=url_etiqueta)),
     prioridad=solicitud$fields$prioridad,
     "cantidad"=solicitud$fields$cantidad,
     comentarios=paste0("Empaque de ",solicitud$fields$id_solicitud),
