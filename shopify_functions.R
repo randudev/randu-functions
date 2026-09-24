@@ -1716,7 +1716,7 @@ crear_actualizar_producto_shopify <- function(shop_name,access_token,api_version
       
     } else {
       precio_shopify <- as.numeric(
-        publicacion$variant$price
+        publicacion$price
       )
       
       if (!is.na(precio_shopify) &&
@@ -1732,8 +1732,8 @@ crear_actualizar_producto_shopify <- function(shop_name,access_token,api_version
         actualizado <- actualizar_producto_shopify(
           shop_name    = shop_name,
           access_token = access_token,
-          product_id   = publicacion$id,
-          variant_id   = publicacion$variant$id,
+          product_id   = publicacion$product$id,
+          variant_id   = publicacion$id,
           price        = as.character(precio_lista)
         )
         
@@ -1743,11 +1743,7 @@ crear_actualizar_producto_shopify <- function(shop_name,access_token,api_version
         }
         
       } 
-      else {
-        
-        message("Precio ya está actualizado")
-        
-      }
+      
     }
     
     Sys.sleep(0.3)
