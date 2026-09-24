@@ -1050,7 +1050,12 @@ facturapi_crear_factura_martin <- function(recordid){
         "use"=sub("-.*", "", datos$fields$use)
         
       )
-      cfdi_api <- facturapi_crear_factura(factura,Sys.getenv("FACTURAPI_KEY"))
+      if(datos[["fields"]][["emisor"]]=="RIR1104111G6-MIPYME Logistica"){
+        key <- Sys.getenv("FACTURAPI_KEY_RIR")
+      }else{
+        key <- Sys.getenv("FACTURAPI_KEY")
+      }
+      cfdi_api <- facturapi_crear_factura(factura,key)
       if(!last_response()$status_code %in% c(199:299)){
         aux <- last_response() %>% resp_body_string()
         mensaje <- paste0("Fallo al intentar hacer la factura:\n",aux,"\nDatos:",toJSON(factura))
