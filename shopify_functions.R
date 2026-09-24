@@ -1274,9 +1274,6 @@ consultar_pendientes_preparacion <- function(access_token,dominio='randumexico')
   todas_las_ordenes
 }
 
-
-library(httr2)
-
 get_product_by_sku <- function(sku, shop_name, access_token, api_version = "2024-04") {
   url <- sprintf("https://%s.myshopify.com/admin/api/%s/graphql.json", shop_name, api_version)
   
@@ -1371,4 +1368,389 @@ get_product_by_sku <- function(sku, shop_name, access_token, api_version = "2024
   
   # Devuelve la información de la variante y su producto padre
   return(variants[[1]]$node)
+}
+
+actualizar_producto_shopify <- function(shop_name,
+                                        access_token,
+                                        product_id,
+                                        variant_id,
+                                        price,
+                                        api_version = "2026-07") {
+  
+  endpoint <- sprintf(
+    "https://%s.myshopify.com/admin/api/%s/graphql.json",
+    shop_name,
+    api_version
+  )
+  
+  mutation <- "
+    mutation UpdateProductVariant(
+      $productId: ID!,
+      $variants: [ProductVariantsBulkInput!]!
+    ) {
+      productVariantsBulkUpdate(
+        productId: $productId,
+        variants: $variants
+      ) {
+        productVariants {
+          id
+          title
+          price
+          inventoryItem {
+            sku
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  "
+  
+  resp <- request(endpoint) |>
+    req_headers(
+      `Content-Type` = "application/json",
+      `X-Shopify-Access-Token` = access_token
+    ) |>
+    req_body_json(list(
+      query = mutation,
+      variables = list(
+        productId = product_id,
+        variants = list(
+          list(
+            id = variant_id,
+            price = as.character(price)
+          )
+        )
+      )
+    )) |>
+    req_perform()
+  
+  resultado <- resp_body_json(resp)
+  
+  if (!is.null(resultado$errors)) {
+    warning(
+      sprintf(
+        "Error GraphQL actualizando precio: %s",
+        resultado$errors[[1]]$message
+      )
+    )
+    return(NULL)
+  }
+  
+  errores <- resultado$data$productVariantsBulkUpdate$userErrors
+  
+  if (length(errores) > 0) {
+    warning(
+      sprintf(
+        "Error Shopify actualizando precio: %s",
+        errores[[1]]$message
+      )
+    )
+    return(NULL)
+  }
+  
+  resultado$data$productVariantsBulkUpdate$productVariants[[1]]
+}
+
+crear_producto_shopify <- function(shop_name,
+                                    access_token,
+                                    title,
+                                    sku,
+                                    image_url = NULL,
+                                    price = "0.00",
+                                    api_version = "2026-07") {
+  
+  endpoint <- sprintf(
+    "https://%s.myshopify.com/admin/api/%s/graphql.json",
+    shop_name,
+    api_version
+  )
+  
+  # ============================================================
+  # 1. CREAR PRODUCTO + VARIANTE INICIAL
+  # ============================================================
+  
+  mutation_create <- "
+    mutation CreateProduct(
+      $product: ProductCreateInput!,
+      $media: [CreateMediaInput!]
+    ) {
+      productCreate(
+        product: $product,
+        media: $media
+      ) {
+        product {
+          id
+          title
+          variants(first: 1) {
+            nodes {
+              id
+              title
+            }
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  "
+  
+  # Imagen opcional
+  media_payload <- NULL
+  
+  if (!is.null(image_url) && nzchar(image_url)) {
+    media_payload <- list(
+      list(
+        originalSource = image_url,
+        mediaContentType = "IMAGE"
+      )
+    )
+  }
+  
+  # Request creación
+  resp_create <- request(endpoint) |>
+    req_headers(
+      "X-Shopify-Access-Token" = access_token,
+      "Content-Type" = "application/json"
+    ) |>
+    req_body_json(list(
+      query = mutation_create,
+      variables = list(
+        product = list(
+          title = title
+        ),
+        media = media_payload
+      )
+    )) |>
+    req_perform()
+  
+  res_create <- resp_body_json(resp_create)
+  
+  # Error GraphQL
+  if (!is.null(res_create$errors)) {
+    warning(
+      sprintf(
+        "Error GraphQL al crear '%s': %s",
+        title,
+        res_create$errors[[1]]$message
+      )
+    )
+    
+    return(NULL)
+  }
+  
+  # Error Shopify
+  errs_create <- res_create$data$productCreate$userErrors
+  
+  if (length(errs_create) > 0) {
+    warning(
+      sprintf(
+        "Error Shopify al crear '%s': %s",
+        title,
+        errs_create[[1]]$message
+      )
+    )
+    
+    return(NULL)
+  }
+  
+  # Producto creado
+  prod_data <- res_create$data$productCreate$product
+  
+  product_id <- prod_data$id
+  
+  # Variante inicial creada automáticamente por Shopify
+  variant_id <- prod_data$variants$nodes[[1]]$id
+  
+  
+  # ============================================================
+  # 2. ACTUALIZAR LA VARIANTE INICIAL
+  # ============================================================
+  
+  mutation_variant <- "
+    mutation UpdateProductVariant(
+      $productId: ID!,
+      $variants: [ProductVariantsBulkInput!]!
+    ) {
+      productVariantsBulkUpdate(
+        productId: $productId,
+        variants: $variants
+      ) {
+        productVariants {
+          id
+          title
+          price
+          inventoryItem {
+            id
+            sku
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  "
+  
+  resp_variant <- request(endpoint) |>
+    req_headers(
+      "X-Shopify-Access-Token" = access_token,
+      "Content-Type" = "application/json"
+    ) |>
+    req_body_json(list(
+      query = mutation_variant,
+      variables = list(
+        productId = product_id,
+        variants = list(
+          list(
+            id = variant_id,
+            price = as.character(price),
+            inventoryItem = list(
+              sku = as.character(sku)
+            )
+          )
+        )
+      )
+    )) |>
+    req_perform()
+  
+  res_variant <- resp_body_json(resp_variant)
+  
+  # Error GraphQL
+  if (!is.null(res_variant$errors)) {
+    warning(
+      sprintf(
+        "Error GraphQL actualizando SKU %s: %s",
+        sku,
+        res_variant$errors[[1]]$message
+      )
+    )
+    
+    # Regresamos el producto aunque haya fallado la actualización
+    return(prod_data)
+  }
+  
+  # Error Shopify
+  errs_variant <- res_variant$data$productVariantsBulkUpdate$userErrors
+  
+  if (length(errs_variant) > 0) {
+    warning(
+      sprintf(
+        "Error Shopify actualizando SKU %s: %s",
+        sku,
+        errs_variant[[1]]$message
+      )
+    )
+    
+    return(prod_data)
+  }
+  
+  
+  # ============================================================
+  # 3. REGRESAR PRODUCTO
+  # ============================================================
+  
+  producto_final <- res_variant$data$productVariantsBulkUpdate$productVariants[[1]]
+  
+  # Agregamos los datos del producto
+  prod_data$variant <- producto_final
+  
+  return(prod_data)
+}
+
+crear_actualizar_producto_shopify <- function(shop_name,access_token,api_version = "2026-07"){
+  productos <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),"NOT({precio_lista} = '')")
+  actualizadas <- list()
+  creadas <- list()
+  for (i in seq_along(productos)) {
+    registro <- productos[[i]]
+    f <- registro$fields
+    nombre_prod <- sub("^[^-]+ - ", "", f$id_productos)
+    imagen_url <- if (
+      !is.null(f$permalink_imagen_principal) &&
+      length(f$permalink_imagen_principal) > 0
+    ) {
+      f$permalink_imagen_principal[[1]]
+    } else {
+      NULL
+    }
+    
+    sku <- as.character(f$sku %||% "")
+    precio_lista <- as.numeric(f$precio_lista)
+    
+    # message(sprintf(
+    #   "[%d/%d] SKU: %s",
+    #   i,
+    #   length(productos),
+    #   sku
+    # ))
+
+    publicacion <- get_product_by_sku(
+      sku,
+      shop_name,
+      access_token
+    )
+    if (length(publicacion) == 0) {
+      resultado <- crear_producto_shopify2(
+        shop_name    = shop_name,
+        access_token = access_token,
+        title        = nombre_prod,
+        sku          = sku,
+        image_url    = imagen_url,
+        price        = as.character(precio_lista)
+      )
+      
+      if (!is.null(resultado)) {
+        # message(sprintf(
+        #   "  ✓ Creado ID: %s",
+        #   resultado$id
+        # ))
+       
+        creadas[[length(creadas)+1]] <- f$id_productos
+      }
+      
+    } else {
+      precio_shopify <- as.numeric(
+        publicacion$variant$price
+      )
+      
+      if (!is.na(precio_shopify) &&
+          !is.na(precio_lista) &&
+          precio_shopify != precio_lista) {
+        
+        # message(sprintf(
+        #   "  → Actualizando precio: %.2f → %.2f",
+        #   precio_shopify,
+        #   precio_lista
+        # ))
+        
+        actualizado <- actualizar_producto_shopify(
+          shop_name    = shop_name,
+          access_token = access_token,
+          product_id   = publicacion$id,
+          variant_id   = publicacion$variant$id,
+          price        = as.character(precio_lista)
+        )
+        
+        if (!is.null(actualizado)) {
+          print("Precio actualizado")
+          actualizadas[[length(actualizadas)+1]] <- f$id_productos
+        }
+        
+      } 
+      else {
+        
+        message("Precio ya está actualizado")
+        
+      }
+    }
+    
+    Sys.sleep(0.3)
+  }
+  return(list("actualizadas"=actualizadas,"creadas"=creadas))
 }

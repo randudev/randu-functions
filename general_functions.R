@@ -1218,8 +1218,11 @@ pedir_piezas <- function(solicitud){
 }
 
 pedir_empaque <- function(solicitud){
-  if(solicitud$fields$origen=="pieza"){
+  if(solicitud$fields$origen=="pieza" || solicitud$fields$tipo=="empaque"){
     return(NULL)
+  }
+  if(solicitud$fields$tipo_empaque!="estándar" && solicitud$fields$tipo_empaque!="reforzado"){
+    next
   }
   if(length(solicitud$fields$image_qr)==0){
     link_qr <- solicitud$fields$barcode_link
