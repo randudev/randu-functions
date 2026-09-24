@@ -1408,11 +1408,11 @@ actualizar_producto_shopify <- function(shop_name,
     }
   "
   
-  resp <- request(endpoint) |>
+  resp <- request(endpoint) %>% 
     req_headers(
       `Content-Type` = "application/json",
       `X-Shopify-Access-Token` = access_token
-    ) |>
+    ) %>% 
     req_body_json(list(
       query = mutation,
       variables = list(
@@ -1424,7 +1424,7 @@ actualizar_producto_shopify <- function(shop_name,
           )
         )
       )
-    )) |>
+    )) %>% 
     req_perform()
   
   resultado <- resp_body_json(resp)
@@ -1512,11 +1512,11 @@ crear_producto_shopify <- function(shop_name,
   }
   
   # Request creación
-  resp_create <- request(endpoint) |>
+  resp_create <- request(endpoint) %>% 
     req_headers(
       "X-Shopify-Access-Token" = access_token,
       "Content-Type" = "application/json"
-    ) |>
+    ) %>% 
     req_body_json(list(
       query = mutation_create,
       variables = list(
@@ -1525,7 +1525,7 @@ crear_producto_shopify <- function(shop_name,
         ),
         media = media_payload
       )
-    )) |>
+    )) %>% 
     req_perform()
   
   res_create <- resp_body_json(resp_create)
@@ -1597,11 +1597,11 @@ crear_producto_shopify <- function(shop_name,
     }
   "
   
-  resp_variant <- request(endpoint) |>
+  resp_variant <- request(endpoint) %>% 
     req_headers(
       "X-Shopify-Access-Token" = access_token,
       "Content-Type" = "application/json"
-    ) |>
+    ) %>% 
     req_body_json(list(
       query = mutation_variant,
       variables = list(
@@ -1616,7 +1616,7 @@ crear_producto_shopify <- function(shop_name,
           )
         )
       )
-    )) |>
+    )) %>% 
     req_perform()
   
   res_variant <- resp_body_json(resp_variant)
