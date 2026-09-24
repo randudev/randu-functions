@@ -1696,7 +1696,7 @@ crear_actualizar_producto_shopify <- function(shop_name,access_token,api_version
       access_token
     )
     if (length(publicacion) == 0) {
-      resultado <- crear_producto_shopify2(
+      resultado <- crear_producto_shopify(
         shop_name    = shop_name,
         access_token = access_token,
         title        = nombre_prod,
