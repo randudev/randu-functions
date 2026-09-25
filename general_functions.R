@@ -1222,7 +1222,7 @@ pedir_empaque <- function(solicitud){
     return(NULL)
   }
   if(solicitud$fields$tipo_empaque!="estándar" && solicitud$fields$tipo_empaque!="reforzado"){
-    next
+    return(NULL)
   }
   if(length(solicitud$fields$image_qr)==0){
     link_qr <- solicitud$fields$barcode_link
