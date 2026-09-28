@@ -185,13 +185,13 @@ registrar_producto <- function(producto,venta_producto){
             if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
               fields <- append(fields,list('prioridad'="7 - Extrema"))
             }
-            if(orden_venta$fields$canal_venta=="dstrnd"){
+            if(orden_venta$fields$canal_venta=="drsrnd"){
               fields <- append(fields,list('prioridad'="3 - Alta"))
             }
             if(orden_venta$fields$canal_venta=="directa"){
               fields <- append(fields,list('prioridad'="1 - Media"))
             }
-            todas <- c("directa","dstrnd","walmartrnd","mercadolibrernd","amazonrnd","coppel","amazonasm","shprndmx")
+            todas <- c("directa","drsrnd","walmartrnd","mercadolibrernd","amazonrnd","coppel","amazonasm","shprndmx")
             if(!orden_venta$fields$canal_venta %in% todas){
               fields <- append(fields,list('prioridad'="1 - Media"))
             }
@@ -359,7 +359,7 @@ registrar_producto <- function(producto,venta_producto){
                 if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
                   fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="7 - Extrema"))
                 }
-                if(orden_venta$fields$canal_venta=="dstrnd"){
+                if(orden_venta$fields$canal_venta=="drsrnd"){
                   fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="3 - Alta"))
                 }
                 if(orden_venta$fields$canal_venta=="directa"){
@@ -544,7 +544,7 @@ registrar_producto <- function(producto,venta_producto){
           if(orden_venta$fields$canal_venta=="walmartrnd" || orden_venta$fields$canal_venta=="coppel"){
             fields <- append(fields,list('prioridad'="7 - Extrema"))
           }
-          if(orden_venta$fields$canal_venta=="dstrnd"){
+          if(orden_venta$fields$canal_venta=="drsrnd"){
             fields <- append(fields,list('prioridad'="3 - Alta"))
           }
           if(orden_venta$fields$canal_venta=="directa"){
