@@ -134,7 +134,17 @@ amz_register_lineitems <- function(amz_order,canal){
       cantidad <- 1
     }
     nombre_producto <- amz_items$payload$OrderItems[[i]]$Title
-    precio <- (as.numeric(amz_items$payload$OrderItems[[i]]$ItemPrice$Amount) + as.numeric(ifelse(is.null(tax)||is.na(tax), 0, tax)))/cantidad
+    #precio <- (as.numeric(amz_items$payload$OrderItems[[i]]$ItemPrice$Amount) + as.numeric(ifelse(is.null(tax)||is.na(tax), 0, tax)))/cantidad
+    item_price <- amz_items$payload$OrderItems[[i]]$ItemPrice
+    
+    if (is.null(item_price)) {
+      precio <- 0
+    } else {
+      precio <- (
+        as.numeric(item_price$Amount) +
+          as.numeric(ifelse(is.null(tax) || is.na(tax), 0, tax))
+      ) / cantidad
+    }
     sku <- str_extract(amz_items$payload$OrderItems[[i]]$SellerSKU,"\\d+")
     
     id_lineitem <- as.character(amz_items$payload$OrderItems[[i]]$OrderItemId)
@@ -148,6 +158,9 @@ amz_register_lineitems <- function(amz_order,canal){
       'id_lineitem'=id_lineitem,
       'comentarios'=comentarios
     )
+    if(amz_items$payload$OrderItems[[i]]$QuantityOrdered==0){
+      fieldslist$vp_cancelada <- T
+    }
     if(!str_detect(amz_items$payload$OrderItems[[i]]$SellerSKU,"#")){
       if(!is.null(sku)){
         if(!is.na(sku) && str_detect(sku,"^\\d\\d\\d\\d\\d$") ){
