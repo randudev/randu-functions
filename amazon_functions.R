@@ -159,7 +159,7 @@ amz_register_lineitems <- function(amz_order,canal){
       'comentarios'=comentarios
     )
     if(amz_items$payload$OrderItems[[i]]$QuantityOrdered==0){
-      fieldslist$vp_cancelada <- T
+      fieldslist$vp_cancelled <- T
     }
     if(!str_detect(amz_items$payload$OrderItems[[i]]$SellerSKU,"#")){
       if(!is.null(sku)){
