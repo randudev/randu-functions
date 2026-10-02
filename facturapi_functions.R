@@ -205,6 +205,9 @@ datos_recibo <- function(canal_venta,orden,id_orden,omitir=""){
       }else{
         cantidad <- 1
       }
+      if(item$QuantityOrdered==0){
+        next
+      }
       precio <- as.numeric(item$ItemPrice$Amount)
       if(!is.null(item$PromotionDiscount$Amount)){
         if(as.numeric(item$PromotionDiscount$Amount)!=0){
