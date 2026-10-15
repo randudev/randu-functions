@@ -1059,7 +1059,12 @@ slack_shp_actualizar <- function(cuerpo){
 
 slack_etiqueta_imprimir <- function(cuerpo,nueva=F){
   sku <- str_split(cuerpo$event$text," ")[[1]][3]
-  cantidad <- str_split(cuerpo$event$text,"cantidad ")[[1]][2]
+  #cantidad <- str_split(cuerpo$event$text,"cantidad ")[[1]][2]
+  # Extraer la cantidad original
+  cantidad_raw <- str_split(cuerpo$event$text, "cantidad ")[[1]][2]
+  
+  # Limpiar la cadena dejando únicamente los dígitos (remueve '*', espacios, etc.)
+  cantidad <- gsub("[^0-9]", "", cantidad_raw)
   if(es_numero(cantidad)){
     productos <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("AND(sku='",sku,"')"))
     if(length(productos)!=0){
