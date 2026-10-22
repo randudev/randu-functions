@@ -20,7 +20,7 @@ siguiente_dia_habil <- function(fecha) {
   return(fecha)
 }
 
-generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NULL,link_barras=""){
+generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NULL,link_barras="",sp_padre=''){
   renderform_api_key  <- Sys.getenv("RENDERFORM_API_KEY")
   renderform_template_id <- "faulty-foxes-sting-lazily-1437"
   renderform_url <- "https://api.renderform.io/api/v2/render"
@@ -42,7 +42,8 @@ generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NU
         "descripcion.text"= nombre_producto,
         "codigo_barras.src"= link_qr,
         "instructivo.text"=instructivo,
-        "codigo_128.src"=link_barras
+        "codigo_128.src"=link_barras,
+        "nombre_producto.text"=sp_padre
       )
     )
   }
@@ -1200,7 +1201,7 @@ pedir_piezas <- function(solicitud){
         sp <- paste0(pz$fields$id_solicitud)
         link_barras <- paste0("https://barcodeapi.org/api/128/",pz_producto$fields$sku)
         nombre_producto <- paste0(pz$fields$producto_solicitado,".")
-        url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,pz$id,pz_producto$fields$nombre_instructivo,link_barras)
+        url_etiqueta <- generar_qr_imagen(link_qr ,sp,nombre_producto,pz$id,pz_producto$fields$nombre_instructivo,link_barras,producto$fields$id_productos)
         airtable_updatesinglerecord(list('qr_image' = list(list('url'= url_etiqueta))),
                                     'solicitudes_produccion',Sys.getenv("AIRTABLE_CES_BASE"),pz$id)
         if(!last_response()$status_code %in% c(199:299)){
