@@ -1066,6 +1066,7 @@ facturapi_crear_factura_martin <- function(recordid){
         return(aux)
       }
       i <- 0
+      Sys.sleep(5)
       while(TRUE){
         pdf <- facturapi_descargar_factura(cfdi_api$id,Sys.getenv("FACTURAPI_KEY"),"pdf")
         if(pdf$status_code %in% c(199:299)){
