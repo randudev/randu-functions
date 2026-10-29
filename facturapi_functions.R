@@ -1050,7 +1050,8 @@ facturapi_crear_factura_martin <- function(recordid){
         ),
         "items"=items,
         "payment_form"=sub("-.*", "", datos$fields$payment_form),
-        "use"=sub("-.*", "", datos$fields$use)
+        "use"=sub("-.*", "", datos$fields$use),
+        "payment_method"=datos$fields$payment_method
         
       )
       if(datos[["fields"]][["emisor"]]=="RIR1104111G6-MIPYME Logistica"){
@@ -1061,9 +1062,9 @@ facturapi_crear_factura_martin <- function(recordid){
       cfdi_api <- facturapi_crear_factura(factura,key)
       if(!last_response()$status_code %in% c(199:299)){
         aux <- last_response() %>% resp_body_string()
-        mensaje <- paste0("Fallo al intentar hacer la factura:\n",aux,"\nDatos:",toJSON(factura))
+        mensaje <- paste0("Fallo al intentar hacer la factura:\n",aux,"\nDatos:",toJSON(cfdi_api))
         enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
-        return(aux)
+        return(mensaje)
       }
       i <- 0
       Sys.sleep(5)
@@ -1171,8 +1172,11 @@ crear_factura <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago
       fecha_final <- fecha_ori
       
     }
+    if(str_detect(fecha_final,"2026-09")){
+      fecha_final <- ahora
+    }
     
-    recibo_lista$date <- fecha_final
+    recibo_lista$date <- fecha_final#obtener_fecha_emision_valida(fecha_ori)
     
     factura_year <- year(fecha_final)
     # months <- sprintf("%02d", month(Sys.Date()))
