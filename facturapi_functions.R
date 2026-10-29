@@ -1172,7 +1172,7 @@ crear_factura <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago
       fecha_final <- fecha_ori
       
     }
-    if(str_detect(fecha_final,"2026-09")){
+    if(str_detect(fecha_final,"2026-08")){
       fecha_final <- ahora
     }
     
