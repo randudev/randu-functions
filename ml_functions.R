@@ -1635,8 +1635,8 @@ calcular_fecha_envio <- function(shipping, cutoff_hour = 11) {
   today <- as.Date(now)
   
   buffering_date <- shipping$lead_time$estimated_delivery_time$pay_before
-  
-  envio_date <- as.Date(buffering_date) 
+  buffering_date <- ymd_hms(ml_shipping$lead_time$estimated_delivery_time$pay_before)
+  envio_date <- buffering_date
   
   if (as.numeric(format(now, "%H")) > cutoff_hour) {
     envio_date <- envio_date + 1
@@ -1839,4 +1839,198 @@ ml_notificar_despacho_v2 <- function(shipment_id,
     req_body_json(body) %>% 
     req_perform() %>% 
     resp_body_json()
+}
+
+
+ml_actualizar_precio <- function(item_id, nuevo_precio, ml_token, variation_id = NULL) {
+  
+  # 1. Obtener la información actual del ítem
+  item_data <- ml_obtener_item(item_id, ml_token)
+  
+  if (!is.null(item_data$status) && item_data$status %in% c(400, 404)) {
+    return(list(
+      actualizado = FALSE,
+      mensaje = paste0("Error al obtener el ítem ", item_id, ": ", item_data$message)
+    ))
+  }
+  
+  nuevo_precio <- as.numeric(nuevo_precio)
+  
+  # 2. Manejo cuando SE ESPECIFICA una variante (o si el ítem contiene variantes)
+  if (!is.null(variation_id) || length(item_data$variations) > 0) {
+    
+    if (is.null(variation_id)) {
+      return(list(
+        actualizado = FALSE,
+        mensaje = "El ítem tiene variantes. Debes proporcionar un 'variation_id' específico."
+      ))
+    }
+    
+    # Buscar la variante indicada dentro del ítem
+    variante_encontrada <- NULL
+    for (v in item_data$variations) {
+      if (as.character(v$id) == as.character(variation_id)) {
+        variante_encontrada <- v
+        break
+      }
+    }
+    
+    if (is.null(variante_encontrada)) {
+      return(list(
+        actualizado = FALSE,
+        mensaje = paste0("No se encontró la variante ", variation_id, " en el ítem ", item_id)
+      ))
+    }
+    
+    precio_actual <- as.numeric(variante_encontrada$price)
+    
+    # Verificar si ya tiene ese precio
+    if (precio_actual == nuevo_precio) {
+      return(list(
+        actualizado = FALSE,
+        cambio_requerido = FALSE,
+        mensaje = paste0("La variante ", variation_id, " ya tiene el precio de $", nuevo_precio),
+        precio_actual = precio_actual
+      ))
+    }
+    
+    # Payload para actualizar el precio de una variante específica
+    body_data <- list(
+      variations = list(
+        list(
+          id = as.numeric(variation_id),
+          price = nuevo_precio
+        )
+      )
+    )
+    
+  } else {
+    # 3. Manejo para un ítem SIN variantes
+    precio_actual <- as.numeric(item_data$price)
+    
+    if (precio_actual == nuevo_precio) {
+      return(list(
+        actualizado = FALSE,
+        cambio_requerido = FALSE,
+        mensaje = paste0("El ítem ", item_id, " ya tiene el precio de $", nuevo_precio),
+        precio_actual = precio_actual
+      ))
+    }
+    
+    # Payload para actualización simple
+    body_data <- list(
+      price = nuevo_precio
+    )
+  }
+  
+  # 4. Enviar la petición PUT a Mercado Libre
+  url <- paste0("https://api.mercadolibre.com/items/", item_id)
+  
+  resp <- request(url) %>% 
+    req_method("PUT") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers(
+      "accept" = "application/json",
+      "content-type" = "application/json"
+    ) %>% 
+    req_body_json(body_data) %>% 
+    req_error(is_error = function(resp) FALSE) %>% 
+    req_perform()
+  
+  if (resp_status(resp) %in% 200:299) {
+    return(list(
+      actualizado = TRUE,
+      cambio_requerido = TRUE,
+      mensaje = paste0("Precio actualizado exitosamente a $", nuevo_precio),
+      precio_anterior = precio_actual,
+      precio_nuevo = nuevo_precio,
+      respuesta_api = resp_body_json(resp)
+    ))
+  } else {
+    return(list(
+      actualizado = FALSE,
+      error = TRUE,
+      status_code = resp_status(resp),
+      mensaje = "Error al intentar actualizar el precio en Mercado Libre",
+      detalle = resp_body_json(resp)
+    ))
+  }
+}
+
+#' Obtiene las promociones/descuentos activos de un ítem o variante
+ml_obtener_promociones_item <- function(item_id, ml_token) {
+  url <- paste0("https://api.mercadolibre.com/seller-promotions/items/", item_id,"?app_version=v2")
+  
+  resp <- request(url) %>% 
+    req_method("GET") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers("accept" = "application/json","x-api-version" = "2") %>% 
+    req_error(is_error = function(resp) FALSE) %>% 
+    req_perform()
+  
+  if (resp_status(resp) %in% 200:299) {
+    return(resp_body_json(resp))
+  } else {
+    return(list()) # Si da 404 o error, asumimos que no tiene ofertas o no aplica
+  }
+}
+
+#' Elimina una promoción/descuento activo de un ítem
+ml_eliminar_descuento_item <- function(item_id, promotion_id, promotion_type, ml_token) {
+  url <- paste0(
+    "https://api.mercadolibre.com/seller-promotions/items/", item_id,
+    "?promotion_type=", promotion_type,
+    "&promotion_id=", promotion_id,"&app_version=v2"
+  )
+  
+  resp <- request(url) %>% 
+    req_method("DELETE") %>% 
+    req_auth_bearer_token(ml_token) %>% 
+    req_headers("accept" = "application/json") %>% 
+    req_error(is_error = function(resp) FALSE) %>% 
+    req_perform()
+  
+  return(resp_status(resp) %in% 200:299)
+}
+
+#' Revisa si tiene promociones activas y las elimina todas
+ml_revisar_y_quitar_descuentos <- function(item_id, ml_token) {
+  promos <- ml_obtener_promociones_item(item_id, ml_token)
+  
+  if (length(promos) > 0) {
+    for (p in promos) {
+      # Si la promoción está activa o programada, se elimina
+      if (ml_promo_esta_activa_hoy(p)) {
+        
+        # Eliminar la promoción usando los datos dinámicos de 'p' y el 'item_id' recibido
+        ml_eliminar_descuento_item(
+          item_id = item_id,
+          promotion_id = p$id,
+          promotion_type = p$type,
+          ml_token = ml_token
+        )
+      }
+      
+    }
+  }
+}
+
+ml_promo_esta_activa_hoy <- function(promo) {
+  
+  # 1. Validar que tenga el estatus 'started'
+  if (is.null(promo$status) || promo$status != "started") {
+    return(FALSE)
+  }
+  
+  # 2. Parsear fechas de la promoción
+  fecha_inicio <- ymd_hms(promo$start_date, tz = "UTC")
+  fecha_fin    <- ymd_hms(promo$finish_date, tz = "UTC")
+  
+  # 3. Obtener momento actual
+  ahora <- Sys.time()
+  
+  # 4. Comprobar si el día de hoy cae dentro del rango [start_date, finish_date]
+  esta_en_rango <- ahora >= fecha_inicio && ahora <= fecha_fin
+  
+  return(esta_en_rango)
 }
