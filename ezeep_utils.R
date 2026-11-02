@@ -84,10 +84,10 @@ ezeep_printbyurl <- function(urltoprint, ezeep_at, printername, copies=1,rango=N
            paper_name <- "mediana"
            orientation <- 1
          },
-         'impresora_empaque_ligero'={
-           printer_id <- "3f088881-e78f-4f93-8ea6-7bd55c8ce6f9"
-           paper_id <- 257
-           paper_name <- "4 x 2"
+         'impresora_verde'={
+           printer_id <- "22f9d1e5-1cba-48b8-830b-219343ed50f4"
+           paper_id <- 260
+           paper_name <- "4x2"
            orientation <- 1
          },
          "impresora_brother_paqueteria"={
