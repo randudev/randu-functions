@@ -1057,7 +1057,7 @@ slack_shp_actualizar <- function(cuerpo){
   
 }
 
-slack_etiqueta_imprimir <- function(cuerpo,nueva=F){
+slack_etiqueta_imprimir <- function(cuerpo,nueva=F,impresora=93){
   sku <- str_split(cuerpo$event$text," ")[[1]][3]
   #cantidad <- str_split(cuerpo$event$text,"cantidad ")[[1]][2]
   # Extraer la cantidad original
@@ -1068,7 +1068,7 @@ slack_etiqueta_imprimir <- function(cuerpo,nueva=F){
   if(es_numero(cantidad)){
     productos <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("AND(sku='",sku,"')"))
     if(length(productos)!=0){
-      crear_etiquetas_producto_slack(sku,cantidad,nueva)
+      crear_etiquetas_producto_slack(sku,cantidad,nueva,impresora)
       slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,"Se imprimieron las etiquetas exitosamente")
     }else{
       slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,"No se pudo encontrar el producto revisa el sku")
@@ -1076,9 +1076,68 @@ slack_etiqueta_imprimir <- function(cuerpo,nueva=F){
   }else{
     productos <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("AND(sku='",sku,"')"))
     if(length(productos)!=0){
-      crear_etiquetas_producto_slack(sku,"5",nueva)
+      crear_etiquetas_producto_slack(sku,"5",nueva,impresora)
     }else{
       slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,"Se imprimieron las etiquetas exitosamente")
     }
   }
+}
+
+
+slack_ligar_factura <- function(cuerpo,bandera=T){
+  texto <- cuerpo$event$text
+  mensaje_slack <- str_split(texto,"<@U08LEBF4Q85> ligar ")[[1]][2]
+  mensaje <- ""
+  # 1. Extraer el UUID alfanumérico (formato estándar de CFDI)
+  uuid <- str_extract(mensaje_slack, "[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}")
+  
+  # 2. Extraer la Orden de Venta (primer bloque de texto limpiando guiones y espacios extras)
+  id_orden <- mensaje_slack %>% 
+    str_remove(uuid) %>%                  # Quitamos el UUID extraído
+    str_replace_all("[^A-Za-z0-9]", "")   # Quitamos espacios, guiones o basura restante
+  
+  if(id_orden!=''){
+    orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
+                                           paste0("AND(FIND('",id_orden,"',id_ordenes_venta))"))
+    orden_venta_supabase <- supabase_getrecordslist("ordenes_venta",Sys.getenv("SUPABASE_BASE_ID_CES"),
+                                                    paste0("id_ordenes_venta=ilike.*",id_orden,"*"),
+                                                    apikey = Sys.getenv("AUTH_SUPABASE_CES"),ordenar = F)
+    if(length(orden_venta)!=0){
+      cfdi <- airtable_getrecordslist("cfdi",Sys.getenv("AIRTABLE_CES_BASE"),paste0("FIND('",uuid,"',uuid_mayus)"))
+      if(length(cfdi)!=0){
+        cfdi_supabase <- supabase_getrecordslist("cfdi",Sys.getenv("SUPABASE_BASE_ID_CES"),paste0("record_id=eq.",cfdi[[1]]$id),
+                                                 apikey = Sys.getenv("AUTH_SUPABASE_CES"),ordenar = F)
+        if(length(cfdi[[1]]$fields$ordenes_venta)==0){
+          airtable_updatesinglerecord(list(ordenes_venta=list(orden_venta[[1]]$id)),"cfdi",Sys.getenv("AIRTABLE_CES_BASE"),cfdi[[1]]$id)
+          if(length(cfdi_supabase)!=0){
+            actualizar <- list(ordenes_venta_id=orden_supabase[[1]]$id_auto,cfdi_id=cfdi_supabase[[1]]$id_auto)
+            supabase_createrecord(
+              fields = actualizar,
+              tablename = "_nc_m2m_ordenes_venta_cfdi",
+              base_id = Sys.getenv("SUPABASE_BASE_ID_CES"),apikey = Sys.getenv("SUPABASE_SECRET_ROLE")
+            )
+            mensaje <- paste0("Se ligó exitosamente la orden ",orden_venta[[1]]$fields$id_ordenes_venta ,
+                              " y el cfdi ",cfdi[[1]]$fields$uuid_mayus, " en airtable y supabase")
+          }else{
+            mensaje <- paste0("Se ligó exitosamente la orden ",orden_venta[[1]]$fields$id_ordenes_venta ,
+                              " y el cfdi ",cfdi[[1]]$fields$uuid_mayus, " en airtable solamente")
+          }
+        }
+      }else{
+        factura <- facturapi_obtener_facturas(Sys.getenv("FACTURAPI_KEY"),filters=paste0("uuid=",uuid))
+        if(length(factura)!=0){
+          registrar_factura(factura,orden_venta[[1]],orden_venta_supabase)
+          mensaje <- paste0("Se registró y se ligo exitosamente la orden ",orden_venta[[1]]$fields$id_ordenes_venta ,
+                            " y el cfdi ",cfdi[[1]]$fields$uuid_mayus, " en airtable y supabase")
+        }
+        
+      }
+    }
+    if(mensaje!=''){
+      slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,mensaje)
+    }else{
+      slack_responder_en_hilo(Sys.getenv("SLACK_BOT_TOKEN"),cuerpo$event$channel,cuerpo$event$event_ts,"No se pudo ligar revisa...")
+    }
+  }
+  
 }
