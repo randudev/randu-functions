@@ -1110,7 +1110,7 @@ slack_ligar_factura <- function(cuerpo,bandera=T){
         if(length(cfdi[[1]]$fields$ordenes_venta)==0){
           airtable_updatesinglerecord(list(ordenes_venta=list(orden_venta[[1]]$id)),"cfdi",Sys.getenv("AIRTABLE_CES_BASE"),cfdi[[1]]$id)
           if(length(cfdi_supabase)!=0){
-            actualizar <- list(ordenes_venta_id=orden_supabase[[1]]$id_auto,cfdi_id=cfdi_supabase[[1]]$id_auto)
+            actualizar <- list(ordenes_venta_id=orden_venta_supabase[[1]]$id_auto,cfdi_id=cfdi_supabase[[1]]$id_auto)
             supabase_createrecord(
               fields = actualizar,
               tablename = "_nc_m2m_ordenes_venta_cfdi",
