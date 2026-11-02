@@ -1318,10 +1318,10 @@ subir_s3 <- function(id_shipping,response_envio,tipo,carpeta){
   return(url)
 }
 
-crear_etiquetas_producto_slack <- function(sku,cantidad,nueva){
+crear_etiquetas_producto_slack <- function(sku,cantidad,nueva,impresora=93){
   ezeep_at <- ezeep_getactivetoken()
   productos <- airtable_getrecordslist("productos",Sys.getenv("AIRTABLE_CES_BASE"),paste0("AND(sku='",sku,"')"))
-  if(length(productos)!=0){
+  if(length(productos)!=0 ){
     
     for(aux in productos){
       url_etiqueta <- ""
@@ -1347,7 +1347,52 @@ crear_etiquetas_producto_slack <- function(sku,cantidad,nueva){
       else{
         url_etiqueta <- aux$fields$qr_image[[1]]$url
       }
-      ezeep_printbyurl(url_etiqueta,ezeep_at,"impresora_rosa",,copies = cantidad)
+      if(impresora==93){
+        printername <- "impresora_rosa"
+      }else{
+        printername <- "impresora_verde"
+      }
+      ezeep_printbyurl(url_etiqueta,ezeep_at,printername,copies = cantidad)
+    }
+  }
+  
+}
+
+ordenar_airtable <- function(airtable){
+  orden <- sapply(airtable, function(x) {
+    if (!is.null(x$fields$autonumber) && !is.na(x$fields$autonumber)) {
+      sprintf("%020d", as.numeric(x$fields$autonumber))
+    } else {
+      x$createdTime
+    }
+  })
+  
+  airtable <- airtable[order(orden)]
+  return(airtable)
+}
+
+actualizar_lista <- function(lista_actual, lista_nueva) {
+  
+  resultado <- lista_actual
+  
+  for (campo in names(lista_nueva)) {
+    
+    nuevo <- lista_nueva[[campo]]
+    
+    # Si ambos son listas, actualizar recursivamente
+    if (
+      is.list(nuevo) &&
+      is.list(resultado[[campo]]) &&
+      !is.null(names(nuevo))
+    ) {
+      resultado[[campo]] <- actualizar_lista(
+        resultado[[campo]],
+        nuevo
+      )
+      
+    } else {
+      # Si no existe o es un valor nuevo, reemplazar/agregar
+      resultado[[campo]] <- nuevo
     }
   }
   
