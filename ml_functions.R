@@ -2034,3 +2034,12 @@ ml_promo_esta_activa_hoy <- function(promo) {
   
   return(esta_en_rango)
 }
+
+ml_obtener_sla_envio <- function(shipment_id, ml_token) {
+  url <- paste0("https://api.mercadolibre.com/shipments/", shipment_id, "/sla")
+  
+  request(url) %>%
+    req_headers(Authorization = paste("Bearer", ml_token)) %>%
+    req_perform() %>%
+    resp_body_json()
+}
