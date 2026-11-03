@@ -1126,7 +1126,7 @@ slack_ligar_factura <- function(cuerpo,bandera=T){
       }else{
         factura <- facturapi_obtener_facturas(Sys.getenv("FACTURAPI_KEY"),filters=paste0("uuid=",uuid))
         if(length(factura)!=0){
-          registrar_factura(factura,orden_venta[[1]],orden_venta_supabase)
+          registrar_factura(factura[[1]],orden_venta[[1]],orden_venta_supabase)
           mensaje <- paste0("Se registró y se ligo exitosamente la orden ",orden_venta[[1]]$fields$id_ordenes_venta ,
                             " y el cfdi ",cfdi[[1]]$fields$uuid_mayus, " en airtable y supabase")
         }
