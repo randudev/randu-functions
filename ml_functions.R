@@ -1633,11 +1633,11 @@ calcular_fecha_envio <- function(shipping, cutoff_hour = 11) {
   
   now <- Sys.time()
   today <- as.Date(now)
-  
-  buffering_date <- shipping$lead_time$estimated_delivery_time$pay_before
-  buffering_date <- ymd_hms(shipping$lead_time$estimated_delivery_time$pay_before)
-  envio_date <- buffering_date
-  
+  envio <- ml_obtener_sla_envio(shipping$id,ml_token)
+  # buffering_date <- shipping$lead_time$estimated_delivery_time$pay_before
+  # buffering_date <- ymd_hms(shipping$lead_time$estimated_delivery_time$pay_before)
+  envio_date <- paste0(as.POSIXct(envio[["expected_date"]][1], format = "%Y-%m-%dT%H:%M:%S"))
+  return(envio_date)
   if (as.numeric(format(now, "%H")) > cutoff_hour) {
     envio_date <- envio_date + 1
   }

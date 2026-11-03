@@ -24,6 +24,9 @@ generar_qr_imagen <- function(link_qr,sp,nombre_producto,recordid,instructivo=NU
   renderform_api_key  <- Sys.getenv("RENDERFORM_API_KEY")
   renderform_template_id <- "faulty-foxes-sting-lazily-1437"
   renderform_url <- "https://api.renderform.io/api/v2/render"
+  if(str_detect(sp,"SC")){
+    nombre_producto <- paste0(nombre_producto," *")
+  }
   body <- list(
     template = renderform_template_id,
     data = list(
@@ -149,15 +152,17 @@ registrar_producto <- function(producto,venta_producto){
             ml_order <- get_mlorder_byid(orden_venta$fields$id_origen,ml_token)
             if(!is.null(ml_order$shipping$id)){
               ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+              
               if(ml_shipping$logistic$mode == "me2"){
-                fecha <- ml_shipping$lead_time$buffering$date
+                envio <- ml_obtener_sla_envio(ml_order$shipping$id,ml_token)
+                fecha <- as.POSIXct(envio[["expected_date"]][1], format = "%Y-%m-%dT%H:%M:%S")
                 if(is.null(fecha)){
                   fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
                   dia_sp <- calcular_fecha_envio(ml_shipping)
                   fields$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields$comentarios)
                 }else{
-                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha)))
-                  fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha+6*3600)))
+                  fields$comentarios <- paste0("AGENCIA: ",fecha," ",fields$comentarios)
                 }
                 
               } else{
@@ -510,14 +515,16 @@ registrar_producto <- function(producto,venta_producto){
             if(!is.null(ml_order$shipping$id)){
               ml_shipping <- get_dir_mlorder(ml_order,ml_token)
               if(ml_shipping$logistic$mode == "me2"){
-                fecha <- ml_shipping$lead_time$buffering$date
+                envio <- ml_obtener_sla_envio(ml_order$shipping$id,ml_token)
+                fecha <- as.POSIXct(envio[["expected_date"]][1], format = "%Y-%m-%dT%H:%M:%S")
+                #fecha <- ml_shipping$lead_time$buffering$date
                 if(is.null(fecha)){
                   fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
                   dia_sp <- calcular_fecha_envio(ml_shipping)
                   fields$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields$comentarios)
                 }else{
-                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha)))
-                  fields$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields$comentarios)
+                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha+6*3600)))
+                  fields$comentarios <- paste0("AGENCIA: ",fecha," ",fields$comentarios)
                 }
                 #fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
               } else{
