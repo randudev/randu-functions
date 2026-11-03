@@ -1635,7 +1635,7 @@ calcular_fecha_envio <- function(shipping, cutoff_hour = 11) {
   today <- as.Date(now)
   
   buffering_date <- shipping$lead_time$estimated_delivery_time$pay_before
-  buffering_date <- ymd_hms(ml_shipping$lead_time$estimated_delivery_time$pay_before)
+  buffering_date <- ymd_hms(shipping$lead_time$estimated_delivery_time$pay_before)
   envio_date <- buffering_date
   
   if (as.numeric(format(now, "%H")) > cutoff_hour) {
