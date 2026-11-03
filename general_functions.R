@@ -1403,4 +1403,102 @@ actualizar_lista <- function(lista_actual, lista_nueva) {
     }
   }
   
+  resultado
+}
+
+obtener_cambios <- function(lista_actual, lista_nueva) {
+  
+  cambios <- list()
+  
+  for (campo in names(lista_nueva)) {
+    
+    if (
+      campo %in% c(
+        "fecha", "neto_recibido", "issued_at",
+        "fecha_timbrado", "mes", "cantidad_disponible_navex"
+      ) ||
+      stringr::str_detect(campo, "file")
+    ) {
+      next
+    }
+    
+    nuevo <- lista_nueva[[campo]]
+    anterior <- lista_actual[[campo]]
+    
+    if (is.null(anterior)) {
+      cambios[[campo]] <- nuevo
+      next
+    }
+    
+    # Manejo de listas o vectores (ej. record_ids de Airtable como 'recibos', 'cfdi', etc.)
+    if (is.list(anterior) || is.list(nuevo) || length(anterior) > 1 || length(nuevo) > 1) {
+      
+      vec_ant <- unlist(anterior, use.names = FALSE)
+      vec_nue <- unlist(nuevo, use.names = FALSE)
+      
+      # Si todo lo que viene en 'nuevo' YA está contenido en 'anterior', no hay nada que agregar ni modificar
+      if (all(vec_nue %in% vec_ant)) {
+        iguales <- TRUE
+      } else {
+        # Si 'nuevo' trae elementos que 'anterior' no tiene, unimos ambos para no perder los viejos
+        iguales <- FALSE
+        nuevo <- unique(c(vec_ant, vec_nue))
+      }
+      
+    } else {
+      # Comparación escalar simple
+      if (es_numero(anterior) && es_numero(nuevo)) {
+        iguales <- round(as.numeric(anterior), 2) == round(as.numeric(nuevo), 2)
+      } else {
+        iguales <- identical(anterior, nuevo)
+      }
+    }
+    
+    if (!iguales) {
+      cambios[[campo]] <- nuevo
+    }
+  }
+  
+  cambios
+}
+vincular_relaciones_vp_padre <- function(ov_padre_record, lineitems_recordid, base_id = Sys.getenv("AIRTABLE_CES_BASE")) {
+  fields_padre <- ov_padre_record$fields
+  
+  solicitudes   <- fields_padre$solicitud_produccion
+  transacciones <- fields_padre$transaccion_almacen
+  
+  # Si el orden padre no tiene ni solicitud de producción ni transacción de almacén, no hay nada que copiar
+  if (is.null(solicitudes) && is.null(transacciones)) {
+    return(NULL)
+  }
+  
+  fields_update <- list()
+  
+  # Airtable requiere las relaciones como lista/vector de record IDs en texto
+  if (!is.null(solicitudes)) {
+    fields_update$solicitudes_produccion <- as.list(as.character(unlist(solicitudes)))
+  }
+  
+  if (!is.null(transacciones)) {
+    fields_update$transacciones_almacen <- as.list(as.character(unlist(transacciones)))
+  }
+  
+  # Marcar el check/bandera vp_revisado
+  fields_update$vp_revisada <- TRUE
+  
+  # Recorrer cada ID de ventas_producto creado y actualizarlo
+  vp_ids <- unlist(lineitems_recordid)
+  resultados <- list()
+  
+  for (vp_id in vp_ids) {
+    res <- airtable_updatesinglerecord(
+      fieldslist = fields_update,
+      tablename  = "ventas_producto",
+      base_id    = base_id,
+      recordid   = vp_id
+    )
+    resultados[[length(resultados) + 1]] <- res
+  }
+  
+  return(resultados)
 }

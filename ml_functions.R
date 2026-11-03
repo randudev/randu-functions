@@ -132,6 +132,14 @@ register_mlorder_in_airtable <- function(mlorder, ml_token,canal=NULL){
     ov_padre <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),paste0("ml_id_envio='",ml_shipping$sibling$sibling_id,"'"))
     if(length(ov_padre)==1){
       fieldslist <- append(fieldslist,list("ov_padre"=list(ov_padre[[1]]$id)))
+      #fieldslist <- append(fieldslist, list("ov_padre" = list(ov_padre[[1]]$id)))
+      
+      # Copiar solicitud_produccion / transaccion_almacen a las nuevas ventas_producto y marcar vp_revisado
+      vincular_relaciones_vp_padre(
+        ov_padre_record    = ov_padre[[1]],
+        lineitems_recordid = lineitems_recordid,
+        base_id            = Sys.getenv("AIRTABLE_CES_BASE")
+      )
     }
     
   }
