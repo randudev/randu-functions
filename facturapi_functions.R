@@ -810,9 +810,7 @@ registrar_factura <-function(factura,orden_venta,orden_supabase=list()) {
       Sys.sleep(1)
       i <- i + 1
     }
-    if((j%%500)==0){
-      Sys.sleep(4)
-    }
+    
   }
 }
 
