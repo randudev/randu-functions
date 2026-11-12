@@ -1268,27 +1268,64 @@ pedir_empaque <- function(solicitud){
   return(empaque)
 }
 
+# prioridad_agencia <- function(fecha){
+#   fecha_posix <- as.POSIXct(
+#     fecha,
+#     format = "%Y-%m-%dT%H:%M:%OSZ",
+#     tz = "UTC"
+#   )
+#   
+#   fecha_posix <- as.POSIXct(
+#     paste0(format(fecha_posix, "%Y-%m-%d"),
+#            "14",format(fecha_posix, ":%M:%S")),
+#     tz = "UTC"
+#   )
+#   
+#   ahora <- as.POSIXct(Sys.time(), tz = "UTC")
+#   
+#   dif_horas <- as.numeric(difftime(fecha_posix, ahora,units = "hours"))
+#   
+#   prioridad <- ifelse(
+#     dif_horas <= 24, "8 - Antes de las 12",
+#     ifelse(dif_horas <= 36, "6 - Para hoy", "3 - Alta")
+#   )
+#   return(prioridad)
+# }
 prioridad_agencia <- function(fecha){
-  fecha_posix <- as.POSIXct(
-    fecha,
-    format = "%Y-%m-%dT%H:%M:%OSZ",
-    tz = "UTC"
-  )
-  
-  fecha_posix <- as.POSIXct(
-    paste0(format(fecha_posix, "%Y-%m-%d"),
-           "14",format(fecha_posix, ":%M:%S")),
-    tz = "UTC"
-  )
+  # 1. Si 'fecha' llega como texto (ej. "2026-11-13T12:45:00-06:00"), lo parseamos respetando su offset
+  if (is.character(fecha)) {
+    fecha_posix <- as.POSIXct(
+      sub(":([0-9]{2})$", "\\1", fecha),
+      format = "%Y-%m-%dT%H:%M:%OS%z",
+      tz = "UTC"
+    )
+  } else {
+    # Si ya llega como POSIXct (como en tus líneas 118 y 347 donde pasas fecha+6*3600)
+    fecha_posix <- as.POSIXct(fecha, tz = "UTC")
+  }
   
   ahora <- as.POSIXct(Sys.time(), tz = "UTC")
   
-  dif_horas <- as.numeric(difftime(fecha_posix, ahora,units = "hours"))
+  # Si la hora límite ya pasó o es inmediata
+  if (is.na(fecha_posix) || fecha_posix <= ahora) {
+    return("8 - Antes de las 12")
+  }
+  
+  # 2. Contar horas hábiles exactas (minuto a minuto o por hora) sin sábados ni domingos
+  # Usamos intervalos de 15 minutos (900 seg) para no perder precisión si entrega a las 12:45
+  intervalos_seq <- seq(from = ahora, to = fecha_posix, by = 900)
+  
+  # Evaluamos qué día de la semana cae cada bloque en hora local de México
+  dias_semana <- as.POSIXlt(intervalos_seq, tz = "America/Mexico_City")$wday
+  
+  # Sumamos solo los bloques que NO caen en domingo (0) ni sábado (6) y pasamos a horas
+  dif_horas_habiles <- sum(!dias_semana %in% c(0, 6)) * 0.25
   
   prioridad <- ifelse(
-    dif_horas <= 24, "8 - Antes de las 12",
-    ifelse(dif_horas <= 36, "6 - Para hoy", "3 - Alta")
+    dif_horas_habiles <= 24, "8 - Antes de las 12",
+    ifelse(dif_horas_habiles <= 36, "6 - Para hoy", "3 - Alta")
   )
+  
   return(prioridad)
 }
 
@@ -1501,4 +1538,159 @@ vincular_relaciones_vp_padre <- function(ov_padre_record, lineitems_recordid, ba
   }
   
   return(resultados)
+}
+
+revisar_status_orden <- function(ordenes_venta){
+  orden_validas <- list()
+  ml_token <- get_active_token()
+  shp_token <- Sys.getenv("SHOPIFY-RANDUMX-TK")
+  if(length(ordenes_venta) != 0){
+    for(orden in ordenes_venta){
+      if(orden$fields$canal_venta=="amazonrnd"){
+        amz_token <- amz_get_active_token()
+        amz_order <- get_amzorder_byid(orden$fields$id_origen,amz_token)
+        if(amz_order$payload$OrderStatus != "Canceled"){
+          orden_validas[[length(orden_validas) + 1]] <- orden
+        }else{
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),orden$id)
+          if(length(orden$fields$transacciones_almacen)!=0){
+            for(id in orden$fields$transacciones_almacen){
+              transaccion <- airtable_getrecorddata_byid(id,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
+              if(length(transaccion)!=0 ){
+                if(transaccion$fields$tipo == "reserva"){
+                  fields <- list('cantidad'=0,
+                                 'producto'=list(),
+                                 'ventas_producto'=list(),
+                                 'comentarios'=paste0("Cancelada: ",transaccion$fields$comentarios))
+                  airtable_updatesinglerecord(fields,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"),id)
+                }
+              }
+            }
+          }
+          if(length(orden$fields$solicitudes_produccion)!=0){
+            for(id in orden$fields$solicitudes_produccion){
+              solicitud <- airtable_getrecorddata_byid(id,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+              if(length(solicitud)!=0 ){
+                if(is.null(solicitud$fileds$empacado)){
+                  fields <- list("cancelada"=TRUE)
+                  airtable_updatesinglerecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),id)
+                }
+              }
+            }
+          }
+        }
+      }
+      if(orden$fields$canal_venta=="mercadolibrernd"){
+        ml_order <- get_mlorder_byid(orden$fields$id_origen,ml_token)
+        if(ml_order$status!="cancelled"){
+          ml_shipping <- get_dir_mlorder(ml_order,ml_token)
+          if(!is.null(ml_shipping$status)){
+            if(ml_shipping$status %in% c("shipped","cancelled")){
+              next
+            }
+            orden_validas[[length(orden_validas) + 1]] <- orden
+          }
+          
+        }else{
+          airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),orden$id)
+          if(length(orden$fields$transacciones_almacen)!=0){
+            for(id in orden$fields$transacciones_almacen){
+              transaccion <- airtable_getrecorddata_byid(id,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
+              if(length(transaccion)!=0 ){
+                if(transaccion$fields$tipo == "reserva"){
+                  fields <- list('cantidad'=0,
+                                 'producto'=list(),
+                                 'ventas_producto'=list(),
+                                 'comentarios'=paste0("Cancelada: ",transaccion$fields$comentarios))
+                  airtable_updatesinglerecord(fields,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"),id)
+                }
+              }
+            }
+          }
+          if(length(orden$fields$solicitudes_produccion)!=0){
+            for(id in orden$fields$solicitudes_produccion){
+              solicitud <- airtable_getrecorddata_byid(id,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+              if(length(solicitud)!=0 ){
+                if(is.null(solicitud$fileds$empacado)){
+                  fields <- list("cancelada"=TRUE)
+                  airtable_updatesinglerecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),id)
+                }
+              }
+            }
+          }
+        }
+      }
+      if(orden$fields$canal_venta=="shprndmx"){
+        print("QUE")
+        if(!str_detect(orden$fields$id_origen,"DST")){
+          shp_order <- consulta_por_nombre(orden$fields$id_origen,shp_token)
+          monto_objetivo <- shp_order$data$orders$edges[[1]]$node$currentTotalPriceSet$shopMoney$amount
+          if(is.null(shp_order$data$orders$edges[[1]]$node$cancelledAt)){
+            if(length(shp_order$data$orders$edges[[1]]$node$transactions)!=0){
+              transacciones <- shp_order$data$orders$edges[[1]]$node$transactions
+              total_success <- sum(sapply(transacciones, function(x) {
+                if (!is.null(x$status) && x$status == "SUCCESS") {
+                  as.numeric(x$amountSet$shopMoney$amount)
+                } else {
+                  0
+                }
+              }))
+              
+              pagado <- total_success >= as.numeric(monto_objetivo)
+              # pagado <- any(sapply(transacciones, function(x) {
+              #   x$status == "SUCCESS" &&
+              #     as.numeric(x$amountSet$shopMoney$amount) >= monto_objetivo
+              # }))
+              if(pagado){
+                orden_validas[[length(orden_validas) + 1]] <- orden
+              }
+            }else{
+              orden_validas[[length(orden_validas) + 1]] <- orden
+            }
+          }else{
+            airtable_updatesinglerecord(list("cancelada"=TRUE),"ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),orden$id)
+            if(length(orden$fields$transacciones_almacen)!=0){
+              for(id in orden$fields$transacciones_almacen){
+                transaccion <- airtable_getrecorddata_byid(id,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
+                if(length(transaccion)!=0 ){
+                  if(transaccion$fields$tipo == "reserva"){
+                    fields <- list('cantidad'=0,
+                                   'producto'=list(),
+                                   'ventas_producto'=list(),
+                                   'comentarios'=paste0("Cancelada: ",transaccion$fields$comentarios))
+                    airtable_updatesinglerecord(fields,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"),id)
+                  }
+                }
+              }
+            }
+            if(length(orden$fields$solicitudes_produccion)!=0){
+              for(id in orden$fields$solicitudes_produccion){
+                solicitud <- airtable_getrecorddata_byid(id,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"))
+                if(length(solicitud)!=0 ){
+                  if(is.null(solicitud$fileds$empacado)){
+                    fields <- list("cancelada"=TRUE)
+                    airtable_updatesinglerecord(fields,"solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),id)
+                  }
+                }
+              }
+            }
+          }
+        }else{
+          orden_validas[[length(orden_validas) + 1]] <- orden
+        }
+      }
+      if(!orden$fields$canal_venta %in% c("shprndmx","mercadolibrernd","amazonrnd")){
+        orden_validas[[length(orden_validas) + 1]] <- orden
+      }
+    }
+  }
+  if(length(orden_validas) > 0){
+    orden_validas <- orden_validas[order(sapply(orden_validas, function(x) x$fields$fecha[[1]]))]
+  }
+  return(orden_validas)
+}
+
+actualizar_status_ordenes <- function(){
+  ordenes_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),"AND(pendiente_envio>0,cancelada='',guias_vp='')")
+  
 }
