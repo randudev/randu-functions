@@ -161,7 +161,7 @@ registrar_producto <- function(producto,venta_producto){
                   dia_sp <- calcular_fecha_envio(ml_shipping)
                   fields$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields$comentarios)
                 }else{
-                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha+6*3600)))
+                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha-6*3600)))
                   fields$comentarios <- paste0("AGENCIA: ",fecha," ",fields$comentarios)
                 }
                 
@@ -336,7 +336,7 @@ registrar_producto <- function(producto,venta_producto){
                         dia_sp <- calcular_fecha_envio(ml_shipping)
                         fields[[length(fields)]]$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields[[length(fields)]]$comentarios)
                       }else{
-                        fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'=prioridad_agencia(fecha)))
+                        fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'=prioridad_agencia(fecha-6*3600)))
                         fields[[length(fields)]]$comentarios <- paste0("AGENCIA: ",format(as.POSIXct(fecha, tz = "UTC"), "%Y-%m-%d")," ",fields[[length(fields)]]$comentarios)
                       }
                       #fields[[length(fields)]] <- append(fields[[length(fields)]],list('prioridad'="8 - Antes de las 12"))
@@ -523,7 +523,7 @@ registrar_producto <- function(producto,venta_producto){
                   dia_sp <- calcular_fecha_envio(ml_shipping)
                   fields$comentarios <- paste0("AGENCIA: ",format(dia_sp, "%Y-%m-%d")," ",fields$comentarios)
                 }else{
-                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha+6*3600)))
+                  fields <- append(fields,list('prioridad'=prioridad_agencia(fecha-6*3600)))
                   fields$comentarios <- paste0("AGENCIA: ",fecha," ",fields$comentarios)
                 }
                 #fields <- append(fields,list('prioridad'="8 - Antes de las 12"))
@@ -1693,4 +1693,27 @@ revisar_status_orden <- function(ordenes_venta){
 actualizar_status_ordenes <- function(){
   ordenes_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),"AND(pendiente_envio>0,cancelada='',guias_vp='')")
   
+}
+
+actualizar_prioridades <- function(){
+  solicitudes <- airtable_getrecordslist("solicitudes_produccion",Sys.getenv("AIRTABLE_CES_BASE"),"AND(tipo='producto',origen!='pieza',empacado='',FIND('AGENCIA',comentarios))")
+  ml_token <- get_active_token()
+  for(solicitud in solicitudes){
+    
+    id_origen <- strsplit(solicitud[["fields"]][["helper_ov"]], " ")[[1]][3]
+    ml_order <- get_mlorder_byid(id_origen,ml_token)
+    envio <- ml_obtener_sla_envio(ml_order$shipping$id,ml_token)
+    fecha <- as.POSIXct(envio[["expected_date"]][1], format = "%Y-%m-%dT%H:%M:%S")
+    prioridad <- prioridad_agencia(fecha-6*3600)
+    if(solicitud$fields$prioridad != prioridad){
+      airtable_updatesinglerecord(list("prioridad"=prioridad),"solicitudes_produccion",
+                                  Sys.getenv("AIRTABLE_CES_BASE"),solicitud$id)
+      if(last_response()$status_code %in% c(199:299)){
+        print(paste0("Se actualizo la prioridad: ",solicitud$fields$id_solicitud," - ", prioridad))
+      }else{
+        error <- paste0("Ocurrio un error:", last_response() %>% resp_body_string(),"\nRequest: ", toJSON(last_request()$body))
+        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),error)
+      }
+    }
+  }
 }
