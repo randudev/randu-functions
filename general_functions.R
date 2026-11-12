@@ -1323,7 +1323,7 @@ prioridad_agencia <- function(fecha){
   
   prioridad <- ifelse(
     dif_horas_habiles <= 24, "8 - Antes de las 12",
-    ifelse(dif_horas_habiles <= 36, "6 - Para hoy", "3 - Alta")
+    ifelse(dif_horas_habiles <= 48, "6 - Para hoy", "3 - Alta")
   )
   
   return(prioridad)
