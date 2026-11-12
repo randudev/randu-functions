@@ -1313,11 +1313,11 @@ prioridad_agencia <- function(fecha){
   
   # 2. Contar horas hábiles exactas (minuto a minuto o por hora) sin sábados ni domingos
   # Usamos intervalos de 15 minutos (900 seg) para no perder precisión si entrega a las 12:45
+  # Secuencia cada 15 min (900 seg) desde ahora hasta la hora exacta de entrega
   intervalos_seq <- seq(from = ahora, to = fecha_posix, by = 900)
   
-  # Evaluamos qué día de la semana cae cada bloque en hora local de México
-  dias_semana <- as.POSIXlt(intervalos_seq, tz = "America/Mexico_City")$wday
-  
+  # Aplicamos tu mismo - 6*3600 para evaluar qué día de la semana es en hora local
+  dias_semana <- as.POSIXlt(intervalos_seq - 6*3600, tz = "UTC")$wday
   # Sumamos solo los bloques que NO caen en domingo (0) ni sábado (6) y pasamos a horas
   dif_horas_habiles <- sum(!dias_semana %in% c(0, 6)) * 0.25
   
