@@ -1227,10 +1227,10 @@ pedir_piezas <- function(solicitud){
 
 pedir_empaque <- function(solicitud){
   if(solicitud$fields$origen=="pieza" || solicitud$fields$tipo=="empaque"){
-    return(NULL)
+    return(list(skip = TRUE, motivo = "La solicitud es de origen 'pieza' o tipo 'empaque'."))
   }
   if(solicitud$fields$tipo_empaque!="estándar" && solicitud$fields$tipo_empaque!="reforzado"){
-    return(NULL)
+    return(list(skip = TRUE, motivo = paste0("tipo_empaque no requiere empaque: '", tipo_empaque, "'")))
   }
   if(length(solicitud$fields$image_qr)==0){
     link_qr <- solicitud$fields$barcode_link
