@@ -1092,10 +1092,9 @@ slack_ligar_factura <- function(cuerpo,bandera=T){
   uuid <- str_extract(mensaje_slack, "[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}")
   
   # 2. Extraer la Orden de Venta (primer bloque de texto limpiando guiones y espacios extras)
-  id_orden <- mensaje_slack %>% 
-    str_remove(uuid) %>%                  # Quitamos el UUID extraído
-    str_replace_all("[^A-Za-z0-9]", "")   # Quitamos espacios, guiones o basura restante
-  
+  id_orden <- texto %>%
+    str_match("(?i)\\bligar\\s+([A-Z0-9-]+?)(?:y(?=\\s|$)|\\s|$)") %>%
+    .[, 2]
   if(id_orden!=''){
     orden_venta <- airtable_getrecordslist("ordenes_venta",Sys.getenv("AIRTABLE_CES_BASE"),
                                            paste0("AND(FIND('",id_orden,"',id_ordenes_venta))"))
