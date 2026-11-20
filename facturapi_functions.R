@@ -975,120 +975,460 @@ tipo_pago_real <- function(orden,canal_venta){
   }
 }
 
+# ---------------------------------------------------------------------------
+# Facturacion desde la base de Martin (tabla prefactura)
+#
+# Lee prefactura.type y arma el CFDI que corresponde:
+#   I  Ingreso (factura normal, anticipo, factura total con anticipo, global)
+#   E  Egreso (notas de credito: anticipo, devolucion, descuento)
+#   P  Pago (complemento de pago)
+#   N  Nomina
+# Las relaciones de UUID (01-07) salen de la tabla related_documents y aplican a I y E.
+# Antes de timbrar valida lo que el SAT va a rechazar, y deja el resultado
+# (status, uuid, error_message...) en la misma prefactura.
+# Regresa siempre una lista simple para que plumber la pueda convertir a JSON.
+# ---------------------------------------------------------------------------
+
+# "01-Efectivo" -> "01". NULL o vacio -> NULL
+martin_codigo <- function(x){
+  if(is.null(x) || length(x) == 0 || is.na(x[[1]]) || x[[1]] == "") return(NULL)
+  sub("-.*", "", x[[1]])
+}
+
+# Quita los campos NULL, NA o "" para no mandarlos a Facturapi (las listas vacias se quedan)
+martin_limpiar <- function(x){
+  vacio <- vapply(x, function(v){
+    is.null(v) || (!is.list(v) && length(v) == 1 && (is.na(v) || identical(v, "")))
+  }, logical(1))
+  x[!vacio]
+}
+
+martin_registro <- function(id, tabla){
+  r <- airtable_getrecorddata_byid(id, tabla, Sys.getenv("AIRTABLE_MARTIN_BASE"))
+  if(is.null(r)) stop(paste0("No se pudo leer el registro ", id, " de la tabla ", tabla))
+  r$fields
+}
+
+martin_marcar <- function(recordid, campos){
+  try(airtable_updatesinglerecord(campos, "prefactura", Sys.getenv("AIRTABLE_MARTIN_BASE"), recordid), silent = TRUE)
+}
+
+martin_customer <- function(f){
+  martin_limpiar(list(
+    legal_name = f$legal_name,
+    tax_id = f$tax_id,
+    tax_system = martin_codigo(f$tax_system),
+    email = f$email,
+    address = list(zip = f$zip)
+  ))
+}
+
+martin_validar_customer <- function(customer){
+  errores <- c()
+  if(is.null(customer$legal_name)) errores <- c(errores, "Falta legal_name")
+  if(is.null(customer$tax_id)) errores <- c(errores, "Falta tax_id (RFC)")
+  if(is.null(customer$tax_system)) errores <- c(errores, "Falta tax_system")
+  if(is.null(customer$address$zip)) errores <- c(errores, "Falta zip")
+  errores
+}
+
+# Impuestos de un item o de un documento pagado, a partir de los registros ligados de taxes
+martin_taxes <- function(tax_ids){
+  lapply(tax_ids, function(tax_id){
+    t <- martin_registro(tax_id, "taxes")
+    martin_limpiar(list(
+      type = t$type,
+      rate = t$rate,
+      factor = t$factor,
+      withholding = !is.null(t$withholding) && t$withholding
+    ))
+  })
+}
+
+martin_items <- function(item_ids){
+  errores <- c()
+  items <- lapply(item_ids, function(item_id){
+    p <- martin_registro(item_id, "items")
+    nombre <- if(is.null(p$description)) item_id else substr(p$description, 1, 40)
+
+    taxability <- martin_codigo(p$taxability)
+    taxes <- martin_taxes(p$taxes)
+    if(is.null(taxability)){
+      taxability <- "02"
+    }
+    if(taxability == "01"){
+      taxes <- list()
+    }else if(length(taxes) == 0){
+      taxes <- list(list(type = "IVA", rate = 0.16))
+    }
+
+    pedimentos <- NULL
+    if(!is.null(p$customs_keys) && p$customs_keys != ""){
+      pedimentos <- trimws(strsplit(p$customs_keys, "\n")[[1]])
+      pedimentos <- pedimentos[pedimentos != ""]
+      malos <- pedimentos[!grepl("^[0-9]{2}  [0-9]{2}  [0-9]{4}  [0-9]{7}$", pedimentos)]
+      if(length(malos) > 0){
+        errores <<- c(errores, paste0("Pedimento con formato incorrecto en '", nombre, "': ", paste(malos, collapse = ", "),
+                                      ". Debe ser AA  AA  AAAA  AAAAAAA con dos espacios entre bloques"))
+      }
+      pedimentos <- as.list(pedimentos)
+    }
+
+    if(is.null(p$quantity)) errores <<- c(errores, paste0("Falta quantity en '", nombre, "'"))
+    if(is.null(p$price)) errores <<- c(errores, paste0("Falta price en '", nombre, "'"))
+    if(is.null(p$product_key)) errores <<- c(errores, paste0("Falta product_key en '", nombre, "'"))
+    if(is.null(p$unit_key)) errores <<- c(errores, paste0("Falta unit_key en '", nombre, "'"))
+
+    martin_limpiar(list(
+      quantity = p$quantity,
+      discount = p$discount,
+      customs_keys = pedimentos,
+      property_tax_account = if(is.null(p$property_tax_account)) NULL else as.list(p$property_tax_account),
+      product = martin_limpiar(list(
+        description = p$description,
+        product_key = martin_codigo(p$product_key),
+        unit_key = martin_codigo(p$unit_key),
+        unit_name = if(is.null(p$unit_key)) NULL else sub("^[^-]*-", "", p$unit_key),
+        price = p$price,
+        tax_included = !is.null(p$tax_included) && p$tax_included,
+        taxability = taxability,
+        taxes = taxes,
+        sku = p$sku
+      ))
+    ))
+  })
+  list(items = items, errores = errores)
+}
+
+# Agrupa las filas de related_documents por tipo de relacion, como lo pide Facturapi
+martin_relaciones <- function(rel_ids){
+  errores <- c()
+  filas <- lapply(rel_ids, function(rel_id){
+    r <- martin_registro(rel_id, "related_documents")
+    uuid <- r$documents
+    if((is.null(uuid) || uuid == "") && length(r$related_prefactura) > 0){
+      uuid <- martin_registro(r$related_prefactura[[1]], "prefactura")$uuid
+    }
+    relacion <- martin_codigo(r$relationship)
+    if(is.null(uuid) || uuid == ""){
+      errores <<- c(errores, "Hay una relación sin UUID (ni en documents ni en la prefactura ligada, o esa prefactura no está timbrada)")
+    }
+    if(is.null(relacion)){
+      errores <<- c(errores, paste0("Falta relationship para el UUID ", uuid))
+    }
+    list(relationship = relacion, uuid = trimws(uuid))
+  })
+  filas <- Filter(function(x) !is.null(x$relationship) && !is.null(x$uuid) && x$uuid != "", filas)
+  tipos <- unique(vapply(filas, function(x) x$relationship, character(1)))
+  relaciones <- lapply(tipos, function(tipo){
+    uuids <- vapply(Filter(function(x) x$relationship == tipo, filas), function(x) x$uuid, character(1))
+    list(relationship = tipo, documents = as.list(unique(uuids)))
+  })
+  list(relaciones = relaciones, errores = errores)
+}
+
+# I (ingreso) y E (egreso / nota de credito)
+martin_cuerpo_ingreso_egreso <- function(f, tipo){
+  errores <- martin_validar_customer(martin_customer(f))
+
+  if(length(f$items) == 0) errores <- c(errores, "La prefactura no tiene items")
+  armado_items <- martin_items(f$items)
+  errores <- c(errores, armado_items$errores)
+
+  armado_rel <- martin_relaciones(f$related_documents)
+  errores <- c(errores, armado_rel$errores)
+
+  forma <- martin_codigo(f$payment_form)
+  metodo <- f$payment_method
+  if(is.null(forma)) errores <- c(errores, "Falta payment_form")
+  if(is.null(metodo)) errores <- c(errores, "Falta payment_method")
+  if(is.null(martin_codigo(f$use))) errores <- c(errores, "Falta use")
+  if(!is.null(metodo) && !is.null(forma)){
+    if(metodo == "PPD" && forma != "99") errores <- c(errores, "Con PPD la forma de pago debe ser 99-Por definir")
+    if(metodo == "PUE" && forma == "99") errores <- c(errores, "Con PUE la forma de pago no puede ser 99; pon la forma real")
+  }
+  if(tipo == "E"){
+    if(length(armado_rel$relaciones) == 0) errores <- c(errores, "Una nota de crédito (E) debe relacionar al menos un UUID en related_documents")
+    if(!is.null(metodo) && metodo == "PPD") errores <- c(errores, "Una nota de crédito (E) debe ir con PUE")
+  }
+  if(!is.null(f$currency) && f$currency != "MXN" && is.null(f$exchange)){
+    errores <- c(errores, "Falta exchange (tipo de cambio) porque la moneda no es MXN")
+  }
+
+  global <- NULL
+  if(!is.null(f$global_periodicity)){
+    if(is.null(f$global_months) || is.null(f$global_year)){
+      errores <- c(errores, "Factura global: faltan global_months o global_year")
+    }
+    global <- list(periodicity = f$global_periodicity,
+                   months = martin_codigo(f$global_months),
+                   year = f$global_year)
+  }
+
+  body <- martin_limpiar(list(
+    type = tipo,
+    customer = martin_customer(f),
+    items = armado_items$items,
+    payment_form = forma,
+    payment_method = metodo,
+    use = martin_codigo(f$use),
+    currency = f$currency,
+    exchange = f$exchange,
+    conditions = f$conditions,
+    series = f$series,
+    folio_number = f$folio_number,
+    date = f$date,
+    export = martin_codigo(f$export),
+    global = global,
+    external_id = f$external_id
+  ))
+  if(length(armado_rel$relaciones) > 0) body$related_documents <- armado_rel$relaciones
+
+  list(body = body, errores = errores)
+}
+
+# P (complemento de pago)
+martin_cuerpo_pago <- function(f){
+  errores <- martin_validar_customer(martin_customer(f))
+  if(length(f$payments) == 0) errores <- c(errores, "El complemento de pago no tiene registros en payments")
+
+  pagos <- lapply(f$payments, function(pago_id){
+    p <- martin_registro(pago_id, "payments")
+    forma <- martin_codigo(p$payment_form)
+    if(is.null(forma)) errores <<- c(errores, "Un pago no tiene payment_form")
+    if(!is.null(forma) && forma == "99") errores <<- c(errores, "Un pago no puede tener forma 99-Por definir")
+    if(is.null(p$date)) errores <<- c(errores, "Un pago no tiene date")
+    if(length(p$related_documents) == 0) errores <<- c(errores, "Un pago no tiene facturas en related_documents")
+    if(!is.null(p$currency) && p$currency != "MXN" && is.null(p$exchange)){
+      errores <<- c(errores, "Un pago en moneda distinta de MXN no tiene exchange")
+    }
+
+    documentos <- lapply(p$related_documents, function(doc_id){
+      d <- martin_registro(doc_id, "payment_related_documents")
+      uuid <- d$uuid
+      if((is.null(uuid) || uuid == "") && length(d$related_prefactura) > 0){
+        fac <- martin_registro(d$related_prefactura[[1]], "prefactura")
+        uuid <- fac$uuid
+        if(!is.null(fac$payment_method) && fac$payment_method != "PPD"){
+          errores <<- c(errores, paste0("La factura ", uuid, " no es PPD; solo las PPD llevan complemento de pago"))
+        }
+      }
+      if(is.null(uuid) || uuid == "") errores <<- c(errores, "Un documento pagado no tiene UUID")
+      if(is.null(d$amount)) errores <<- c(errores, paste0("Falta amount para ", uuid))
+      if(is.null(d$last_balance)) errores <<- c(errores, paste0("Falta last_balance para ", uuid))
+      if(is.null(d$installment)) errores <<- c(errores, paste0("Falta installment para ", uuid))
+      if(!is.null(d$amount) && !is.null(d$last_balance) && d$amount > d$last_balance + 0.01){
+        errores <<- c(errores, paste0("El monto pagado es mayor que el saldo de ", uuid))
+      }
+
+      taxability <- martin_codigo(d$taxability)
+      if(is.null(taxability)) taxability <- "02"
+      taxes <- list()
+      if(taxability != "01"){
+        taxes <- martin_taxes(d$taxes)
+        if(length(taxes) == 0) taxes <- list(list(type = "IVA", rate = 0.16))
+        # base = monto / (1 + traslados - retenciones)
+        factor_total <- 1 + sum(vapply(taxes, function(t){
+          if(!is.null(t$withholding) && t$withholding) -t$rate else t$rate
+        }, numeric(1)))
+        base <- round(as.numeric(d$amount) / factor_total, 2)
+        taxes <- lapply(taxes, function(t) c(list(base = base), t))
+      }
+
+      martin_limpiar(list(
+        uuid = trimws(uuid),
+        amount = d$amount,
+        installment = d$installment,
+        last_balance = d$last_balance,
+        taxability = taxability,
+        currency = d$currency,
+        exchange = d$exchange,
+        taxes = taxes
+      ))
+    })
+
+    martin_limpiar(list(
+      payment_form = forma,
+      date = p$date,
+      currency = p$currency,
+      exchange = p$exchange,
+      numOperacion = p$numOperacion,
+      related_documents = documentos
+    ))
+  })
+
+  body <- martin_limpiar(list(
+    type = "P",
+    customer = martin_customer(f),
+    complements = list(list(type = "pago", data = pagos)),
+    series = f$series,
+    folio_number = f$folio_number,
+    date = f$date,
+    external_id = f$external_id
+  ))
+  list(body = body, errores = errores)
+}
+
+# N (nomina)
+martin_cuerpo_nomina <- function(f){
+  errores <- c()
+  if(length(f$nomina_receptor) == 0){
+    return(list(body = NULL, errores = "La nómina no tiene empleado en nomina_receptor"))
+  }
+  e <- martin_registro(f$nomina_receptor[[1]], "nomina_receptor")
+
+  customer <- martin_limpiar(list(
+    legal_name = e$legal_name,
+    tax_id = e$tax_id,
+    tax_system = "605",
+    email = e$email,
+    address = list(zip = e$zip)
+  ))
+  errores <- c(errores, martin_validar_customer(customer))
+  if(is.null(e$curp)) errores <- c(errores, "Falta curp del empleado")
+  if(is.null(f$fecha_pago)) errores <- c(errores, "Falta fecha_pago")
+  if(is.null(f$fecha_inicial_pago)) errores <- c(errores, "Falta fecha_inicial_pago")
+  if(is.null(f$fecha_final_pago)) errores <- c(errores, "Falta fecha_final_pago")
+  if(is.null(f$num_dias_pagados)) errores <- c(errores, "Falta num_dias_pagados")
+
+  conceptos <- lapply(f$nomina_conceptos, function(id) martin_registro(id, "nomina_conceptos"))
+  de_clase <- function(clase) Filter(function(x) !is.null(x$clase) && x$clase == clase, conceptos)
+
+  percepciones <- lapply(de_clase("percepcion"), function(x) martin_limpiar(list(
+    tipo_percepcion = x$tipo, clave = x$clave, concepto = x$concepto,
+    importe_gravado = if(is.null(x$importe_gravado)) 0 else x$importe_gravado,
+    importe_exento = if(is.null(x$importe_exento)) 0 else x$importe_exento
+  )))
+  deducciones <- lapply(de_clase("deduccion"), function(x) martin_limpiar(list(
+    tipo_deduccion = x$tipo, clave = x$clave, concepto = x$concepto, importe = x$importe
+  )))
+  otros_pagos <- lapply(de_clase("otro_pago"), function(x) martin_limpiar(list(
+    tipo_otro_pago = x$tipo, clave = x$clave, concepto = x$concepto,
+    importe = if(is.null(x$importe)) 0 else x$importe,
+    subsidio_causado = x$subsidio_causado
+  )))
+  if(length(percepciones) == 0 && length(otros_pagos) == 0){
+    errores <- c(errores, "La nómina no tiene percepciones ni otros pagos en nomina_conceptos")
+  }
+  sin_tipo <- Filter(function(x) is.null(x$tipo), conceptos)
+  if(length(sin_tipo) > 0) errores <- c(errores, "Hay conceptos de nómina sin tipo (clave SAT)")
+
+  emisor <- martin_limpiar(list(registro_patronal = Sys.getenv("NOMINA_REGISTRO_PATRONAL")))
+
+  data <- martin_limpiar(list(
+    fecha_pago = f$fecha_pago,
+    fecha_inicial_pago = f$fecha_inicial_pago,
+    fecha_final_pago = f$fecha_final_pago,
+    num_dias_pagados = f$num_dias_pagados,
+    emisor = if(length(emisor) > 0) emisor else NULL,
+    receptor = martin_limpiar(list(
+      curp = e$curp,
+      tipo_contrato = martin_codigo(e$tipo_contrato),
+      tipo_regimen = martin_codigo(e$tipo_regimen),
+      num_empleado = e$num_empleado,
+      periodicidad_pago = martin_codigo(e$periodicidad_pago),
+      clave_ent_fed = e$clave_ent_fed,
+      num_seguridad_social = e$num_seguridad_social,
+      fecha_inicio_rel_laboral = e$fecha_inicio_rel_laboral,
+      tipo_jornada = martin_codigo(e$tipo_jornada),
+      departamento = e$departamento,
+      puesto = e$puesto,
+      riesgo_puesto = martin_codigo(e$riesgo_puesto),
+      salario_diario_integrado = e$salario_diario_integrado
+    ))
+  ))
+  if(length(percepciones) > 0) data$percepciones <- list(percepcion = percepciones)
+  if(length(deducciones) > 0) data$deducciones <- deducciones
+  if(length(otros_pagos) > 0) data$otros_pagos <- otros_pagos
+
+  body <- martin_limpiar(list(
+    type = "N",
+    customer = customer,
+    complements = list(list(type = "nomina", data = data)),
+    series = f$series,
+    folio_number = f$folio_number,
+    external_id = f$external_id
+  ))
+  list(body = body, errores = errores)
+}
+
 facturapi_crear_factura_martin <- function(recordid){
   tryCatch(
-    expr={
-      datos <- airtable_getrecorddata_byid(recordid,"prefactura",Sys.getenv("AIRTABLE_MARTIN_BASE"))
-      productos <- sapply(datos$fields$items, function(x)
-        airtable_getrecorddata_byid(x,"items",Sys.getenv("AIRTABLE_MARTIN_BASE")),
-        simplify = F)
-      
-      codigo_tax_system <- sub("-.*", "", datos$fields$tax_system)
-      descripcion_tax_system <- sub("^[^-]*-", "", datos$fields$tax_system)
-      
-      items <- lapply(productos, function(prod){
-        
-        # Taxes del producto
-        taxes <- list()
-        
-        if (!is.null(prod$fields$taxes) &&
-            length(prod$fields$taxes) > 0) {
-          
-          taxes <- lapply(prod$fields$taxes, function(tax_id){
-            
-            tax <- airtable_getrecorddata_byid(
-              tax_id,
-              "taxes",
-              Sys.getenv("AIRTABLE_MARTIN_BASE")
-            )
-            
-            list(
-              type = tax$fields$type,
-              rate = tax$fields$rate,
-              withholding = isTRUE(tax$fields$withholding)
-            )
-          })
-        }else {
-          
-          taxes <- list(
-            list(
-              type = "IVA",
-              rate = 0.16
-            )
-          )
-          
-        }
-        
-        list(
-          quantity = prod$fields$quantity,
-          product=list(
-            description = prod$fields$description,
-            product_key = sub("-.*", "", prod$fields$product_key),
-            unit_key = sub("-.*", "", prod$fields$unit_key),
-            price = prod$fields$price,
-            taxability = if(length(taxes)) "02" else "01",
-            taxes = taxes,
-            unit_name = sub("^[^-]*-", "", prod$fields$unit_key)
-          )
-          
-        )
-      })
-      factura <- list(
-        customer=list(
-          "legal_name"=datos$fields$legal_name,
-          "tax_id"=datos$fields$tax_id,
-          "tax_system"=codigo_tax_system,
-          "address"=list(
-            "street" = datos$fields$street,
-            "city" = datos$fields$city,
-            "state" = datos$fields$state,
-            "zip" = datos$fields$zip,
-            "country" = datos$fields$country
-          )
-        ),
-        "items"=items,
-        "payment_form"=sub("-.*", "", datos$fields$payment_form),
-        "use"=sub("-.*", "", datos$fields$use),
-        "payment_method"=datos$fields$payment_method
-        
-      )
-      if(datos[["fields"]][["emisor"]]=="RIR1104111G6-MIPYME Logistica"){
+    expr = {
+      f <- martin_registro(recordid, "prefactura")
+
+      if(!is.null(f$status) && f$status == "valid"){
+        return(list(error = FALSE, mensaje = paste0("Esta prefactura ya está timbrada: ", f$uuid)))
+      }
+
+      tipo <- if(is.null(f$type)) "I" else f$type
+      if(!is.null(f$emisor) && f$emisor == "RIR1104111G6-MIPYME Logistica"){
         key <- Sys.getenv("FACTURAPI_KEY_RIR")
       }else{
         key <- Sys.getenv("FACTURAPI_KEY")
       }
-      cfdi_api <- facturapi_crear_factura(factura,key)
-      if(!last_response()$status_code %in% c(199:299)){
-        aux <- last_response() %>% resp_body_string()
-        mensaje <- paste0("Fallo al intentar hacer la factura:\n",aux,"\nDatos:",toJSON(cfdi_api))
-        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
-        return(mensaje)
+
+      armado <- switch(tipo,
+        "I" = martin_cuerpo_ingreso_egreso(f, "I"),
+        "E" = martin_cuerpo_ingreso_egreso(f, "E"),
+        "P" = martin_cuerpo_pago(f),
+        "N" = martin_cuerpo_nomina(f),
+        list(body = NULL, errores = paste0("Tipo de CFDI no soportado: ", tipo))
+      )
+
+      # Errores de captura: no se manda nada a Facturapi
+      if(length(armado$errores) > 0){
+        mensaje <- paste(unique(armado$errores), collapse = "\n")
+        martin_marcar(recordid, list(status = "error", error_message = mensaje))
+        return(list(error = TRUE, mensaje = mensaje))
       }
-      i <- 0
+
+      cfdi <- facturapi_crear_factura(armado$body, key)
+      if(!last_response()$status_code %in% c(199:299)){
+        mensaje <- if(is.null(cfdi$message)) "Facturapi rechazó el CFDI sin mensaje" else cfdi$message
+        martin_marcar(recordid, list(status = "error", error_message = mensaje))
+        enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),
+                             paste0("Fallo al timbrar desde el botón de Martin\nRecord: ", recordid,
+                                    "\nTipo: ", tipo, "\nError: ", mensaje,
+                                    "\nBody: ", toJSON(armado$body, auto_unbox = TRUE)))
+        return(list(error = TRUE, mensaje = mensaje))
+      }
+
+      martin_marcar(recordid, martin_limpiar(list(
+        status = cfdi$status,
+        facturapi_id = cfdi$id,
+        uuid = cfdi$uuid,
+        total = cfdi$total,
+        stamp_date = cfdi$stamp$date,
+        verification_url = cfdi$verification_url,
+        error_message = ""
+      )))
+
+      # PDF con la misma llave con la que se timbro (antes siempre usaba FACTURAPI_KEY)
+      ruta <- paste0("~/facturas/", cfdi$uuid, ".pdf")
       Sys.sleep(5)
-      while(TRUE){
-        pdf <- facturapi_descargar_factura(cfdi_api$id,Sys.getenv("FACTURAPI_KEY"),"pdf")
+      for(i in 1:10){
+        pdf <- facturapi_descargar_factura(cfdi$id, key, "pdf")
         if(pdf$status_code %in% c(199:299)){
-          writeBin(pdf$body, paste0("~/facturas/",cfdi_api$uuid,".pdf"))
-          
-          airtable_subir_pdf(datos$id,paste0("~/facturas/",cfdi_api$uuid,".pdf"),"fldPGYWcrenO5qMiz",Sys.getenv("AIRTABLE_MARTIN_BASE"),"pdf")
-          break
-        }
-        if(i>=10){
-          i <- 0
+          writeBin(pdf$body, ruta)
+          airtable_subir_pdf(recordid, ruta, "fldPGYWcrenO5qMiz", Sys.getenv("AIRTABLE_MARTIN_BASE"), "pdf")
           break
         }
         Sys.sleep(1)
-        i <- i + 1
       }
+
+      list(error = FALSE, uuid = cfdi$uuid, total = cfdi$total,
+           mensaje = paste0("Se timbró el CFDI ", tipo, " con UUID ", cfdi$uuid))
     },
-    error=function(e){
-      mensaje <- paste0("Hubo un error al intentar facturar desde el boton de Martin\nRecord:",recordid,
-                        "\nError: ",e)
-      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),mensaje)
+    error = function(e){
+      mensaje <- paste0("Se rompió la función al facturar: ", conditionMessage(e))
+      martin_marcar(recordid, list(status = "error", error_message = mensaje))
+      enviar_mensaje_slack(Sys.getenv("SLACK_ERROR_URL"),
+                           paste0("Hubo un error al intentar facturar desde el botón de Martin\nRecord: ", recordid,
+                                  "\nError: ", conditionMessage(e)))
+      list(error = TRUE, mensaje = mensaje)
     }
   )
-  
 }
 
 crear_factura <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago="31",omitir="",
@@ -1131,50 +1471,82 @@ crear_factura <- function(orden,auth_facturapi,id_orden,canal_venta,tipo_de_pago
     #   fecha_final <- ceiling_date(as.Date(fecha_ori), "month") - days(1)
     # }
     
-    
-    fecha_ori <- ymd_hms(fecha)-6*3600
-    
-    ahora <- Sys.time()-6*3600
-    # if(month(ahora) == month(fecha_ori)){
-    #   if (difftime(ahora, fecha_ori, units = "hours") > 72) {
-    #     fecha_final <- ahora
+    # 
+    # fecha_ori <- ymd_hms(fecha)-6*3600
+    # 
+    # ahora <- Sys.time()-6*3600
+    # # if(month(ahora) == month(fecha_ori)){
+    # #   if (difftime(ahora, fecha_ori, units = "hours") > 72) {
+    # #     fecha_final <- ahora
+    # #     
+    # #     # Si cambió de mes
+    # #     if (month(fecha_final) != month(fecha_ori) ||
+    # #         year(fecha_final) != year(fecha_ori)) {
+    # #       
+    # #       fecha_final <- ultimo_dia_mes_anterior(Sys.Date())+1800
+    # #     }
+    # #   } else {
+    # #     fecha_final <- fecha_ori
+    # #   }
+    # #   
+    # #   recibo_lista$date <- fecha_final
+    # #   
+    # # }
+    # 
+    # ahora <- Sys.time() - 6 * 3600
+    # 
+    # if (difftime(ahora, fecha_ori, units = "hours") > 72) {
+    #   
+    #   fecha_final <- ahora
+    #   
+    #   if (month(fecha_final) != month(fecha_ori) ||
+    #       year(fecha_final) != year(fecha_ori)) {
     #     
-    #     # Si cambió de mes
-    #     if (month(fecha_final) != month(fecha_ori) ||
-    #         year(fecha_final) != year(fecha_ori)) {
-    #       
-    #       fecha_final <- ultimo_dia_mes_anterior(Sys.Date())+1800
-    #     }
-    #   } else {
-    #     fecha_final <- fecha_ori
+    #     fecha_final <- ultimo_dia_mes_anterior(Sys.Date()) + 1800
     #   }
     #   
-    #   recibo_lista$date <- fecha_final
+    # } else {
+    #   
+    #   fecha_final <- fecha_ori
     #   
     # }
-    
+    # if(str_detect(fecha_final,"2026-08")){
+    #   fecha_final <- ahora
+    # }
+    # 
+    # recibo_lista$date <- fecha_final#obtener_fecha_emision_valida(fecha_ori)
+    # 
+    # Estandarización UTC-6
+    fecha_ori <- ymd_hms(fecha) - 6 * 3600
     ahora <- Sys.time() - 6 * 3600
     
-    if (difftime(ahora, fecha_ori, units = "hours") > 72) {
-      
-      fecha_final <- ahora
-      
-      if (month(fecha_final) != month(fecha_ori) ||
-          year(fecha_final) != year(fecha_ori)) {
-        
-        fecha_final <- ultimo_dia_mes_anterior(Sys.Date()) + 1800
-      }
-      
-    } else {
-      
+    # Límite mínimo permitido por el SAT (72 horas atrás, dejamos 71.5h por margen de reloj)
+    limite_sat <- ahora - 71.5 * 3600
+    
+    # Fin del mes anterior (ej. 2026-10-31 23:59:59)
+    fin_mes_anterior <- floor_date(ahora, "month") - 1
+    
+    # Verificar si fecha_ori es del mes inmediato anterior
+    es_mes_anterior <- (year(fecha_ori) == year(fin_mes_anterior)) && 
+      (month(fecha_ori) == month(fin_mes_anterior))
+    
+    if (fecha_ori >= limite_sat && fecha_ori <= ahora) {
+      # 1. Está dentro del rango válido de 72 horas (mismo mes o primeros días del siguiente)
       fecha_final <- fecha_ori
       
-    }
-    if(str_detect(fecha_final,"2026-08")){
+    } else if (es_mes_anterior && fin_mes_anterior >= limite_sat) {
+      # 2. Es del mes anterior, ya pasó de 72h desde la compra, pero estamos en los primeros
+      # 3 días del mes siguiente y el cierre de mes aún entra en la ventana de 72h del SAT
+      fecha_final <- fin_mes_anterior
+      
+    } else {
+      # 3. Fuera de rango de 72h (mismo mes viejo o mes anterior ya vencido): usar hora actual
       fecha_final <- ahora
     }
     
-    recibo_lista$date <- fecha_final#obtener_fecha_emision_valida(fecha_ori)
+    # Formato ISO/Facturapi limpio en zona local
+    recibo_lista$date <- format(fecha_final, "%Y-%m-%d %H:%M:%S")
+    
     
     factura_year <- year(fecha_final)
     # months <- sprintf("%02d", month(Sys.Date()))
