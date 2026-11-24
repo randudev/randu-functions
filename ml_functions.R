@@ -249,6 +249,7 @@ register_lineitems_ml <- function(mlorder, ml_token){
       sku <- "11363"
     }
   }
+  sku <- sub("-.*", "", sku)
   # }else{
   #   sku <- "10700"
   # }

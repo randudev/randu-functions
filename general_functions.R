@@ -1304,7 +1304,7 @@ prioridad_agencia <- function(fecha){
     fecha_posix <- as.POSIXct(fecha, tz = "UTC")
   }
   
-  ahora <- as.POSIXct(Sys.time(), tz = "UTC")
+  ahora <- as.POSIXct(Sys.time(), tz = "UTC")-6*3600
   
   # Si la hora límite ya pasó o es inmediata
   if (is.na(fecha_posix) || fecha_posix <= ahora) {
@@ -1597,7 +1597,7 @@ revisar_status_orden <- function(ordenes_venta){
             for(id in orden$fields$transacciones_almacen){
               transaccion <- airtable_getrecorddata_byid(id,"transacciones_almacen",Sys.getenv("AIRTABLE_CES_BASE"))
               if(length(transaccion)!=0 ){
-                if(transaccion$fields$tipo == "reserva"){
+                if(transaccion$fields$tipo == "reserva" && length(transaccion$fields$ventas_producto)==1){
                   fields <- list('cantidad'=0,
                                  'producto'=list(),
                                  'ventas_producto'=list(),
